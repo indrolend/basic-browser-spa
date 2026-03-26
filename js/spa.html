@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" class="spa-mode">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="description" content="Indrolend — Music, Art &amp; Interactive Experiences" />
+  <meta name="author" content="Indrolend" />
+  <meta name="theme-color" content="#000000" />
+  <!-- Security headers -->
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta http-equiv="X-Frame-Options" content="SAMEORIGIN" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+  <title>Indrolend</title>
+
+  <!-- Fonts (same as existing pages) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600;1,700;1,800&display=swap" rel="stylesheet" />
+
+  <!--
+    Existing stylesheet first — provides .important-word, colour variables,
+    font-weight animations, and all shared component styles.
+  -->
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- SPA-specific layout overrides and new components -->
+  <link rel="stylesheet" href="css/spa.css" />
+
+  <!--
+    Script load order (all deferred — execute in document order
+    just before DOMContentLoaded fires):
+
+    1. particle-clusters.js  — exposes window.__SPA_initParticleCluster
+    2. importantWords.js     — exposes window.__SPA_ImportantWords
+    3. routes.js             — defines window.__INDROLEND_ROUTES__
+    4. transitionEngine.js   — exposes window.__SPA_Transition
+    5. overlayManager.js     — exposes window.__SPA_Overlay
+    6. views/*               — populate window.__SPA_Views
+    7. router.js             — exposes + auto-inits window.__SPA_Router
+    8. gestures.js           — exposes + auto-inits window.__SPA_Gestures
+  -->
+  <script defer src="js/spa/engines/particle-clusters.js"></script>
+  <script defer src="js/spa/typography/importantWords.js"></script>
+  <script defer src="js/spa/routes.js"></script>
+  <script defer src="js/spa/transitionEngine.js"></script>
+  <script defer src="js/spa/overlayManager.js"></script>
+  <script defer src="js/spa/views/homeView.js"></script>
+  <script defer src="js/spa/views/socialView.js"></script>
+  <script defer src="js/spa/views/musicView.js"></script>
+  <script defer src="js/spa/views/gamesView.js"></script>
+  <script defer src="js/spa/views/aboutView.js"></script>
+  <script defer src="js/spa/router.js"></script>
+  <script defer src="js/spa/gestures.js"></script>
+</head>
+
+<body class="spa-mode">
+
+  <!--
+    #spa-view-host
+    All views are mounted here as .spa-view children.
+    Only one view is visible (display:block) at a time; the rest remain in the
+    DOM (display:none) so their state / canvas loops are preserved.
+  -->
+  <div id="spa-view-host" role="main"></div>
+
+  <!--
+    #spa-transition-canvas
+    Fullscreen overlay canvas used by transitionEngine.js.
+    Pointer-events are disabled so it never blocks interaction.
+    Hidden when idle; shown by the transition engine.
+  -->
+  <canvas id="spa-transition-canvas" aria-hidden="true"></canvas>
+
+  <!--
+    Top navigation bar — section links rendered by router.js > updateNav()
+  -->
+  <nav id="spa-nav" aria-label="Main navigation">
+    <div class="spa-nav-sections" id="spa-nav-sections"></div>
+  </nav>
+
+  <!--
+    Item navigation dots — rendered by router.js > updateNav()
+    One dot per item in the current section; active dot highlighted.
+  -->
+  <div id="spa-item-nav" role="navigation" aria-label="Item navigation"></div>
+
+  <!--
+    #spa-overlay-root
+    OS-like modal overlay root. overlayManager.js injects overlays here.
+    Hidden when no overlay is open.
+  -->
+  <div id="spa-overlay-root" role="dialog" aria-modal="true" aria-label="Overlay"></div>
+
+</body>
+</html>
