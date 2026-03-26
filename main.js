@@ -7,21 +7,6 @@ const SPA_SECTIONS = [
     items: [ { id: 'main', label: 'Home' } ]
   },
   {
-    id: 'about',
-    label: 'About',
-    items: [
-      { id: 'spotifyAnalytics', label: 'Spotify Analytics' },
-      { id: 'discography', label: 'Discography' },
-      { id: 'devHistory', label: 'Development History' },
-      { id: 'journal', label: 'Journal' }
-    ]
-  },
-  {
-    id: 'games',
-    label: 'Games',
-    items: [ { id: 'asymptote', label: 'Asymptote Engine' } ]
-  },
-  {
     id: 'social',
     label: 'Social',
     items: [
@@ -39,6 +24,20 @@ const SPA_SECTIONS = [
       { id: 'bandcamp', label: 'Bandcamp' },
       { id: 'soundcloud', label: 'SoundCloud' }
     ]
+  },
+  {
+    id: 'games',
+    label: 'Games',
+    items: [ { id: 'asymptote', label: 'Asymptote Engine' } ]
+  },
+  {
+    id: 'about',
+    label: 'About',
+    items: [
+      { id: 'discography', label: 'Discography' },
+      { id: 'devHistory', label: 'Development History' },
+      { id: 'journal', label: 'Journal' }
+    ]
   }
 ];
 
@@ -52,30 +51,63 @@ let currentSectionIdx = 0;
 let currentItemIdx = 0;
 
 // DOM
+
 const root = document.getElementById('spa-root');
+const transitionCanvas = document.getElementById('transition-canvas');
+const transitionCtx = transitionCanvas.getContext('2d');
+
 
 function render() {
   const section = SPA_SECTIONS[currentSectionIdx];
   const item = section.items[currentItemIdx];
-  root.innerHTML = '';
+  // Only clear the hero area, not the whole root
+  const heroContainer = document.getElementById('spa-hero-container');
+  heroContainer.innerHTML = '';
+
+  // --- Top nav: sections ---
+  let sectionNav = document.getElementById('spa-section-nav');
+  if (!sectionNav) {
+    sectionNav = document.createElement('div');
+    sectionNav.id = 'spa-section-nav';
+    sectionNav.style = 'position:fixed;top:0;left:0;width:100vw;z-index:20;display:flex;justify-content:center;gap:1.5em;padding:1em 0;background:#111;box-shadow:0 2px 12px #0006;';
+    document.body.prepend(sectionNav);
+  }
+  sectionNav.innerHTML = '';
+  SPA_SECTIONS.forEach((sec, idx) => {
+    const btn = document.createElement('button');
+    btn.textContent = sec.label;
+    btn.className = 'spa-nav-btn';
+    if (idx === currentSectionIdx) {
+      btn.style.fontWeight = 'bold';
+      btn.style.background = '#333';
+    } else {
+      btn.style.fontWeight = 'normal';
+      btn.style.background = '';
+    }
+    btn.onclick = () => {
+      if (currentSectionIdx !== idx) {
+        currentSectionIdx = idx;
+        currentItemIdx = 0;
+        triggerTransition(render);
+      }
+    };
+    sectionNav.appendChild(btn);
+  });
+
+  // --- Main hero asset (only item name centered) ---
   const hero = document.createElement('div');
   hero.className = 'spa-hero';
-
-  // Try to load image/gif asset
   const assetBase = getAssetPath(section.id, item.id);
   const img = new window.Image();
   img.onload = function() {
     img.className = 'spa-hero-image';
     hero.appendChild(img);
-    renderNav(hero);
   };
   img.onerror = function() {
-    // Fallback to text
     const text = document.createElement('div');
     text.className = 'spa-hero-text';
     text.textContent = item.label;
     hero.appendChild(text);
-    renderNav(hero);
   };
   img.src = assetBase + '.gif';
   img.onerror = function() {
@@ -83,41 +115,38 @@ function render() {
     img.onerror = function() {
       img.src = assetBase + '.jpg';
       img.onerror = function() {
-        // Fallback to text
         const text = document.createElement('div');
         text.className = 'spa-hero-text';
         text.textContent = item.label;
         hero.appendChild(text);
-        renderNav(hero);
       };
     };
   };
-  root.appendChild(hero);
+  heroContainer.appendChild(hero);
 }
 
-function renderNav(container) {
-  const nav = document.createElement('div');
-  nav.style.marginTop = '2rem';
-  // Prev
+
+// Create the nav bar once at startup and never clear it
+function setupItemNav() {
+  const navBar = document.getElementById('spa-item-nav');
+  if (!navBar || navBar.children.length > 0) return;
   const prevBtn = document.createElement('button');
   prevBtn.className = 'spa-nav-btn';
   prevBtn.textContent = '← Prev';
   prevBtn.onclick = prevItem;
-  nav.appendChild(prevBtn);
-  // Next
+  navBar.appendChild(prevBtn);
   const nextBtn = document.createElement('button');
   nextBtn.className = 'spa-nav-btn';
   nextBtn.textContent = 'Next →';
   nextBtn.onclick = nextItem;
-  nav.appendChild(nextBtn);
-  container.appendChild(nav);
+  navBar.appendChild(nextBtn);
 }
 
 function prevItem() {
   if (currentItemIdx > 0) {
     currentItemIdx--;
-  } else if (currentSectionIdx > 0) {
-    currentSectionIdx--;
+  } else {
+    currentSectionIdx = (currentSectionIdx - 1 + SPA_SECTIONS.length) % SPA_SECTIONS.length;
     currentItemIdx = SPA_SECTIONS[currentSectionIdx].items.length - 1;
   }
   triggerTransition(render);
@@ -126,8 +155,8 @@ function prevItem() {
 function nextItem() {
   if (currentItemIdx < SPA_SECTIONS[currentSectionIdx].items.length - 1) {
     currentItemIdx++;
-  } else if (currentSectionIdx < SPA_SECTIONS.length - 1) {
-    currentSectionIdx++;
+  } else {
+    currentSectionIdx = (currentSectionIdx + 1) % SPA_SECTIONS.length;
     currentItemIdx = 0;
   }
   triggerTransition(render);
@@ -163,12 +192,41 @@ window.addEventListener('touchend', e => {
   touchStartY = null;
 });
 
-// Particle transition integration (placeholder)
+
+// Particle transition integration (simple placeholder effect)
 function triggerTransition(cb) {
-  // TODO: Integrate particlecarousel.engine.js here
-  // For now, just call cb immediately
-  cb();
+  // Show a quick fade-out/fade-in effect using the transition canvas
+  transitionCanvas.width = window.innerWidth;
+  transitionCanvas.height = window.innerHeight;
+  transitionCanvas.style.display = 'block';
+  transitionCtx.fillStyle = '#111';
+  transitionCtx.globalAlpha = 0;
+  transitionCtx.fillRect(0, 0, transitionCanvas.width, transitionCanvas.height);
+  let alpha = 0;
+  function fadeOut() {
+    alpha += 0.08;
+    transitionCtx.globalAlpha = alpha;
+    transitionCtx.fillRect(0, 0, transitionCanvas.width, transitionCanvas.height);
+    if (alpha < 1) {
+      requestAnimationFrame(fadeOut);
+    } else {
+      cb();
+      fadeIn();
+    }
+  }
+  function fadeIn() {
+    alpha -= 0.08;
+    transitionCtx.globalAlpha = alpha;
+    transitionCtx.fillRect(0, 0, transitionCanvas.width, transitionCanvas.height);
+    if (alpha > 0) {
+      requestAnimationFrame(fadeIn);
+    } else {
+      transitionCanvas.style.display = 'none';
+    }
+  }
+  fadeOut();
 }
 
-// Initial render
+// Initial render and nav bar setup
+setupItemNav();
 render();
