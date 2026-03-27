@@ -16,8 +16,9 @@
   </style>
 </head>
 <body>
-  <div id="spa-root">
+  <div id="spa-root" style="position:relative;">
     <div id="spa-hero-container"></div>
+    <canvas id="transition-canvas" width="320" height="320" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100;"></canvas>
   </div>
   <div id="spa-item-nav"></div>
   <!-- transition-canvas removed: all transitions now occur on the hero canvas itself -->

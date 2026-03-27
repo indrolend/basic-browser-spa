@@ -59,7 +59,6 @@ const root = document.getElementById('spa-root');
 function render() {
   const section = SPA_SECTIONS[currentSectionIdx];
   const item = section.items[currentItemIdx];
-  // Only clear the hero area, not the whole root
   const heroContainer = document.getElementById('spa-hero-container');
   heroContainer.innerHTML = '';
 
@@ -93,17 +92,9 @@ function render() {
     sectionNav.appendChild(btn);
   });
 
-  // --- Main hero asset: always a canvas ---
+  // --- Main hero asset: DOM-based (img for GIF, div for text) ---
   const hero = document.createElement('div');
   hero.className = 'spa-hero';
-  const heroCanvas = document.createElement('canvas');
-  heroCanvas.className = 'spa-hero-image';
-  heroCanvas.width = 320;
-  heroCanvas.height = 320;
-  hero.appendChild(heroCanvas);
-  heroContainer.appendChild(hero);
-
-  // Map item.id to the correct GIF filename in /gifs
   const gifMap = {
     tiktok: 'Tiktoklogospin.gif',
     instagram: 'Instagramlogospin.gif',
@@ -116,41 +107,20 @@ function render() {
   };
   const gifFile = gifMap[item.id];
   if (gifFile) {
-    const img = new window.Image();
-    img.onload = function() {
-      // Draw GIF to canvas, centered
-      const ctx = heroCanvas.getContext('2d');
-      ctx.clearRect(0, 0, heroCanvas.width, heroCanvas.height);
-      const scale = Math.min(heroCanvas.width / img.width, heroCanvas.height / img.height);
-      const w = img.width * scale;
-      const h = img.height * scale;
-      ctx.drawImage(img, (heroCanvas.width - w) / 2, (heroCanvas.height - h) / 2, w, h);
-    };
-    img.onerror = function() {
-      // Fallback to text if GIF fails
-      const ctx = heroCanvas.getContext('2d');
-      ctx.clearRect(0, 0, heroCanvas.width, heroCanvas.height);
-      ctx.fillStyle = '#111';
-      ctx.fillRect(0, 0, heroCanvas.width, heroCanvas.height);
-      ctx.font = 'bold 2.5rem SF Mono, Menlo, Monaco, Consolas, monospace';
-      ctx.fillStyle = '#5ee87d';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(item.label, heroCanvas.width / 2, heroCanvas.height / 2);
-    };
+    const img = document.createElement('img');
+    img.className = 'spa-hero-image';
     img.src = `gifs/${gifFile}`;
+    img.alt = item.label;
+    img.width = 320;
+    img.height = 320;
+    hero.appendChild(img);
   } else {
-    // No GIF for this item, fallback to text
-    const ctx = heroCanvas.getContext('2d');
-    ctx.clearRect(0, 0, heroCanvas.width, heroCanvas.height);
-    ctx.fillStyle = '#111';
-    ctx.fillRect(0, 0, heroCanvas.width, heroCanvas.height);
-    ctx.font = 'bold 2.5rem SF Mono, Menlo, Monaco, Consolas, monospace';
-    ctx.fillStyle = '#5ee87d';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(item.label, heroCanvas.width / 2, heroCanvas.height / 2);
+    const textDiv = document.createElement('div');
+    textDiv.className = 'spa-hero-text';
+    textDiv.textContent = item.label;
+    hero.appendChild(textDiv);
   }
+  heroContainer.appendChild(hero);
 }
 
 
@@ -226,84 +196,71 @@ import { rasterizeHero } from './js/spa/rasterizeHero.js';
 import { transition } from './js/spa/particleTransitionEngine.js';
 
 async function triggerTransition(cb) {
-  // Get the hero canvas before state change
+  // 1. Rasterize current hero DOM to cropped canvas (before state change)
   const heroContainer = document.getElementById('spa-hero-container');
-  const prevCanvas = heroContainer.querySelector('canvas');
-  let prevImageData = null;
-  if (prevCanvas) {
-    // Copy the current hero canvas to an offscreen canvas
-    const offscreen = document.createElement('canvas');
-    offscreen.width = prevCanvas.width;
-    offscreen.height = prevCanvas.height;
-    offscreen.getContext('2d').drawImage(prevCanvas, 0, 0);
-    prevImageData = offscreen;
+  const heroDiv = heroContainer.querySelector('.spa-hero');
+  let from = null;
+  if (heroDiv) {
+    const img = heroDiv.querySelector('img');
+    if (img) {
+      from = await rasterizeHero({ type: 'gif', src: img.src });
+    } else {
+      const textDiv = heroDiv.querySelector('.spa-hero-text');
+      if (textDiv) {
+        from = await rasterizeHero({ type: 'text', text: textDiv.textContent });
+      }
+    }
   }
 
-  // Actually update state for next render
+  // 2. Actually update state for next render
   cb();
 
-  // Get the new hero canvas after state change
-  const newCanvas = heroContainer.querySelector('canvas');
-  if (prevImageData && newCanvas) {
-    // Save the new hero image as an offscreen canvas for the transition destination
-    const toImage = document.createElement('canvas');
-    toImage.width = newCanvas.width;
-    toImage.height = newCanvas.height;
-    toImage.getContext('2d').drawImage(newCanvas, 0, 0);
-    // Start with the previous image drawn on the hero canvas
-    newCanvas.getContext('2d').drawImage(prevImageData, 0, 0);
+  // 3. Rasterize new hero DOM to cropped canvas (after state change)
+  const newHeroDiv = heroContainer.querySelector('.spa-hero');
+  let to = null;
+  if (newHeroDiv) {
+    const img = newHeroDiv.querySelector('img');
+    if (img) {
+      to = await rasterizeHero({ type: 'gif', src: img.src });
+    } else {
+      const textDiv = newHeroDiv.querySelector('.spa-hero-text');
+      if (textDiv) {
+        to = await rasterizeHero({ type: 'text', text: textDiv.textContent });
+      }
+    }
+  }
+
+  // 4. If both cropped canvases exist, run the transition
+  if (from && to) {
+    // Hide hero DOM, show transition canvas
+    heroContainer.style.visibility = 'hidden';
+    const transitionCanvas = document.getElementById('transition-canvas');
+    transitionCanvas.style.display = 'block';
+    const ctx = transitionCanvas.getContext('2d');
+    ctx.clearRect(0, 0, transitionCanvas.width, transitionCanvas.height);
+
+    // Center the cropped regions in the transition canvas
+    function centerDraw(ctx, src, region) {
+      const dx = (transitionCanvas.width - region.width) / 2;
+      const dy = (transitionCanvas.height - region.height) / 2;
+      ctx.drawImage(region.canvas, 0, 0, region.width, region.height, dx, dy, region.width, region.height);
+    }
+
+    // Patch the transition engine to accept regions and center them
     await new Promise(res => {
       transition(
-        prevImageData,
-        toImage,
-        { ctx: newCanvas.getContext('2d') },
+        from.canvas,
+        to.canvas,
+        {
+          ctx,
+          fromRegion: from,
+          toRegion: to,
+          centerDraw,
+        },
         () => {
-          // After transition, redraw the final hero asset (image or text)
-          // Find the current item and GIF mapping
-          const section = SPA_SECTIONS[currentSectionIdx];
-          const item = section.items[currentItemIdx];
-          const gifMap = {
-            tiktok: 'Tiktoklogospin.gif',
-            instagram: 'Instagramlogospin.gif',
-            youtube: 'Youtubelogospin.gif',
-            spotify: 'Spotifylogospin.gif',
-            appleMusic: 'Applemusiclogospin.gif',
-            bandcamp: 'bandcamplogospin.gif',
-            soundcloud: 'soundcloudlogospin.gif',
-            cameralogo: 'cameralogospin.GIF',
-          };
-          const gifFile = gifMap[item.id];
-          const ctx = newCanvas.getContext('2d');
-          if (gifFile) {
-            const img = new window.Image();
-            img.onload = function() {
-              ctx.clearRect(0, 0, newCanvas.width, newCanvas.height);
-              const scale = Math.min(newCanvas.width / img.width, newCanvas.height / img.height);
-              const w = img.width * scale;
-              const h = img.height * scale;
-              ctx.drawImage(img, (newCanvas.width - w) / 2, (newCanvas.height - h) / 2, w, h);
-            };
-            img.onerror = function() {
-              ctx.clearRect(0, 0, newCanvas.width, newCanvas.height);
-              ctx.fillStyle = '#111';
-              ctx.fillRect(0, 0, newCanvas.width, newCanvas.height);
-              ctx.font = 'bold 2.5rem SF Mono, Menlo, Monaco, Consolas, monospace';
-              ctx.fillStyle = '#5ee87d';
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillText(item.label, newCanvas.width / 2, newCanvas.height / 2);
-            };
-            img.src = `gifs/${gifFile}`;
-          } else {
-            ctx.clearRect(0, 0, newCanvas.width, newCanvas.height);
-            ctx.fillStyle = '#111';
-            ctx.fillRect(0, 0, newCanvas.width, newCanvas.height);
-            ctx.font = 'bold 2.5rem SF Mono, Menlo, Monaco, Consolas, monospace';
-            ctx.fillStyle = '#5ee87d';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(item.label, newCanvas.width / 2, newCanvas.height / 2);
-          }
+          // After transition, hide canvas, show hero DOM
+          transitionCanvas.style.display = 'none';
+          heroContainer.style.visibility = 'visible';
           res();
         }
       );
