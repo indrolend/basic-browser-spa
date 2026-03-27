@@ -53,8 +53,7 @@ let currentItemIdx = 0;
 // DOM
 
 const root = document.getElementById('spa-root');
-const transitionCanvas = document.getElementById('transition-canvas');
-const transitionCtx = transitionCanvas.getContext('2d');
+
 
 
 function render() {
@@ -94,35 +93,64 @@ function render() {
     sectionNav.appendChild(btn);
   });
 
-  // --- Main hero asset (only item name centered) ---
+  // --- Main hero asset: always a canvas ---
   const hero = document.createElement('div');
   hero.className = 'spa-hero';
-  const assetBase = getAssetPath(section.id, item.id);
-  const img = new window.Image();
-  img.onload = function() {
-    img.className = 'spa-hero-image';
-    hero.appendChild(img);
-  };
-  img.onerror = function() {
-    const text = document.createElement('div');
-    text.className = 'spa-hero-text';
-    text.textContent = item.label;
-    hero.appendChild(text);
-  };
-  img.src = assetBase + '.gif';
-  img.onerror = function() {
-    img.src = assetBase + '.png';
-    img.onerror = function() {
-      img.src = assetBase + '.jpg';
-      img.onerror = function() {
-        const text = document.createElement('div');
-        text.className = 'spa-hero-text';
-        text.textContent = item.label;
-        hero.appendChild(text);
-      };
-    };
-  };
+  const heroCanvas = document.createElement('canvas');
+  heroCanvas.className = 'spa-hero-image';
+  heroCanvas.width = 320;
+  heroCanvas.height = 320;
+  hero.appendChild(heroCanvas);
   heroContainer.appendChild(hero);
+
+  // Map item.id to the correct GIF filename in /gifs
+  const gifMap = {
+    tiktok: 'Tiktoklogospin.gif',
+    instagram: 'Instagramlogospin.gif',
+    youtube: 'Youtubelogospin.gif',
+    spotify: 'Spotifylogospin.gif',
+    appleMusic: 'Applemusiclogospin.gif',
+    bandcamp: 'bandcamplogospin.gif',
+    soundcloud: 'soundcloudlogospin.gif',
+    cameralogo: 'cameralogospin.GIF',
+  };
+  const gifFile = gifMap[item.id];
+  if (gifFile) {
+    const img = new window.Image();
+    img.onload = function() {
+      // Draw GIF to canvas, centered
+      const ctx = heroCanvas.getContext('2d');
+      ctx.clearRect(0, 0, heroCanvas.width, heroCanvas.height);
+      const scale = Math.min(heroCanvas.width / img.width, heroCanvas.height / img.height);
+      const w = img.width * scale;
+      const h = img.height * scale;
+      ctx.drawImage(img, (heroCanvas.width - w) / 2, (heroCanvas.height - h) / 2, w, h);
+    };
+    img.onerror = function() {
+      // Fallback to text if GIF fails
+      const ctx = heroCanvas.getContext('2d');
+      ctx.clearRect(0, 0, heroCanvas.width, heroCanvas.height);
+      ctx.fillStyle = '#111';
+      ctx.fillRect(0, 0, heroCanvas.width, heroCanvas.height);
+      ctx.font = 'bold 2.5rem SF Mono, Menlo, Monaco, Consolas, monospace';
+      ctx.fillStyle = '#5ee87d';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(item.label, heroCanvas.width / 2, heroCanvas.height / 2);
+    };
+    img.src = `gifs/${gifFile}`;
+  } else {
+    // No GIF for this item, fallback to text
+    const ctx = heroCanvas.getContext('2d');
+    ctx.clearRect(0, 0, heroCanvas.width, heroCanvas.height);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, heroCanvas.width, heroCanvas.height);
+    ctx.font = 'bold 2.5rem SF Mono, Menlo, Monaco, Consolas, monospace';
+    ctx.fillStyle = '#5ee87d';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(item.label, heroCanvas.width / 2, heroCanvas.height / 2);
+  }
 }
 
 
@@ -193,38 +221,94 @@ window.addEventListener('touchend', e => {
 });
 
 
-// Particle transition integration (simple placeholder effect)
-function triggerTransition(cb) {
-  // Show a quick fade-out/fade-in effect using the transition canvas
-  transitionCanvas.width = window.innerWidth;
-  transitionCanvas.height = window.innerHeight;
-  transitionCanvas.style.display = 'block';
-  transitionCtx.fillStyle = '#111';
-  transitionCtx.globalAlpha = 0;
-  transitionCtx.fillRect(0, 0, transitionCanvas.width, transitionCanvas.height);
-  let alpha = 0;
-  function fadeOut() {
-    alpha += 0.08;
-    transitionCtx.globalAlpha = alpha;
-    transitionCtx.fillRect(0, 0, transitionCanvas.width, transitionCanvas.height);
-    if (alpha < 1) {
-      requestAnimationFrame(fadeOut);
-    } else {
-      cb();
-      fadeIn();
-    }
+// Particle transition integration (calls transition engine)
+import { rasterizeHero } from './js/spa/rasterizeHero.js';
+import { transition } from './js/spa/particleTransitionEngine.js';
+
+async function triggerTransition(cb) {
+  // Get the hero canvas before state change
+  const heroContainer = document.getElementById('spa-hero-container');
+  const prevCanvas = heroContainer.querySelector('canvas');
+  let prevImageData = null;
+  if (prevCanvas) {
+    // Copy the current hero canvas to an offscreen canvas
+    const offscreen = document.createElement('canvas');
+    offscreen.width = prevCanvas.width;
+    offscreen.height = prevCanvas.height;
+    offscreen.getContext('2d').drawImage(prevCanvas, 0, 0);
+    prevImageData = offscreen;
   }
-  function fadeIn() {
-    alpha -= 0.08;
-    transitionCtx.globalAlpha = alpha;
-    transitionCtx.fillRect(0, 0, transitionCanvas.width, transitionCanvas.height);
-    if (alpha > 0) {
-      requestAnimationFrame(fadeIn);
-    } else {
-      transitionCanvas.style.display = 'none';
-    }
+
+  // Actually update state for next render
+  cb();
+
+  // Get the new hero canvas after state change
+  const newCanvas = heroContainer.querySelector('canvas');
+  if (prevImageData && newCanvas) {
+    // Save the new hero image as an offscreen canvas for the transition destination
+    const toImage = document.createElement('canvas');
+    toImage.width = newCanvas.width;
+    toImage.height = newCanvas.height;
+    toImage.getContext('2d').drawImage(newCanvas, 0, 0);
+    // Start with the previous image drawn on the hero canvas
+    newCanvas.getContext('2d').drawImage(prevImageData, 0, 0);
+    await new Promise(res => {
+      transition(
+        prevImageData,
+        toImage,
+        { ctx: newCanvas.getContext('2d') },
+        () => {
+          // After transition, redraw the final hero asset (image or text)
+          // Find the current item and GIF mapping
+          const section = SPA_SECTIONS[currentSectionIdx];
+          const item = section.items[currentItemIdx];
+          const gifMap = {
+            tiktok: 'Tiktoklogospin.gif',
+            instagram: 'Instagramlogospin.gif',
+            youtube: 'Youtubelogospin.gif',
+            spotify: 'Spotifylogospin.gif',
+            appleMusic: 'Applemusiclogospin.gif',
+            bandcamp: 'bandcamplogospin.gif',
+            soundcloud: 'soundcloudlogospin.gif',
+            cameralogo: 'cameralogospin.GIF',
+          };
+          const gifFile = gifMap[item.id];
+          const ctx = newCanvas.getContext('2d');
+          if (gifFile) {
+            const img = new window.Image();
+            img.onload = function() {
+              ctx.clearRect(0, 0, newCanvas.width, newCanvas.height);
+              const scale = Math.min(newCanvas.width / img.width, newCanvas.height / img.height);
+              const w = img.width * scale;
+              const h = img.height * scale;
+              ctx.drawImage(img, (newCanvas.width - w) / 2, (newCanvas.height - h) / 2, w, h);
+            };
+            img.onerror = function() {
+              ctx.clearRect(0, 0, newCanvas.width, newCanvas.height);
+              ctx.fillStyle = '#111';
+              ctx.fillRect(0, 0, newCanvas.width, newCanvas.height);
+              ctx.font = 'bold 2.5rem SF Mono, Menlo, Monaco, Consolas, monospace';
+              ctx.fillStyle = '#5ee87d';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(item.label, newCanvas.width / 2, newCanvas.height / 2);
+            };
+            img.src = `gifs/${gifFile}`;
+          } else {
+            ctx.clearRect(0, 0, newCanvas.width, newCanvas.height);
+            ctx.fillStyle = '#111';
+            ctx.fillRect(0, 0, newCanvas.width, newCanvas.height);
+            ctx.font = 'bold 2.5rem SF Mono, Menlo, Monaco, Consolas, monospace';
+            ctx.fillStyle = '#5ee87d';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(item.label, newCanvas.width / 2, newCanvas.height / 2);
+          }
+          res();
+        }
+      );
+    });
   }
-  fadeOut();
 }
 
 // Initial render and nav bar setup
