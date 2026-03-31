@@ -88,6 +88,10 @@ function getPrevTarget(sectionIdx, itemIdx) {
   return { sectionIdx: prevSectionIdx, itemIdx: SPA_SECTIONS[prevSectionIdx].items.length - 1 };
 }
 
+/**
+ * Builds a rasterizeHero input for a given section/item and transition phase.
+ * phase 'from' prefers the live DOM image when available; phase 'to' is always data-driven.
+ */
 function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
   const hero = getHeroSpec(sectionIdx, itemIdx);
   if (!hero) return null;
@@ -243,9 +247,9 @@ async function goTo(nextSectionIdx, nextItemIdx) {
     try {
       if (!fromInput || !toInput) throw new Error('Missing hero render input');
 
-      const fromHero = getHeroSpec(fromSectionIdx, fromItemIdx);
-      const fromSurfacePromise = fromInput.type === 'element' && fromHero?.kind === 'image'
-        ? rasterizeHero(fromInput).catch(() => rasterizeHero({ type: 'gif', src: fromHero.src }))
+      const fromFallbackInput = buildHeroRenderInput(fromSectionIdx, fromItemIdx, 'to');
+      const fromSurfacePromise = fromInput.type === 'element' && fromFallbackInput?.type === 'gif'
+        ? rasterizeHero(fromInput).catch(() => rasterizeHero(fromFallbackInput))
         : rasterizeHero(fromInput);
 
       const [fromSurface, toSurface] = await Promise.all([
