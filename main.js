@@ -53,6 +53,8 @@ let queuedTarget = null;
 let activeTarget = null;
 let currentHeroSurface = null;
 let currentHeroSurfaceKey = null;
+let currentHeroSurfaceFrameId = null;
+let currentHeroSurfaceTrackingKey = null;
 
 function isSameTarget(a, b) {
   return !!a && !!b && a.sectionIdx === b.sectionIdx && a.itemIdx === b.itemIdx;
@@ -115,6 +117,62 @@ async function refreshCurrentHeroSurface(sectionIdx, itemIdx) {
     currentHeroSurfaceKey = null;
     return null;
   }
+}
+
+function stopCurrentHeroSurfaceTracking() {
+  if (currentHeroSurfaceFrameId !== null) {
+    window.cancelAnimationFrame(currentHeroSurfaceFrameId);
+    currentHeroSurfaceFrameId = null;
+  }
+  currentHeroSurfaceTrackingKey = null;
+}
+
+function startCurrentHeroSurfaceTracking(sectionIdx, itemIdx) {
+  stopCurrentHeroSurfaceTracking();
+
+  const hero = getHeroSpec(sectionIdx, itemIdx);
+  if (!hero) {
+    currentHeroSurface = null;
+    currentHeroSurfaceKey = null;
+    return;
+  }
+
+  const surfaceKey = getHeroSurfaceKey(sectionIdx, itemIdx);
+  currentHeroSurfaceTrackingKey = surfaceKey;
+
+  if (hero.kind === 'text') {
+    void refreshCurrentHeroSurface(sectionIdx, itemIdx);
+    return;
+  }
+
+  const trackFrame = () => {
+    if (
+      isTransitioning ||
+      currentHeroSurfaceTrackingKey !== surfaceKey ||
+      !isSameTarget({ sectionIdx, itemIdx }, { sectionIdx: currentSectionIdx, itemIdx: currentItemIdx })
+    ) {
+      currentHeroSurfaceFrameId = null;
+      return;
+    }
+
+    void refreshCurrentHeroSurface(sectionIdx, itemIdx).finally(() => {
+      if (
+        !isTransitioning &&
+        currentHeroSurfaceTrackingKey === surfaceKey &&
+        isSameTarget({ sectionIdx, itemIdx }, { sectionIdx: currentSectionIdx, itemIdx: currentItemIdx })
+      ) {
+        currentHeroSurfaceFrameId = window.requestAnimationFrame(trackFrame);
+      } else {
+        currentHeroSurfaceFrameId = null;
+      }
+    });
+  };
+
+  void refreshCurrentHeroSurface(sectionIdx, itemIdx).finally(() => {
+    if (!isTransitioning && currentHeroSurfaceTrackingKey === surfaceKey) {
+      currentHeroSurfaceFrameId = window.requestAnimationFrame(trackFrame);
+    }
+  });
 }
 
 /**
@@ -295,6 +353,7 @@ async function goTo(nextSectionIdx, nextItemIdx) {
 
   isTransitioning = true;
   activeTarget = requestedTarget;
+  stopCurrentHeroSurfaceTracking();
 
   try {
     const fromSectionIdx = currentSectionIdx;
@@ -325,10 +384,10 @@ async function goTo(nextSectionIdx, nextItemIdx) {
       render();
     }
 
-    void refreshCurrentHeroSurface(currentSectionIdx, currentItemIdx);
   } finally {
     isTransitioning = false;
     activeTarget = null;
+    startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
 
     if (queuedTarget) {
       const latest = queuedTarget;
@@ -380,4 +439,4 @@ window.addEventListener('touchend', (e) => {
 
 setupItemNav();
 render();
-void refreshCurrentHeroSurface(currentSectionIdx, currentItemIdx);
+startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
