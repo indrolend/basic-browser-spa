@@ -50,14 +50,44 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
     return result;
   }
 
-  // Sample from and to states using cropped/centered regions
-  const fromParticles = sampleParticles(fromRegion);
-  const toParticles = sampleParticles(toRegion);
-  const N = Math.min(fromParticles.length, toParticles.length, PARTICLE_COUNT);
+  function shuffle(list) {
+    const arr = list.slice();
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function sampleByCoverage(list, count) {
+    if (!list.length || count <= 0) return [];
+    if (list.length === count) return list.slice();
+
+    const sampled = [];
+    for (let i = 0; i < count; i++) {
+      const idx = Math.floor((i * list.length) / count);
+      sampled.push(list[idx]);
+    }
+    return sampled;
+  }
+
+  // Sample from and to states using cropped/centered regions.
+  // Build correspondences so both footprints are represented even when sizes differ.
+  const rawFromParticles = sampleParticles(fromRegion);
+  const rawToParticles = sampleParticles(toRegion);
+
+  const fromParticles = rawFromParticles.length ? rawFromParticles : rawToParticles;
+  const toParticles = rawToParticles.length ? rawToParticles : rawFromParticles;
+
+  const maxFootprintParticles = Math.max(fromParticles.length, toParticles.length);
+  const N = Math.min(PARTICLE_COUNT, maxFootprintParticles);
+
+  const fromPool = sampleByCoverage(shuffle(fromParticles), N);
+  const toPool = sampleByCoverage(shuffle(toParticles), N);
 
   for (let i = 0; i < N; i++) {
-    const start = fromParticles[i];
-    const end = toParticles[i];
+    const start = fromPool[i];
+    const end = toPool[i];
     const angle = Math.random() * Math.PI * 2;
     const radius = Math.random() * EXPLODE_RADIUS * 0.7 + EXPLODE_RADIUS * 0.3;
     const ex = start.x + Math.cos(angle) * radius;
