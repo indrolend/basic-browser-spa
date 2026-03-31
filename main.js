@@ -88,6 +88,25 @@ function getPrevTarget(sectionIdx, itemIdx) {
   return { sectionIdx: prevSectionIdx, itemIdx: SPA_SECTIONS[prevSectionIdx].items.length - 1 };
 }
 
+function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
+  const hero = getHeroSpec(sectionIdx, itemIdx);
+  if (!hero) return null;
+
+  if (hero.kind === 'text') {
+    return { type: 'text', text: hero.text };
+  }
+
+  if (phase === 'from') {
+    const container = document.getElementById('spa-hero-container');
+    const liveImgEl = container?.querySelector('.spa-hero-image');
+    if (liveImgEl instanceof window.HTMLImageElement) {
+      return { type: 'element', element: liveImgEl };
+    }
+  }
+
+  return { type: 'gif', src: hero.src };
+}
+
 function updateSectionNav(sectionIdx) {
   let sectionNav = document.getElementById('spa-section-nav');
   if (!sectionNav) {
@@ -216,30 +235,16 @@ async function goTo(nextSectionIdx, nextItemIdx) {
   try {
     const fromSectionIdx = currentSectionIdx;
     const fromItemIdx = currentItemIdx;
-    const fromHero = getHeroSpec(fromSectionIdx, fromItemIdx);
-    const toHero = getHeroSpec(nextSectionIdx, nextItemIdx);
+    const fromInput = buildHeroRenderInput(fromSectionIdx, fromItemIdx, 'from');
+    const toInput = buildHeroRenderInput(nextSectionIdx, nextItemIdx, 'to');
 
     let didTransition = false;
 
     try {
-      if (!fromHero || !toHero) throw new Error('Missing hero spec');
+      if (!fromInput || !toInput) throw new Error('Missing hero render input');
 
-      let fromInput;
-      if (fromHero.kind === 'image') {
-        const container = document.getElementById('spa-hero-container');
-        const liveImgEl = container?.querySelector('.spa-hero-image');
-        fromInput = liveImgEl instanceof window.HTMLImageElement
-          ? { type: 'element', element: liveImgEl }
-          : { type: 'gif', src: fromHero.src };
-      } else {
-        fromInput = { type: 'text', text: fromHero.text };
-      }
-
-      const toInput = toHero.kind === 'image'
-        ? { type: 'gif', src: toHero.src }
-        : { type: 'text', text: toHero.text };
-
-      const fromSurfacePromise = fromInput.type === 'element'
+      const fromHero = getHeroSpec(fromSectionIdx, fromItemIdx);
+      const fromSurfacePromise = fromInput.type === 'element' && fromHero?.kind === 'image'
         ? rasterizeHero(fromInput).catch(() => rasterizeHero({ type: 'gif', src: fromHero.src }))
         : rasterizeHero(fromInput);
 
