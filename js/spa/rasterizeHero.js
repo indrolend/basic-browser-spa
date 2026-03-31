@@ -39,9 +39,10 @@ function cropToContent(canvas) {
 }
 
 /**
- * Rasterizes a hero asset (GIF, image element, or text) to a canvas and crops to visible content.
+ * Rasterizes a hero asset (GIF, image element, or text) into a transition surface object.
  * @param {Object} hero - { type: 'gif'|'element'|'text', src?: string, element?: HTMLImageElement, text?: string }
  * @returns {Promise<{canvas: HTMLCanvasElement, offsetX: number, offsetY: number, width: number, height: number}>}
+ * Surface shape is consumed by runHeroTransition(...): canvas plus cropped region metadata.
  */
 export function rasterizeHero(hero) {
   return new Promise((resolve, reject) => {

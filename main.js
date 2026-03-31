@@ -111,6 +111,25 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
   return { type: 'gif', src: hero.src };
 }
 
+/**
+ * Builds a transition-ready hero surface for a given section/item/phase.
+ * phase 'from' preserves current behavior: prefer live element capture and
+ * fall back to stable src-based rasterization for image heroes.
+ */
+async function buildHeroSurface(sectionIdx, itemIdx, phase) {
+  const input = buildHeroRenderInput(sectionIdx, itemIdx, phase);
+  if (!input) throw new Error(`Missing hero render input for phase "${phase}"`);
+
+  if (phase === 'from' && input.type === 'element') {
+    const fallbackInput = buildHeroRenderInput(sectionIdx, itemIdx, 'to');
+    if (fallbackInput?.type === 'gif') {
+      return rasterizeHero(input).catch(() => rasterizeHero(fallbackInput));
+    }
+  }
+
+  return rasterizeHero(input);
+}
+
 function updateSectionNav(sectionIdx) {
   let sectionNav = document.getElementById('spa-section-nav');
   if (!sectionNav) {
@@ -239,22 +258,13 @@ async function goTo(nextSectionIdx, nextItemIdx) {
   try {
     const fromSectionIdx = currentSectionIdx;
     const fromItemIdx = currentItemIdx;
-    const fromInput = buildHeroRenderInput(fromSectionIdx, fromItemIdx, 'from');
-    const toInput = buildHeroRenderInput(nextSectionIdx, nextItemIdx, 'to');
 
     let didTransition = false;
 
     try {
-      if (!fromInput || !toInput) throw new Error('Missing hero render input');
-
-      const fromFallbackInput = buildHeroRenderInput(fromSectionIdx, fromItemIdx, 'to');
-      const fromSurfacePromise = fromInput.type === 'element' && fromFallbackInput?.type === 'gif'
-        ? rasterizeHero(fromInput).catch(() => rasterizeHero(fromFallbackInput))
-        : rasterizeHero(fromInput);
-
       const [fromSurface, toSurface] = await Promise.all([
-        fromSurfacePromise,
-        rasterizeHero(toInput)
+        buildHeroSurface(fromSectionIdx, fromItemIdx, 'from'),
+        buildHeroSurface(nextSectionIdx, nextItemIdx, 'to')
       ]);
 
       if (fromSurface && toSurface) {
