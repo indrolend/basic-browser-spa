@@ -51,6 +51,8 @@ let currentItemIdx = 0;
 let isTransitioning = false;
 let queuedTarget = null;
 let activeTarget = null;
+let currentHeroSurface = null;
+let currentHeroSurfaceKey = null;
 
 function isSameTarget(a, b) {
   return !!a && !!b && a.sectionIdx === b.sectionIdx && a.itemIdx === b.itemIdx;
@@ -88,6 +90,33 @@ function getPrevTarget(sectionIdx, itemIdx) {
   return { sectionIdx: prevSectionIdx, itemIdx: SPA_SECTIONS[prevSectionIdx].items.length - 1 };
 }
 
+function getHeroSurfaceKey(sectionIdx, itemIdx) {
+  return `${sectionIdx}:${itemIdx}`;
+}
+
+async function refreshCurrentHeroSurface(sectionIdx, itemIdx) {
+  const surfaceKey = getHeroSurfaceKey(sectionIdx, itemIdx);
+
+  try {
+    const input = buildHeroRenderInput(sectionIdx, itemIdx, 'from');
+    if (!input) {
+      currentHeroSurface = null;
+      currentHeroSurfaceKey = null;
+      return null;
+    }
+
+    const surface = await rasterizeHero(input);
+    currentHeroSurface = surface;
+    currentHeroSurfaceKey = surfaceKey;
+    return surface;
+  } catch (err) {
+    console.warn('Current hero surface refresh failed:', err);
+    currentHeroSurface = null;
+    currentHeroSurfaceKey = null;
+    return null;
+  }
+}
+
 /**
  * Builds a rasterizeHero input for a given section/item and transition phase.
  * phase 'from' prefers the live DOM image when available; phase 'to' is always data-driven.
@@ -117,6 +146,18 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
  * fall back to stable src-based rasterization for image heroes.
  */
 async function buildHeroSurface(sectionIdx, itemIdx, phase) {
+  if (phase === 'from') {
+    const requestedSurfaceKey = getHeroSurfaceKey(sectionIdx, itemIdx);
+    const committedSurfaceKey = getHeroSurfaceKey(currentSectionIdx, currentItemIdx);
+    if (
+      requestedSurfaceKey === committedSurfaceKey &&
+      currentHeroSurface &&
+      currentHeroSurfaceKey === requestedSurfaceKey
+    ) {
+      return currentHeroSurface;
+    }
+  }
+
   const input = buildHeroRenderInput(sectionIdx, itemIdx, phase);
   if (!input) throw new Error(`Missing hero render input for phase "${phase}"`);
 
@@ -283,6 +324,8 @@ async function goTo(nextSectionIdx, nextItemIdx) {
     } else {
       render();
     }
+
+    void refreshCurrentHeroSurface(currentSectionIdx, currentItemIdx);
   } finally {
     isTransitioning = false;
     activeTarget = null;
@@ -337,3 +380,4 @@ window.addEventListener('touchend', (e) => {
 
 setupItemNav();
 render();
+void refreshCurrentHeroSurface(currentSectionIdx, currentItemIdx);
