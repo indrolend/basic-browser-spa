@@ -50,6 +50,11 @@ let currentSectionIdx = 0;
 let currentItemIdx = 0;
 let isTransitioning = false;
 let queuedTarget = null;
+let activeTarget = null;
+
+function isSameTarget(a, b) {
+  return !!a && !!b && a.sectionIdx === b.sectionIdx && a.itemIdx === b.itemIdx;
+}
 
 function getHeroSpec(sectionIdx, itemIdx) {
   const section = SPA_SECTIONS[sectionIdx];
@@ -192,60 +197,72 @@ async function runHeroTransition(fromSurface, toSurface) {
 }
 
 async function goTo(nextSectionIdx, nextItemIdx) {
-  if (currentSectionIdx === nextSectionIdx && currentItemIdx === nextItemIdx) return;
+  const requestedTarget = { sectionIdx: nextSectionIdx, itemIdx: nextItemIdx };
+  const committedTarget = { sectionIdx: currentSectionIdx, itemIdx: currentItemIdx };
+
+  if (isSameTarget(requestedTarget, committedTarget)) return;
 
   if (isTransitioning) {
-    queuedTarget = { sectionIdx: nextSectionIdx, itemIdx: nextItemIdx };
+    if (isSameTarget(requestedTarget, activeTarget) || isSameTarget(requestedTarget, queuedTarget)) {
+      return;
+    }
+    queuedTarget = requestedTarget;
     return;
   }
 
   isTransitioning = true;
-
-  const fromSectionIdx = currentSectionIdx;
-  const fromItemIdx = currentItemIdx;
-  const fromHero = getHeroSpec(fromSectionIdx, fromItemIdx);
-  const toHero = getHeroSpec(nextSectionIdx, nextItemIdx);
-
-  let didTransition = false;
+  activeTarget = requestedTarget;
 
   try {
-    if (!fromHero || !toHero) throw new Error('Missing hero spec');
+    const fromSectionIdx = currentSectionIdx;
+    const fromItemIdx = currentItemIdx;
+    const fromHero = getHeroSpec(fromSectionIdx, fromItemIdx);
+    const toHero = getHeroSpec(nextSectionIdx, nextItemIdx);
 
-    const fromInput = fromHero.kind === 'image'
-      ? { type: 'gif', src: fromHero.src }
-      : { type: 'text', text: fromHero.text };
-    const toInput = toHero.kind === 'image'
-      ? { type: 'gif', src: toHero.src }
-      : { type: 'text', text: toHero.text };
+    let didTransition = false;
 
-    const [fromSurface, toSurface] = await Promise.all([
-      rasterizeHero(fromInput),
-      rasterizeHero(toInput)
-    ]);
+    try {
+      if (!fromHero || !toHero) throw new Error('Missing hero spec');
 
-    if (fromSurface && toSurface) {
-      await runHeroTransition(fromSurface, toSurface);
-      didTransition = true;
+      const fromInput = fromHero.kind === 'image'
+        ? { type: 'gif', src: fromHero.src }
+        : { type: 'text', text: fromHero.text };
+      const toInput = toHero.kind === 'image'
+        ? { type: 'gif', src: toHero.src }
+        : { type: 'text', text: toHero.text };
+
+      const [fromSurface, toSurface] = await Promise.all([
+        rasterizeHero(fromInput),
+        rasterizeHero(toInput)
+      ]);
+
+      if (fromSurface && toSurface) {
+        await runHeroTransition(fromSurface, toSurface);
+        didTransition = true;
+      }
+    } catch (err) {
+      console.warn('Hero transition skipped:', err);
     }
-  } catch (err) {
-    console.warn('Hero transition skipped:', err);
-  }
 
-  currentSectionIdx = nextSectionIdx;
-  currentItemIdx = nextItemIdx;
-  if (didTransition) {
-    renderHeroDOM(currentSectionIdx, currentItemIdx);
-    updateSectionNav(currentSectionIdx);
-  } else {
-    render();
-  }
+    currentSectionIdx = nextSectionIdx;
+    currentItemIdx = nextItemIdx;
+    if (didTransition) {
+      renderHeroDOM(currentSectionIdx, currentItemIdx);
+      updateSectionNav(currentSectionIdx);
+    } else {
+      render();
+    }
+  } finally {
+    isTransitioning = false;
+    activeTarget = null;
 
-  isTransitioning = false;
-
-  if (queuedTarget) {
-    const latest = queuedTarget;
-    queuedTarget = null;
-    goTo(latest.sectionIdx, latest.itemIdx);
+    if (queuedTarget) {
+      const latest = queuedTarget;
+      queuedTarget = null;
+      if (!isSameTarget(latest, { sectionIdx: currentSectionIdx, itemIdx: currentItemIdx })) {
+        void goTo(latest.sectionIdx, latest.itemIdx);
+      }
+    }
   }
 }
 
