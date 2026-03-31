@@ -1,5 +1,5 @@
-// Rasterize a hero (GIF or text) to a canvas for transition engine use
-// Usage: rasterizeHero({type: 'gif', src: 'assets/section/item.gif'}) or rasterizeHero({type: 'text', text: 'Instagram'})
+// Rasterize a hero (GIF/image element or text) to a canvas for transition engine use
+// Usage: rasterizeHero({type: 'gif', src: 'assets/section/item.gif'}) or rasterizeHero({type: 'element', element: imgEl}) or rasterizeHero({type: 'text', text: 'Instagram'})
 
 const HERO_CANVAS_WIDTH = 320;
 const HERO_CANVAS_HEIGHT = 320;
@@ -40,7 +40,7 @@ function cropToContent(canvas) {
 
 /**
  * Rasterizes a hero asset (GIF or text) to a canvas and crops to visible content.
- * @param {Object} hero - { type: 'gif'|'text', src?: string, text?: string }
+ * @param {Object} hero - { type: 'gif'|'element'|'text', src?: string, element?: HTMLImageElement, text?: string }
  * @returns {Promise<{canvas: HTMLCanvasElement, offsetX: number, offsetY: number, width: number, height: number}>}
  */
 export function rasterizeHero(hero) {
@@ -55,21 +55,36 @@ export function rasterizeHero(hero) {
       resolve(cropped);
     }
 
+
+    function drawCenteredImage(img) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+      const w = img.width * scale;
+      const h = img.height * scale;
+      ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+      finish();
+    }
+
     if (hero.type === 'gif') {
       const img = new window.Image();
       img.onload = function() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        // Center and fit image
-        const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
-        const w = img.width * scale;
-        const h = img.height * scale;
-        ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
-        finish();
+        drawCenteredImage(img);
       };
       img.onerror = function() {
         reject(new Error('Failed to load GIF'));
       };
       img.src = hero.src;
+    } else if (hero.type === 'element') {
+      const imgEl = hero.element;
+      if (!(imgEl instanceof window.HTMLImageElement)) {
+        reject(new Error('Invalid image element'));
+        return;
+      }
+      if (!imgEl.complete || !imgEl.naturalWidth || !imgEl.naturalHeight) {
+        reject(new Error('Image element not ready'));
+        return;
+      }
+      drawCenteredImage(imgEl);
     } else if (hero.type === 'text') {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.font = 'bold 2.5rem SF Mono, Menlo, Monaco, Consolas, monospace';

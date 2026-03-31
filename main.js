@@ -224,15 +224,27 @@ async function goTo(nextSectionIdx, nextItemIdx) {
     try {
       if (!fromHero || !toHero) throw new Error('Missing hero spec');
 
-      const fromInput = fromHero.kind === 'image'
-        ? { type: 'gif', src: fromHero.src }
-        : { type: 'text', text: fromHero.text };
+      let fromInput;
+      if (fromHero.kind === 'image') {
+        const container = document.getElementById('spa-hero-container');
+        const liveImgEl = container?.querySelector('.spa-hero-image');
+        fromInput = liveImgEl instanceof window.HTMLImageElement
+          ? { type: 'element', element: liveImgEl }
+          : { type: 'gif', src: fromHero.src };
+      } else {
+        fromInput = { type: 'text', text: fromHero.text };
+      }
+
       const toInput = toHero.kind === 'image'
         ? { type: 'gif', src: toHero.src }
         : { type: 'text', text: toHero.text };
 
+      const fromSurfacePromise = fromInput.type === 'element'
+        ? rasterizeHero(fromInput).catch(() => rasterizeHero({ type: 'gif', src: fromHero.src }))
+        : rasterizeHero(fromInput);
+
       const [fromSurface, toSurface] = await Promise.all([
-        rasterizeHero(fromInput),
+        fromSurfacePromise,
         rasterizeHero(toInput)
       ]);
 
