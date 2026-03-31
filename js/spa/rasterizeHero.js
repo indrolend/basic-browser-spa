@@ -71,8 +71,7 @@ export function rasterizeHero(hero) {
       };
       img.src = hero.src;
     } else if (hero.type === 'text') {
-      ctx.fillStyle = '#111';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.font = 'bold 2.5rem SF Mono, Menlo, Monaco, Consolas, monospace';
       ctx.fillStyle = '#5ee87d';
       ctx.textAlign = 'center';
