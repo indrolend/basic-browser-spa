@@ -61,11 +61,10 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
 
   function sampleByCoverage(list, count) {
     if (!list.length || count <= 0) return [];
-    if (list.length === count) return list.slice();
 
     const sampled = [];
     for (let i = 0; i < count; i++) {
-      const idx = Math.floor((i * list.length) / count);
+      const idx = Math.floor((i * list.length) / count) % list.length;
       sampled.push(list[idx]);
     }
     return sampled;
@@ -79,11 +78,14 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
   const fromParticles = rawFromParticles.length ? rawFromParticles : rawToParticles;
   const toParticles = rawToParticles.length ? rawToParticles : rawFromParticles;
 
-  const maxFootprintParticles = Math.max(fromParticles.length, toParticles.length);
-  const N = Math.min(PARTICLE_COUNT, maxFootprintParticles);
+  const hasParticles = fromParticles.length > 0 && toParticles.length > 0;
+  const N = hasParticles ? PARTICLE_COUNT : 0;
 
-  const fromPool = sampleByCoverage(shuffle(fromParticles), N);
-  const toPool = sampleByCoverage(shuffle(toParticles), N);
+  const fromCoveragePool = sampleByCoverage(fromParticles, N);
+  const toCoveragePool = sampleByCoverage(toParticles, N);
+
+  const fromPool = shuffle(fromCoveragePool);
+  const toPool = shuffle(toCoveragePool);
 
   for (let i = 0; i < N; i++) {
     const start = fromPool[i];
