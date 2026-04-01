@@ -73,7 +73,7 @@ function drawTextElementViaSvg(ctx, canvas, textEl, onDone, onError) {
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
       <foreignObject x="0" y="0" width="100%" height="100%">
-        <div xmlns="http://www.w3.org/1999/xhtml" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;">${escaped}</div>
+        <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;">${escaped}</div>
       </foreignObject>
     </svg>
   `;
@@ -161,7 +161,11 @@ export function rasterizeHero(hero) {
     canvas.height = HERO_CANVAS_HEIGHT;
     const ctx = canvas.getContext('2d');
 
-    function finish() {
+    function finish(mode = 'crop') {
+      if (mode === 'preserve') {
+        resolve({ canvas, offsetX: 0, offsetY: 0, width: canvas.width, height: canvas.height });
+        return;
+      }
       const cropped = cropToContent(canvas);
       resolve(cropped);
     }
@@ -207,10 +211,10 @@ export function rasterizeHero(hero) {
         ctx,
         canvas,
         textEl,
-        finish,
+        () => finish('preserve'),
         () => {
           drawTextElement(ctx, canvas, textEl);
-          finish();
+          finish('preserve');
         }
       );
     } else if (hero.type === 'text') {
