@@ -237,13 +237,15 @@ function updateSectionNav(sectionIdx) {
   if (!sectionNav) {
     sectionNav = document.createElement('div');
     sectionNav.id = 'spa-section-nav';
-    sectionNav.style = 'position:fixed;top:0;left:0;width:100vw;z-index:20;display:flex;justify-content:center;gap:1.5em;padding:1em 0;background:#111;box-shadow:0 2px 12px #0006;';
+    sectionNav.setAttribute('role', 'navigation');
+    sectionNav.setAttribute('aria-label', 'Sections');
     document.body.prepend(sectionNav);
   }
 
   sectionNav.innerHTML = '';
   SPA_SECTIONS.forEach((sec, idx) => {
     const btn = document.createElement('button');
+    btn.type = 'button';
     btn.textContent = sec.label;
     btn.className = 'spa-nav-btn';
     btn.style.fontWeight = idx === sectionIdx ? 'bold' : 'normal';
@@ -290,12 +292,14 @@ function setupItemNav() {
   if (!navBar || navBar.children.length > 0) return;
 
   const prevBtn = document.createElement('button');
+  prevBtn.type = 'button';
   prevBtn.className = 'spa-nav-btn';
   prevBtn.textContent = '← Prev';
   prevBtn.onclick = prevItem;
   navBar.appendChild(prevBtn);
 
   const nextBtn = document.createElement('button');
+  nextBtn.type = 'button';
   nextBtn.className = 'spa-nav-btn';
   nextBtn.textContent = 'Next →';
   nextBtn.onclick = nextItem;
