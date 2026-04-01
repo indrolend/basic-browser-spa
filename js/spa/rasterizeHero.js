@@ -1,9 +1,83 @@
 // Rasterize a hero (GIF/image element or text) to a canvas for transition engine use
-// Usage: rasterizeHero({type: 'gif', src: 'assets/section/item.gif'}) or rasterizeHero({type: 'element', element: imgEl}) or rasterizeHero({type: 'text', text: 'Instagram'})
+// Usage: rasterizeHero({type: 'gif', src: 'assets/section/item.gif'}) or rasterizeHero({type: 'element', element: imgEl}) or rasterizeHero({type: 'textElement', element: textEl})
 
 const HERO_CANVAS_WIDTH = 320;
 const HERO_CANVAS_HEIGHT = 320;
 
+
+
+function parsePixelValue(value, fallback = 0) {
+  const parsed = Number.parseFloat(value || '');
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function drawTextWithLetterSpacing(ctx, text, x, y, letterSpacingPx) {
+  if (!letterSpacingPx) {
+    ctx.fillText(text, x, y);
+    return;
+  }
+
+  const chars = [...text];
+  const fullWidth = chars.reduce((sum, ch) => sum + ctx.measureText(ch).width, 0) + Math.max(0, chars.length - 1) * letterSpacingPx;
+  let drawX = x - (fullWidth / 2);
+
+  for (const ch of chars) {
+    ctx.fillText(ch, drawX, y);
+    drawX += ctx.measureText(ch).width + letterSpacingPx;
+  }
+}
+
+function wrapTextLines(ctx, text, maxWidth, letterSpacingPx) {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (!words.length) return [''];
+
+  const lines = [];
+  let currentLine = words[0];
+
+  const measure = (value) => {
+    const base = ctx.measureText(value).width;
+    return base + Math.max(0, value.length - 1) * letterSpacingPx;
+  };
+
+  for (let i = 1; i < words.length; i += 1) {
+    const candidate = `${currentLine} ${words[i]}`;
+    if (measure(candidate) <= maxWidth) {
+      currentLine = candidate;
+    } else {
+      lines.push(currentLine);
+      currentLine = words[i];
+    }
+  }
+  lines.push(currentLine);
+  return lines;
+}
+
+function drawTextElement(ctx, canvas, textEl) {
+  const style = window.getComputedStyle(textEl);
+  const rect = textEl.getBoundingClientRect();
+
+  const fontSizePx = parsePixelValue(style.fontSize, 40);
+  const lineHeightPx = style.lineHeight === 'normal' ? fontSizePx * 1.2 : parsePixelValue(style.lineHeight, fontSizePx * 1.2);
+  const letterSpacingPx = parsePixelValue(style.letterSpacing, 0);
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.font = style.font || `${style.fontWeight || '700'} ${fontSizePx}px ${style.fontFamily || 'monospace'}`;
+  ctx.fillStyle = style.color || '#5ee87d';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+
+  const sourceText = textEl.textContent || '';
+  const renderText = (style.textTransform === 'uppercase') ? sourceText.toUpperCase() : sourceText;
+  const maxWidth = Math.max(32, Math.min(rect.width || canvas.width * 0.9, canvas.width * 0.95));
+  const lines = wrapTextLines(ctx, renderText, maxWidth, letterSpacingPx);
+
+  const blockHeight = lines.length * lineHeightPx;
+  let y = (canvas.height / 2) - (blockHeight / 2) + fontSizePx;
+  for (const line of lines) {
+    drawTextWithLetterSpacing(ctx, line, canvas.width / 2, y, letterSpacingPx);
+    y += lineHeightPx;
+  }
+}
 
 // Utility: Crop a canvas to its non-transparent bounding box
 function cropToContent(canvas) {
@@ -40,7 +114,7 @@ function cropToContent(canvas) {
 
 /**
  * Rasterizes a hero asset (GIF, image element, or text) into a transition surface object.
- * @param {Object} hero - { type: 'gif'|'element'|'text', src?: string, element?: HTMLImageElement, text?: string }
+ * @param {Object} hero - { type: 'gif'|'element'|'text'|'textElement', src?: string, element?: HTMLElement|HTMLImageElement, text?: string }
  * @returns {Promise<{canvas: HTMLCanvasElement, offsetX: number, offsetY: number, width: number, height: number}>}
  * Surface shape is consumed by runHeroTransition(...): canvas plus cropped region metadata.
  */
@@ -86,9 +160,17 @@ export function rasterizeHero(hero) {
         return;
       }
       drawCenteredImage(imgEl);
+    } else if (hero.type === 'textElement') {
+      const textEl = hero.element;
+      if (!(textEl instanceof window.HTMLElement)) {
+        reject(new Error('Invalid text element'));
+        return;
+      }
+      drawTextElement(ctx, canvas, textEl);
+      finish();
     } else if (hero.type === 'text') {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.font = 'bold 2.5rem SF Mono, Menlo, Monaco, Consolas, monospace';
+      ctx.font = '700 40px SF Mono, Menlo, Monaco, Consolas, monospace';
       ctx.fillStyle = '#5ee87d';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';

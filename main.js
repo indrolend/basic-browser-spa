@@ -95,6 +95,43 @@ function getPrevTarget(sectionIdx, itemIdx) {
   return { sectionIdx: prevSectionIdx, itemIdx: SPA_SECTIONS[prevSectionIdx].items.length - 1 };
 }
 
+function createTextProbe(text) {
+  const container = document.getElementById('spa-hero-container');
+  if (!container) return null;
+
+  const probe = document.createElement('div');
+  probe.className = 'spa-hero-text';
+  probe.textContent = text;
+  probe.style.position = 'absolute';
+  probe.style.visibility = 'hidden';
+  probe.style.pointerEvents = 'none';
+  probe.style.margin = '0';
+  probe.style.left = '-9999px';
+  probe.style.top = '-9999px';
+
+  const liveTextEl = container.querySelector('.spa-hero-text');
+  if (liveTextEl instanceof window.HTMLElement) {
+    const liveRect = liveTextEl.getBoundingClientRect();
+    if (liveRect.width > 0) probe.style.width = `${liveRect.width}px`;
+  } else {
+    const fallbackWidth = Math.min(container.clientWidth || 320, 608);
+    probe.style.width = `${Math.max(220, fallbackWidth)}px`;
+  }
+
+  container.appendChild(probe);
+  return probe;
+}
+
+async function rasterizeWithCleanup(input) {
+  try {
+    return await rasterizeHero(input);
+  } finally {
+    if (typeof input?.cleanup === 'function') {
+      input.cleanup();
+    }
+  }
+}
+
 function getHeroSurfaceKey(sectionIdx, itemIdx) {
   return `${sectionIdx}:${itemIdx}`;
 }
@@ -187,6 +224,18 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
   if (!hero) return null;
 
   if (hero.kind === 'text') {
+    const container = document.getElementById('spa-hero-container');
+    const liveTextEl = container?.querySelector('.spa-hero-text');
+
+    if (phase === 'from' && liveTextEl instanceof window.HTMLElement) {
+      return { type: 'textElement', element: liveTextEl };
+    }
+
+    const probe = createTextProbe(hero.text);
+    if (probe) {
+      return { type: 'textElement', element: probe, cleanup: () => probe.remove() };
+    }
+
     return { type: 'text', text: hero.text };
   }
 
@@ -225,11 +274,11 @@ async function buildHeroSurface(sectionIdx, itemIdx, phase) {
   if (phase === 'from' && input.type === 'element') {
     const fallbackInput = buildHeroRenderInput(sectionIdx, itemIdx, 'to');
     if (fallbackInput?.type === 'gif') {
-      return rasterizeHero(input).catch(() => rasterizeHero(fallbackInput));
+      return rasterizeWithCleanup(input).catch(() => rasterizeWithCleanup(fallbackInput));
     }
   }
 
-  return rasterizeHero(input);
+  return rasterizeWithCleanup(input);
 }
 
 function updateSectionNav(sectionIdx) {
