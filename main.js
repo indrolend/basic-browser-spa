@@ -95,6 +95,49 @@ function getPrevTarget(sectionIdx, itemIdx) {
   return { sectionIdx: prevSectionIdx, itemIdx: SPA_SECTIONS[prevSectionIdx].items.length - 1 };
 }
 
+function createTextProbe(text) {
+  const container = document.getElementById('spa-hero-container');
+  if (!container) return null;
+
+  const probeHero = document.createElement('div');
+  probeHero.className = 'spa-hero';
+  probeHero.style.position = 'absolute';
+  probeHero.style.visibility = 'hidden';
+  probeHero.style.pointerEvents = 'none';
+  probeHero.style.margin = '0';
+  probeHero.style.left = '-9999px';
+  probeHero.style.top = '-9999px';
+
+  const liveHeroEl = container.querySelector('.spa-hero');
+  if (liveHeroEl instanceof window.HTMLElement) {
+    const liveHeroRect = liveHeroEl.getBoundingClientRect();
+    if (liveHeroRect.width > 0) probeHero.style.width = `${liveHeroRect.width}px`;
+  } else {
+    const fallbackWidth = Math.min(container.clientWidth || 320, 608);
+    probeHero.style.width = `${Math.max(220, fallbackWidth)}px`;
+  }
+
+  const probeText = document.createElement('div');
+  probeText.className = 'spa-hero-text';
+  probeText.textContent = text;
+  probeText.style.margin = '0';
+
+  probeHero.appendChild(probeText);
+  container.appendChild(probeHero);
+
+  return { element: probeText, cleanup: () => probeHero.remove() };
+}
+
+async function rasterizeWithCleanup(input) {
+  try {
+    return await rasterizeHero(input);
+  } finally {
+    if (typeof input?.cleanup === 'function') {
+      input.cleanup();
+    }
+  }
+}
+
 function getHeroSurfaceKey(sectionIdx, itemIdx) {
   return `${sectionIdx}:${itemIdx}`;
 }
@@ -187,6 +230,18 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
   if (!hero) return null;
 
   if (hero.kind === 'text') {
+    const container = document.getElementById('spa-hero-container');
+    const liveTextEl = container?.querySelector('.spa-hero-text');
+
+    if (phase === 'from' && liveTextEl instanceof window.HTMLElement) {
+      return { type: 'textElement', element: liveTextEl };
+    }
+
+    const probe = createTextProbe(hero.text);
+    if (probe) {
+      return { type: 'textElement', element: probe.element, cleanup: probe.cleanup };
+    }
+
     return { type: 'text', text: hero.text };
   }
 
@@ -225,11 +280,11 @@ async function buildHeroSurface(sectionIdx, itemIdx, phase) {
   if (phase === 'from' && input.type === 'element') {
     const fallbackInput = buildHeroRenderInput(sectionIdx, itemIdx, 'to');
     if (fallbackInput?.type === 'gif') {
-      return rasterizeHero(input).catch(() => rasterizeHero(fallbackInput));
+      return rasterizeWithCleanup(input).catch(() => rasterizeWithCleanup(fallbackInput));
     }
   }
 
-  return rasterizeHero(input);
+  return rasterizeWithCleanup(input);
 }
 
 function updateSectionNav(sectionIdx) {
@@ -237,7 +292,6 @@ function updateSectionNav(sectionIdx) {
   if (!sectionNav) {
     sectionNav = document.createElement('div');
     sectionNav.id = 'spa-section-nav';
-    sectionNav.style = 'position:fixed;top:0;left:0;width:100vw;z-index:20;display:flex;justify-content:center;gap:1.5em;padding:1em 0;background:#111;box-shadow:0 2px 12px #0006;';
     document.body.prepend(sectionNav);
   }
 
@@ -245,9 +299,11 @@ function updateSectionNav(sectionIdx) {
   SPA_SECTIONS.forEach((sec, idx) => {
     const btn = document.createElement('button');
     btn.textContent = sec.label;
+    btn.type = 'button';
     btn.className = 'spa-nav-btn';
     btn.style.fontWeight = idx === sectionIdx ? 'bold' : 'normal';
     btn.style.background = idx === sectionIdx ? '#333' : '';
+    btn.setAttribute('aria-current', idx === sectionIdx ? 'page' : 'false');
     btn.onclick = () => goTo(idx, 0);
     sectionNav.appendChild(btn);
   });
@@ -290,16 +346,44 @@ function setupItemNav() {
   if (!navBar || navBar.children.length > 0) return;
 
   const prevBtn = document.createElement('button');
+  prevBtn.type = 'button';
   prevBtn.className = 'spa-nav-btn';
   prevBtn.textContent = '← Prev';
+  prevBtn.setAttribute('aria-label', 'Previous item');
   prevBtn.onclick = prevItem;
   navBar.appendChild(prevBtn);
 
   const nextBtn = document.createElement('button');
+  nextBtn.type = 'button';
   nextBtn.className = 'spa-nav-btn';
   nextBtn.textContent = 'Next →';
+  nextBtn.setAttribute('aria-label', 'Next item');
   nextBtn.onclick = nextItem;
   navBar.appendChild(nextBtn);
+}
+
+function alignTransitionCanvas(transitionCanvas, fromSurface, toSurface) {
+  const root = document.getElementById('spa-root');
+  const hero = document.querySelector('#spa-hero-container .spa-hero');
+  const heroContainer = document.getElementById('spa-hero-container');
+  if (!root || !heroContainer) return;
+
+  const STAGE_PADDING_PX = 72;
+  const baseStageWidth = Math.max(fromSurface?.width || 0, toSurface?.width || 0, 1);
+  const baseStageHeight = Math.max(fromSurface?.height || 0, toSurface?.height || 0, 1);
+  const stageWidth = baseStageWidth + (STAGE_PADDING_PX * 2);
+  const stageHeight = baseStageHeight + (STAGE_PADDING_PX * 2);
+
+  transitionCanvas.width = stageWidth;
+  transitionCanvas.height = stageHeight;
+
+  const rootRect = root.getBoundingClientRect();
+  const anchorRect = (hero || heroContainer).getBoundingClientRect();
+  const centerX = anchorRect.left - rootRect.left + (anchorRect.width / 2);
+  const centerY = anchorRect.top - rootRect.top + (anchorRect.height / 2);
+
+  transitionCanvas.style.left = `${centerX}px`;
+  transitionCanvas.style.top = `${centerY}px`;
 }
 
 import { rasterizeHero } from './js/spa/rasterizeHero.js';
@@ -308,6 +392,7 @@ import { transition } from './js/spa/particleTransitionEngine.js';
 async function runHeroTransition(fromSurface, toSurface, transitionOptions = {}) {
   const heroContainer = document.getElementById('spa-hero-container');
   const transitionCanvas = document.getElementById('transition-canvas');
+  alignTransitionCanvas(transitionCanvas, fromSurface, toSurface);
   const ctx = transitionCanvas.getContext('2d');
 
   heroContainer.style.visibility = 'hidden';
