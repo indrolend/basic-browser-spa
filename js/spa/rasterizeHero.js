@@ -160,7 +160,7 @@ function cropToContent(canvas, padding = 0) {
   }
   if (!found) {
     // No visible content, return original
-    return { canvas, offsetX: 0, offsetY: 0, width, height };
+    return { canvas, offsetX: 0, offsetY: 0, width, height, hasVisibleContent: false };
   }
   const extra = Math.max(0, Math.floor(padding));
   const paddedMinX = Math.max(0, minX - extra);
@@ -173,7 +173,7 @@ function cropToContent(canvas, padding = 0) {
   cropped.width = cropW;
   cropped.height = cropH;
   cropped.getContext('2d').drawImage(canvas, paddedMinX, paddedMinY, cropW, cropH, 0, 0, cropW, cropH);
-  return { canvas: cropped, offsetX: paddedMinX, offsetY: paddedMinY, width: cropW, height: cropH };
+  return { canvas: cropped, offsetX: paddedMinX, offsetY: paddedMinY, width: cropW, height: cropH, hasVisibleContent: true };
 }
 
 /**
@@ -189,8 +189,14 @@ export function rasterizeHero(hero) {
     canvas.height = HERO_CANVAS_HEIGHT;
     const ctx = canvas.getContext('2d');
 
-    function finish({ padding = 0 } = {}) {
+    function finish({ padding = 0, debugLabel = '' } = {}) {
       const cropped = cropToContent(canvas, padding);
+      if (debugLabel) {
+        console.debug(
+          `[rasterizeHero] ${debugLabel} visible=${cropped.hasVisibleContent} ` +
+          `size=${cropped.width}x${cropped.height} offset=(${cropped.offsetX},${cropped.offsetY})`
+        );
+      }
       resolve(cropped);
     }
 
@@ -235,10 +241,14 @@ export function rasterizeHero(hero) {
         ctx,
         canvas,
         textEl,
-        () => finish({ padding: 14 }),
         () => {
+          console.debug('[rasterizeHero] textElement SVG rasterization succeeded');
+          finish({ padding: 14, debugLabel: 'textElement(svg)' });
+        },
+        () => {
+          console.debug('[rasterizeHero] textElement SVG rasterization failed; using canvas fallback');
           drawTextElement(ctx, canvas, textEl);
-          finish({ padding: 14 });
+          finish({ padding: 14, debugLabel: 'textElement(fallback)' });
         }
       );
     } else if (hero.type === 'text') {
