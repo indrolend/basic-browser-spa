@@ -222,6 +222,32 @@ function startGifHeroPlayback({ canvas, src, width = 320, height = 320, playback
   };
 }
 
+function prewarmGifFirstFrame(src, width = 320, height = 320) {
+  return loadGifler().then((gifler) => new Promise((resolve) => {
+    const warmCanvas = document.createElement('canvas');
+    warmCanvas.width = width;
+    warmCanvas.height = height;
+    let resolved = false;
+    const animator = gifler(src).animate(warmCanvas, (ctx, frame) => {
+      if (!frame?.buffer) return;
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(frame.buffer, frame.x, frame.y);
+      if (!resolved) {
+        resolved = true;
+        animator?.stop?.();
+        resolve(warmCanvas);
+      }
+    });
+
+    window.setTimeout(() => {
+      if (resolved) return;
+      resolved = true;
+      animator?.stop?.();
+      resolve(null);
+    }, 800);
+  }));
+}
+
 async function refreshCurrentHeroSurface(sectionIdx, itemIdx) {
   const surfaceKey = getHeroSurfaceKey(sectionIdx, itemIdx);
 
@@ -419,7 +445,7 @@ function updateSectionNav(sectionIdx) {
   });
 }
 
-function renderHeroDOM(sectionIdx, itemIdx) {
+function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
   const heroContainer = document.getElementById('spa-hero-container');
   const item = SPA_SECTIONS[sectionIdx].items[itemIdx];
   const heroSpec = getHeroSpec(sectionIdx, itemIdx);
@@ -437,6 +463,14 @@ function renderHeroDOM(sectionIdx, itemIdx) {
       gifCanvas.height = 320;
       gifCanvas.setAttribute('role', 'img');
       gifCanvas.setAttribute('aria-label', item.label);
+      if (options.gifWarmupSurface instanceof window.HTMLCanvasElement) {
+        const warmCtx = gifCanvas.getContext('2d');
+        if (warmCtx) {
+          warmCtx.clearRect(0, 0, gifCanvas.width, gifCanvas.height);
+          warmCtx.drawImage(options.gifWarmupSurface, 0, 0, gifCanvas.width, gifCanvas.height);
+          console.debug('[gifPlayback] seeded visible canvas with prewarmed first frame');
+        }
+      }
       hero.appendChild(gifCanvas);
       startGifHeroPlayback({
         canvas: gifCanvas,
@@ -520,6 +554,7 @@ import { transition } from './js/spa/particleTransitionEngine.js';
 async function runHeroTransition(fromSurface, toSurface, transitionOptions = {}) {
   const heroContainer = document.getElementById('spa-hero-container');
   const transitionCanvas = document.getElementById('transition-canvas');
+  const { onBeforeReveal, ...engineOptions } = transitionOptions || {};
   alignTransitionCanvas(transitionCanvas, fromSurface, toSurface);
   const ctx = transitionCanvas.getContext('2d');
 
@@ -543,12 +578,15 @@ async function runHeroTransition(fromSurface, toSurface, transitionOptions = {})
           fromRegion: fromSurface,
           toRegion: toSurface,
           centerDraw,
-          ...transitionOptions
+          ...engineOptions
         },
         resolve
       );
     });
   } finally {
+    if (typeof onBeforeReveal === 'function') {
+      await onBeforeReveal();
+    }
     transitionCanvas.style.display = 'none';
     heroContainer.style.visibility = 'visible';
   }
@@ -576,8 +614,13 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
   try {
     const fromSectionIdx = currentSectionIdx;
     const fromItemIdx = currentItemIdx;
+    const nextHeroSpec = getHeroSpec(nextSectionIdx, nextItemIdx);
+    const toGifWarmupPromise = isGifHeroSpec(nextHeroSpec)
+      ? prewarmGifFirstFrame(nextHeroSpec.src).catch(() => null)
+      : Promise.resolve(null);
 
     let didTransition = false;
+    let didRenderDuringReveal = false;
 
     try {
       console.debug(
@@ -589,7 +632,15 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
       ]);
 
       if (fromSurface && toSurface) {
-        await runHeroTransition(fromSurface, toSurface, navOptions.transitionOptions);
+        await runHeroTransition(fromSurface, toSurface, {
+          ...(navOptions.transitionOptions || {}),
+          onBeforeReveal: async () => {
+            const warmSurface = await toGifWarmupPromise;
+            renderHeroDOM(nextSectionIdx, nextItemIdx, { gifWarmupSurface: warmSurface });
+            updateSectionNav(nextSectionIdx);
+            didRenderDuringReveal = true;
+          }
+        });
         didTransition = true;
       }
     } catch (err) {
@@ -598,10 +649,10 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
 
     currentSectionIdx = nextSectionIdx;
     currentItemIdx = nextItemIdx;
-    if (didTransition) {
+    if (didTransition && !didRenderDuringReveal) {
       renderHeroDOM(currentSectionIdx, currentItemIdx);
       updateSectionNav(currentSectionIdx);
-    } else {
+    } else if (!didTransition) {
       render();
     }
 
