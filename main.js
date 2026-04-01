@@ -55,6 +55,9 @@ let currentHeroSurface = null;
 let currentHeroSurfaceKey = null;
 let currentHeroSurfaceFrameId = null;
 let currentHeroSurfaceTrackingKey = null;
+let lastDesktopNavInputAt = 0;
+
+const DESKTOP_CHAIN_WINDOW_MS = 260;
 
 function isSameTarget(a, b) {
   return !!a && !!b && a.sectionIdx === b.sectionIdx && a.itemIdx === b.itemIdx;
@@ -302,7 +305,7 @@ function setupItemNav() {
 import { rasterizeHero } from './js/spa/rasterizeHero.js';
 import { transition } from './js/spa/particleTransitionEngine.js';
 
-async function runHeroTransition(fromSurface, toSurface) {
+async function runHeroTransition(fromSurface, toSurface, transitionOptions = {}) {
   const heroContainer = document.getElementById('spa-hero-container');
   const transitionCanvas = document.getElementById('transition-canvas');
   const ctx = transitionCanvas.getContext('2d');
@@ -327,6 +330,7 @@ async function runHeroTransition(fromSurface, toSurface) {
           fromRegion: fromSurface,
           toRegion: toSurface,
           centerDraw,
+          ...transitionOptions
         },
         resolve
       );
@@ -337,7 +341,7 @@ async function runHeroTransition(fromSurface, toSurface) {
   }
 }
 
-async function goTo(nextSectionIdx, nextItemIdx) {
+async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
   const requestedTarget = { sectionIdx: nextSectionIdx, itemIdx: nextItemIdx };
   const committedTarget = { sectionIdx: currentSectionIdx, itemIdx: currentItemIdx };
 
@@ -347,12 +351,12 @@ async function goTo(nextSectionIdx, nextItemIdx) {
     if (isSameTarget(requestedTarget, activeTarget) || isSameTarget(requestedTarget, queuedTarget)) {
       return;
     }
-    queuedTarget = requestedTarget;
+    queuedTarget = { ...requestedTarget, transitionOptions: navOptions.transitionOptions || null };
     return;
   }
 
   isTransitioning = true;
-  activeTarget = requestedTarget;
+  activeTarget = { ...requestedTarget, transitionOptions: navOptions.transitionOptions || null };
   stopCurrentHeroSurfaceTracking();
 
   try {
@@ -368,7 +372,7 @@ async function goTo(nextSectionIdx, nextItemIdx) {
       ]);
 
       if (fromSurface && toSurface) {
-        await runHeroTransition(fromSurface, toSurface);
+        await runHeroTransition(fromSurface, toSurface, navOptions.transitionOptions);
         didTransition = true;
       }
     } catch (err) {
@@ -393,25 +397,44 @@ async function goTo(nextSectionIdx, nextItemIdx) {
       const latest = queuedTarget;
       queuedTarget = null;
       if (!isSameTarget(latest, { sectionIdx: currentSectionIdx, itemIdx: currentItemIdx })) {
-        void goTo(latest.sectionIdx, latest.itemIdx);
+        void goTo(latest.sectionIdx, latest.itemIdx, { transitionOptions: latest.transitionOptions || undefined });
       }
     }
   }
 }
 
-function prevItem() {
-  const target = getPrevTarget(currentSectionIdx, currentItemIdx);
-  goTo(target.sectionIdx, target.itemIdx);
+function getDesktopNavOptions() {
+  const now = performance.now();
+  const isChained = now - lastDesktopNavInputAt <= DESKTOP_CHAIN_WINDOW_MS;
+  lastDesktopNavInputAt = now;
+
+  if (!isChained) return {};
+
+  return {
+    transitionOptions: {
+      timingProfile: 'chained'
+    }
+  };
 }
 
-function nextItem() {
+function prevItem(navOptions = {}) {
+  const target = getPrevTarget(currentSectionIdx, currentItemIdx);
+  goTo(target.sectionIdx, target.itemIdx, navOptions);
+}
+
+function nextItem(navOptions = {}) {
   const target = getNextTarget(currentSectionIdx, currentItemIdx);
-  goTo(target.sectionIdx, target.itemIdx);
+  goTo(target.sectionIdx, target.itemIdx, navOptions);
 }
 
 window.addEventListener('keydown', (e) => {
-  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') prevItem();
-  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') nextItem();
+  const isPrev = e.key === 'ArrowLeft' || e.key === 'ArrowUp';
+  const isNext = e.key === 'ArrowRight' || e.key === 'ArrowDown';
+  if (!isPrev && !isNext) return;
+
+  const navOptions = getDesktopNavOptions();
+  if (isPrev) prevItem(navOptions);
+  if (isNext) nextItem(navOptions);
 });
 
 let touchStartX = null;
