@@ -99,27 +99,33 @@ function createTextProbe(text) {
   const container = document.getElementById('spa-hero-container');
   if (!container) return null;
 
-  const probe = document.createElement('div');
-  probe.className = 'spa-hero-text';
-  probe.textContent = text;
-  probe.style.position = 'absolute';
-  probe.style.visibility = 'hidden';
-  probe.style.pointerEvents = 'none';
-  probe.style.margin = '0';
-  probe.style.left = '-9999px';
-  probe.style.top = '-9999px';
+  const probeHero = document.createElement('div');
+  probeHero.className = 'spa-hero';
+  probeHero.style.position = 'absolute';
+  probeHero.style.visibility = 'hidden';
+  probeHero.style.pointerEvents = 'none';
+  probeHero.style.margin = '0';
+  probeHero.style.left = '-9999px';
+  probeHero.style.top = '-9999px';
 
-  const liveTextEl = container.querySelector('.spa-hero-text');
-  if (liveTextEl instanceof window.HTMLElement) {
-    const liveRect = liveTextEl.getBoundingClientRect();
-    if (liveRect.width > 0) probe.style.width = `${liveRect.width}px`;
+  const liveHeroEl = container.querySelector('.spa-hero');
+  if (liveHeroEl instanceof window.HTMLElement) {
+    const liveHeroRect = liveHeroEl.getBoundingClientRect();
+    if (liveHeroRect.width > 0) probeHero.style.width = `${liveHeroRect.width}px`;
   } else {
     const fallbackWidth = Math.min(container.clientWidth || 320, 608);
-    probe.style.width = `${Math.max(220, fallbackWidth)}px`;
+    probeHero.style.width = `${Math.max(220, fallbackWidth)}px`;
   }
 
-  container.appendChild(probe);
-  return probe;
+  const probeText = document.createElement('div');
+  probeText.className = 'spa-hero-text';
+  probeText.textContent = text;
+  probeText.style.margin = '0';
+
+  probeHero.appendChild(probeText);
+  container.appendChild(probeHero);
+
+  return { element: probeText, cleanup: () => probeHero.remove() };
 }
 
 async function rasterizeWithCleanup(input) {
@@ -233,7 +239,7 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
 
     const probe = createTextProbe(hero.text);
     if (probe) {
-      return { type: 'textElement', element: probe, cleanup: () => probe.remove() };
+      return { type: 'textElement', element: probe.element, cleanup: probe.cleanup };
     }
 
     return { type: 'text', text: hero.text };

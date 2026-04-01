@@ -52,6 +52,42 @@ function wrapTextLines(ctx, text, maxWidth, letterSpacingPx) {
   return lines;
 }
 
+function drawTextElementViaSvg(ctx, canvas, textEl, onDone, onError) {
+  const rect = textEl.getBoundingClientRect();
+  const width = Math.max(1, Math.ceil(rect.width));
+  const height = Math.max(1, Math.ceil(rect.height));
+
+  const clone = textEl.cloneNode(true);
+  if (!(clone instanceof window.HTMLElement)) {
+    onError(new Error('Failed to clone text element'));
+    return;
+  }
+
+  clone.style.margin = '0';
+  clone.style.width = `${width}px`;
+
+  const serializer = new window.XMLSerializer();
+  const escaped = serializer.serializeToString(clone)
+    .replace(/&nbsp;/g, '&#160;');
+
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+      <foreignObject x="0" y="0" width="100%" height="100%">
+        <div xmlns="http://www.w3.org/1999/xhtml" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;">${escaped}</div>
+      </foreignObject>
+    </svg>
+  `;
+
+  const img = new window.Image();
+  img.onload = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
+    onDone();
+  };
+  img.onerror = () => onError(new Error('Failed to rasterize text element via SVG'));
+  img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 function drawTextElement(ctx, canvas, textEl) {
   const style = window.getComputedStyle(textEl);
   const rect = textEl.getBoundingClientRect();
@@ -166,8 +202,17 @@ export function rasterizeHero(hero) {
         reject(new Error('Invalid text element'));
         return;
       }
-      drawTextElement(ctx, canvas, textEl);
-      finish();
+
+      drawTextElementViaSvg(
+        ctx,
+        canvas,
+        textEl,
+        finish,
+        () => {
+          drawTextElement(ctx, canvas, textEl);
+          finish();
+        }
+      );
     } else if (hero.type === 'text') {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.font = '700 40px SF Mono, Menlo, Monaco, Consolas, monospace';
