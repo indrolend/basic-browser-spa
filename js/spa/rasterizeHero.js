@@ -211,6 +211,7 @@ export function rasterizeHero(hero) {
     }
 
     if (hero.type === 'gif') {
+      console.debug(`[rasterizeHero] branch=gif src=${hero.src}`);
       const img = new window.Image();
       img.onload = function() {
         drawCenteredImage(img);
@@ -225,11 +226,17 @@ export function rasterizeHero(hero) {
         reject(new Error('Invalid image element'));
         return;
       }
+      const src = imgEl.currentSrc || imgEl.src || '';
+      const isGifSource = /\.gif(?:[?#]|$)/i.test(src);
+      console.debug(
+        `[rasterizeHero] branch=element live=true gif=${isGifSource} complete=${imgEl.complete} natural=${imgEl.naturalWidth}x${imgEl.naturalHeight}`
+      );
       if (!imgEl.complete || !imgEl.naturalWidth || !imgEl.naturalHeight) {
         reject(new Error('Image element not ready'));
         return;
       }
       drawCenteredImage(imgEl);
+      console.debug(`[rasterizeHero] element capture drawn src=${src}`);
     } else if (hero.type === 'textElement') {
       const textEl = hero.element;
       if (!(textEl instanceof window.HTMLElement)) {

@@ -141,6 +141,10 @@ function getHeroSurfaceKey(sectionIdx, itemIdx) {
   return `${sectionIdx}:${itemIdx}`;
 }
 
+function isGifHeroSpec(hero) {
+  return hero?.kind === 'image' && /\.gif(?:[?#]|$)/i.test(hero.src || '');
+}
+
 async function refreshCurrentHeroSurface(sectionIdx, itemIdx) {
   const surfaceKey = getHeroSurfaceKey(sectionIdx, itemIdx);
 
@@ -228,6 +232,8 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
   const hero = getHeroSpec(sectionIdx, itemIdx);
   if (!hero) return null;
 
+  console.debug(`[heroCapture] build input phase=${phase} kind=${hero.kind}`);
+
   if (hero.kind === 'text') {
     const container = document.getElementById('spa-hero-container');
     const liveTextEl = container?.querySelector('.spa-hero-text');
@@ -248,10 +254,14 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
     const container = document.getElementById('spa-hero-container');
     const liveImgEl = container?.querySelector('.spa-hero-image');
     if (liveImgEl instanceof window.HTMLImageElement) {
+      console.debug(
+        `[heroCapture] from image uses live element src=${liveImgEl.currentSrc || liveImgEl.src} complete=${liveImgEl.complete}`
+      );
       return { type: 'element', element: liveImgEl };
     }
   }
 
+  console.debug(`[heroCapture] image fallback uses src rasterization src=${hero.src} phase=${phase}`);
   return { type: 'gif', src: hero.src };
 }
 
@@ -261,15 +271,24 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
  * fall back to stable src-based rasterization for image heroes.
  */
 async function buildHeroSurface(sectionIdx, itemIdx, phase) {
+  const hero = getHeroSpec(sectionIdx, itemIdx);
+  const shouldForceLiveGifFromCapture = phase === 'from' && isGifHeroSpec(hero);
+
   if (phase === 'from') {
     const requestedSurfaceKey = getHeroSurfaceKey(sectionIdx, itemIdx);
     const committedSurfaceKey = getHeroSurfaceKey(currentSectionIdx, currentItemIdx);
     if (
+      !shouldForceLiveGifFromCapture &&
       requestedSurfaceKey === committedSurfaceKey &&
       currentHeroSurface &&
       currentHeroSurfaceKey === requestedSurfaceKey
     ) {
+      console.debug(`[heroCapture] reusing cached from-surface key=${requestedSurfaceKey}`);
       return currentHeroSurface;
+    }
+
+    if (shouldForceLiveGifFromCapture) {
+      console.debug('[heroCapture] forcing live GIF from-surface capture at transition start');
     }
   }
 
@@ -279,7 +298,10 @@ async function buildHeroSurface(sectionIdx, itemIdx, phase) {
   if (phase === 'from' && input.type === 'element') {
     const fallbackInput = buildHeroRenderInput(sectionIdx, itemIdx, 'to');
     if (fallbackInput?.type === 'gif') {
-      return rasterizeWithCleanup(input).catch(() => rasterizeWithCleanup(fallbackInput));
+      return rasterizeWithCleanup(input).catch((err) => {
+        console.debug(`[heroCapture] live element capture failed; falling back to src rasterization: ${err?.message || err}`);
+        return rasterizeWithCleanup(fallbackInput);
+      });
     }
   }
 
@@ -450,6 +472,9 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
     let didTransition = false;
 
     try {
+      console.debug(
+        `[heroCapture] transition start from=${fromSectionIdx}:${fromItemIdx} to=${nextSectionIdx}:${nextItemIdx} at=${performance.now().toFixed(1)}ms`
+      );
       const [fromSurface, toSurface] = await Promise.all([
         buildHeroSurface(fromSectionIdx, fromItemIdx, 'from'),
         buildHeroSurface(nextSectionIdx, nextItemIdx, 'to')
