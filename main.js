@@ -56,6 +56,7 @@ let currentHeroSurfaceKey = null;
 let currentHeroSurfaceFrameId = null;
 let currentHeroSurfaceTrackingKey = null;
 let lastDesktopNavInputAt = 0;
+let activeGifPlayback = null;
 
 const DESKTOP_CHAIN_WINDOW_MS = 260;
 
@@ -145,6 +146,57 @@ function isGifHeroSpec(hero) {
   return hero?.kind === 'image' && /\.gif(?:[?#]|$)/i.test(hero.src || '');
 }
 
+function stopActiveGifHeroPlayback() {
+  if (!activeGifPlayback) return;
+  if (activeGifPlayback.rafId !== null) {
+    window.cancelAnimationFrame(activeGifPlayback.rafId);
+  }
+  activeGifPlayback = null;
+}
+
+function startGifHeroPlayback({ canvas, src, width = 320, height = 320, playbackKey }) {
+  stopActiveGifHeroPlayback();
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  const feedImg = new window.Image();
+  feedImg.decoding = 'async';
+  let rafId = null;
+  let isActive = true;
+
+  const drawFrame = () => {
+    if (!isActive) return;
+    if (feedImg.complete && feedImg.naturalWidth && feedImg.naturalHeight) {
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(feedImg, 0, 0, feedImg.naturalWidth, feedImg.naturalHeight, 0, 0, width, height);
+    }
+    rafId = window.requestAnimationFrame(drawFrame);
+    activeGifPlayback = { rafId, canvas, playbackKey };
+  };
+
+  feedImg.onload = () => {
+    console.debug(`[gifPlayback] started key=${playbackKey} src=${src}`);
+    drawFrame();
+  };
+  feedImg.onerror = () => {
+    console.warn(`[gifPlayback] failed to load src=${src}`);
+  };
+  feedImg.src = src;
+
+  activeGifPlayback = { rafId, canvas, playbackKey };
+
+  return () => {
+    isActive = false;
+    if (rafId !== null) {
+      window.cancelAnimationFrame(rafId);
+    }
+    if (activeGifPlayback?.playbackKey === playbackKey) {
+      activeGifPlayback = null;
+    }
+  };
+}
+
 async function refreshCurrentHeroSurface(sectionIdx, itemIdx) {
   const surfaceKey = getHeroSurfaceKey(sectionIdx, itemIdx);
 
@@ -191,6 +243,13 @@ function startCurrentHeroSurfaceTracking(sectionIdx, itemIdx) {
 
   if (hero.kind === 'text') {
     void refreshCurrentHeroSurface(sectionIdx, itemIdx);
+    return;
+  }
+
+  if (isGifHeroSpec(hero)) {
+    currentHeroSurface = null;
+    currentHeroSurfaceKey = null;
+    console.debug('[heroCapture] skipping cached surface tracking for live GIF canvas hero');
     return;
   }
 
@@ -252,6 +311,11 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
 
   if (phase === 'from') {
     const container = document.getElementById('spa-hero-container');
+    const liveGifCanvasEl = container?.querySelector('.spa-hero-gif-canvas');
+    if (liveGifCanvasEl instanceof window.HTMLCanvasElement) {
+      console.debug('[heroCapture] from GIF uses live canvas surface');
+      return { type: 'element', element: liveGifCanvasEl };
+    }
     const liveImgEl = container?.querySelector('.spa-hero-image');
     if (liveImgEl instanceof window.HTMLImageElement) {
       console.debug(
@@ -335,18 +399,36 @@ function renderHeroDOM(sectionIdx, itemIdx) {
   const item = SPA_SECTIONS[sectionIdx].items[itemIdx];
   const heroSpec = getHeroSpec(sectionIdx, itemIdx);
 
+  stopActiveGifHeroPlayback();
   heroContainer.innerHTML = '';
   const hero = document.createElement('div');
   hero.className = 'spa-hero';
 
   if (heroSpec?.kind === 'image') {
-    const img = document.createElement('img');
-    img.className = 'spa-hero-image';
-    img.src = heroSpec.src;
-    img.alt = item.label;
-    img.width = 320;
-    img.height = 320;
-    hero.appendChild(img);
+    if (isGifHeroSpec(heroSpec)) {
+      const gifCanvas = document.createElement('canvas');
+      gifCanvas.className = 'spa-hero-gif spa-hero-gif-canvas';
+      gifCanvas.width = 320;
+      gifCanvas.height = 320;
+      gifCanvas.setAttribute('role', 'img');
+      gifCanvas.setAttribute('aria-label', item.label);
+      hero.appendChild(gifCanvas);
+      startGifHeroPlayback({
+        canvas: gifCanvas,
+        src: heroSpec.src,
+        width: 320,
+        height: 320,
+        playbackKey: getHeroSurfaceKey(sectionIdx, itemIdx)
+      });
+    } else {
+      const img = document.createElement('img');
+      img.className = 'spa-hero-image';
+      img.src = heroSpec.src;
+      img.alt = item.label;
+      img.width = 320;
+      img.height = 320;
+      hero.appendChild(img);
+    }
   } else {
     const textDiv = document.createElement('div');
     textDiv.className = 'spa-hero-text';
@@ -463,6 +545,7 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
 
   isTransitioning = true;
   activeTarget = { ...requestedTarget, transitionOptions: navOptions.transitionOptions || null };
+  stopActiveGifHeroPlayback();
   stopCurrentHeroSurfaceTracking();
 
   try {
