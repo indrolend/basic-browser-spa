@@ -60,6 +60,7 @@ let activeGifPlayback = null;
 let giflerLoaderPromise = null;
 let preparedToGifCanvas = null;
 let preparedToGifKey = null;
+let preparedToGifReadyPromise = null;
 
 const DESKTOP_CHAIN_WINDOW_MS = 260;
 
@@ -180,6 +181,11 @@ function startGifHeroPlayback({ canvas, src, width = 320, height = 320, playback
   stopActiveGifHeroPlayback();
 
   let disposed = false;
+  let didEmitFirstFrame = false;
+  let resolveFirstFrame = null;
+  const firstFramePromise = new Promise((resolve) => {
+    resolveFirstFrame = resolve;
+  });
   if (canvas.width !== width) {
     canvas.width = width;
   }
@@ -202,7 +208,22 @@ function startGifHeroPlayback({ canvas, src, width = 320, height = 320, playback
   loadGifler()
     .then((gifler) => {
       if (disposed || activeGifPlayback !== playbackState) return;
-      const animator = gifler(src).animate(canvas);
+      const animator = gifler(src).animate(canvas, (ctx, frame) => {
+        if (!frame?.buffer) return;
+        const srcW = frame.width || frame.buffer.width || width;
+        const srcH = frame.height || frame.buffer.height || height;
+        const scale = Math.min(width / srcW, height / srcH);
+        const drawW = srcW * scale;
+        const drawH = srcH * scale;
+        const dx = (width - drawW) / 2;
+        const dy = (height - drawH) / 2;
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(frame.buffer, 0, 0, srcW, srcH, dx, dy, drawW, drawH);
+        if (!didEmitFirstFrame) {
+          didEmitFirstFrame = true;
+          resolveFirstFrame(true);
+        }
+      });
       playbackState.animator = animator;
       console.debug(`[gifPlayback] started key=${playbackKey} src=${src} via gifler`);
     })
@@ -215,16 +236,36 @@ function startGifHeroPlayback({ canvas, src, width = 320, height = 320, playback
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
         ctx.clearRect(0, 0, width, height);
-        ctx.drawImage(fallbackImg, 0, 0, fallbackImg.naturalWidth, fallbackImg.naturalHeight, 0, 0, width, height);
+        const srcW = fallbackImg.naturalWidth || width;
+        const srcH = fallbackImg.naturalHeight || height;
+        const scale = Math.min(width / srcW, height / srcH);
+        const drawW = srcW * scale;
+        const drawH = srcH * scale;
+        const dx = (width - drawW) / 2;
+        const dy = (height - drawH) / 2;
+        ctx.drawImage(fallbackImg, 0, 0, srcW, srcH, dx, dy, drawW, drawH);
+        if (!didEmitFirstFrame) {
+          didEmitFirstFrame = true;
+          resolveFirstFrame(true);
+        }
       };
       fallbackImg.src = src;
     });
 
-  return () => {
-    playbackState.stop();
-    if (activeGifPlayback === playbackState) {
-      activeGifPlayback = null;
-    }
+  window.setTimeout(() => {
+    if (didEmitFirstFrame) return;
+    didEmitFirstFrame = true;
+    resolveFirstFrame(false);
+  }, 1000);
+
+  return {
+    stop: () => {
+      playbackState.stop();
+      if (activeGifPlayback === playbackState) {
+        activeGifPlayback = null;
+      }
+    },
+    firstFramePromise
   };
 }
 
@@ -245,9 +286,10 @@ function prepareToGifCanvas(sectionIdx, itemIdx, src, width = 320, height = 320)
   canvas.className = 'spa-hero-gif spa-hero-gif-canvas';
   canvas.width = width;
   canvas.height = height;
-  startGifHeroPlayback({ canvas, src, width, height, playbackKey: `prepared:${key}` });
+  const playback = startGifHeroPlayback({ canvas, src, width, height, playbackKey: `prepared:${key}` });
   preparedToGifCanvas = canvas;
   preparedToGifKey = key;
+  preparedToGifReadyPromise = playback?.firstFramePromise || Promise.resolve(false);
   return canvas;
 }
 
@@ -399,6 +441,14 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
 async function buildHeroSurface(sectionIdx, itemIdx, phase) {
   const hero = getHeroSpec(sectionIdx, itemIdx);
   const shouldForceLiveGifFromCapture = phase === 'from' && isGifHeroSpec(hero);
+  if (
+    phase === 'to' &&
+    isGifHeroSpec(hero) &&
+    preparedToGifKey === getHeroSurfaceKey(sectionIdx, itemIdx) &&
+    preparedToGifReadyPromise
+  ) {
+    await preparedToGifReadyPromise;
+  }
 
   if (phase === 'from') {
     const requestedSurfaceKey = getHeroSurfaceKey(sectionIdx, itemIdx);
@@ -474,8 +524,8 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
         ? options.preparedGifCanvas
         : document.createElement('canvas');
       gifCanvas.className = 'spa-hero-gif spa-hero-gif-canvas';
-      gifCanvas.width = 320;
-      gifCanvas.height = 320;
+      if (gifCanvas.width !== 320) gifCanvas.width = 320;
+      if (gifCanvas.height !== 320) gifCanvas.height = 320;
       gifCanvas.setAttribute('role', 'img');
       gifCanvas.setAttribute('aria-label', item.label);
       if (options.gifWarmupSurface instanceof window.HTMLCanvasElement && !(options.preparedGifCanvas instanceof window.HTMLCanvasElement)) {
@@ -670,6 +720,7 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
     currentItemIdx = nextItemIdx;
     preparedToGifCanvas = null;
     preparedToGifKey = null;
+    preparedToGifReadyPromise = null;
     if (didTransition && !didRenderDuringReveal) {
       renderHeroDOM(currentSectionIdx, currentItemIdx);
       updateSectionNav(currentSectionIdx);
