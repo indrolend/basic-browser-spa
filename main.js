@@ -178,8 +178,12 @@ function startGifHeroPlayback({ canvas, src, width = 320, height = 320, playback
   stopActiveGifHeroPlayback();
 
   let disposed = false;
-  canvas.width = width;
-  canvas.height = height;
+  if (canvas.width !== width) {
+    canvas.width = width;
+  }
+  if (canvas.height !== height) {
+    canvas.height = height;
+  }
 
   const playbackState = {
     playbackKey,
