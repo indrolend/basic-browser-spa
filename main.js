@@ -313,8 +313,11 @@ function alignTransitionCanvas(transitionCanvas, fromSurface, toSurface) {
   const heroContainer = document.getElementById('spa-hero-container');
   if (!root || !heroContainer) return;
 
-  const stageWidth = Math.max(fromSurface?.width || 0, toSurface?.width || 0, 1);
-  const stageHeight = Math.max(fromSurface?.height || 0, toSurface?.height || 0, 1);
+  const STAGE_PADDING_PX = 72;
+  const baseStageWidth = Math.max(fromSurface?.width || 0, toSurface?.width || 0, 1);
+  const baseStageHeight = Math.max(fromSurface?.height || 0, toSurface?.height || 0, 1);
+  const stageWidth = baseStageWidth + (STAGE_PADDING_PX * 2);
+  const stageHeight = baseStageHeight + (STAGE_PADDING_PX * 2);
 
   transitionCanvas.width = stageWidth;
   transitionCanvas.height = stageHeight;
