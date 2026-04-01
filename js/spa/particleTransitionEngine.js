@@ -19,10 +19,11 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
   const width = ctx.canvas.width;
   const height = ctx.canvas.height;
   const PARTICLE_COUNT = Math.floor((Math.max(fromRegion.width, toRegion.width) * Math.max(fromRegion.height, toRegion.height)) / (PARTICLE_SIZE * PARTICLE_SIZE));
-  const EXPLODE_DURATION = 260;
-  const REFORM_DURATION = 420;
+  const timingProfile = options.timingProfile === 'chained' ? 'chained' : 'default';
+  const EXPLODE_DURATION = timingProfile === 'chained' ? 180 : 260;
+  const REFORM_DURATION = timingProfile === 'chained' ? 280 : 420;
   const TOTAL_DURATION = EXPLODE_DURATION + REFORM_DURATION;
-  const EXPLODE_RADIUS = Math.min(width, height) * 0.4;
+  const EXPLODE_RADIUS = Math.min(width, height) * (timingProfile === 'chained' ? 0.34 : 0.4);
   const particles = [];
 
   // Helper: sample canvas pixels into particle positions/colors, centered
