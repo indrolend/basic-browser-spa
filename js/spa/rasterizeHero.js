@@ -52,6 +52,28 @@ function wrapTextLines(ctx, text, maxWidth, letterSpacingPx) {
   return lines;
 }
 
+function copyComputedStyle(sourceEl, targetEl) {
+  const computed = window.getComputedStyle(sourceEl);
+  for (let i = 0; i < computed.length; i += 1) {
+    const prop = computed[i];
+    targetEl.style.setProperty(prop, computed.getPropertyValue(prop), computed.getPropertyPriority(prop));
+  }
+}
+
+function inlineComputedStyles(sourceEl, cloneEl) {
+  copyComputedStyle(sourceEl, cloneEl);
+  const sourceChildren = sourceEl.children;
+  const cloneChildren = cloneEl.children;
+  const childCount = Math.min(sourceChildren.length, cloneChildren.length);
+  for (let i = 0; i < childCount; i += 1) {
+    const sourceChild = sourceChildren[i];
+    const cloneChild = cloneChildren[i];
+    if (sourceChild instanceof window.HTMLElement && cloneChild instanceof window.HTMLElement) {
+      inlineComputedStyles(sourceChild, cloneChild);
+    }
+  }
+}
+
 function drawTextElementViaSvg(ctx, canvas, textEl, onDone, onError) {
   const rect = textEl.getBoundingClientRect();
   const width = Math.max(1, Math.ceil(rect.width));
@@ -63,6 +85,7 @@ function drawTextElementViaSvg(ctx, canvas, textEl, onDone, onError) {
     return;
   }
 
+  inlineComputedStyles(textEl, clone);
   clone.style.margin = '0';
   clone.style.width = `${width}px`;
 
@@ -73,7 +96,7 @@ function drawTextElementViaSvg(ctx, canvas, textEl, onDone, onError) {
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
       <foreignObject x="0" y="0" width="100%" height="100%">
-        <div xmlns="http://www.w3.org/1999/xhtml" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;">${escaped}</div>
+        <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;">${escaped}</div>
       </foreignObject>
     </svg>
   `;
@@ -116,7 +139,7 @@ function drawTextElement(ctx, canvas, textEl) {
 }
 
 // Utility: Crop a canvas to its non-transparent bounding box
-function cropToContent(canvas) {
+function cropToContent(canvas, padding = 0) {
   const ctx = canvas.getContext('2d');
   const { width, height } = canvas;
   const imgData = ctx.getImageData(0, 0, width, height);
@@ -137,15 +160,20 @@ function cropToContent(canvas) {
   }
   if (!found) {
     // No visible content, return original
-    return { canvas, offsetX: 0, offsetY: 0, width, height };
+    return { canvas, offsetX: 0, offsetY: 0, width, height, hasVisibleContent: false };
   }
-  const cropW = maxX - minX + 1;
-  const cropH = maxY - minY + 1;
+  const extra = Math.max(0, Math.floor(padding));
+  const paddedMinX = Math.max(0, minX - extra);
+  const paddedMinY = Math.max(0, minY - extra);
+  const paddedMaxX = Math.min(width - 1, maxX + extra);
+  const paddedMaxY = Math.min(height - 1, maxY + extra);
+  const cropW = paddedMaxX - paddedMinX + 1;
+  const cropH = paddedMaxY - paddedMinY + 1;
   const cropped = document.createElement('canvas');
   cropped.width = cropW;
   cropped.height = cropH;
-  cropped.getContext('2d').drawImage(canvas, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
-  return { canvas: cropped, offsetX: minX, offsetY: minY, width: cropW, height: cropH };
+  cropped.getContext('2d').drawImage(canvas, paddedMinX, paddedMinY, cropW, cropH, 0, 0, cropW, cropH);
+  return { canvas: cropped, offsetX: paddedMinX, offsetY: paddedMinY, width: cropW, height: cropH, hasVisibleContent: true };
 }
 
 /**
@@ -161,8 +189,14 @@ export function rasterizeHero(hero) {
     canvas.height = HERO_CANVAS_HEIGHT;
     const ctx = canvas.getContext('2d');
 
-    function finish() {
-      const cropped = cropToContent(canvas);
+    function finish({ padding = 0, debugLabel = '' } = {}) {
+      const cropped = cropToContent(canvas, padding);
+      if (debugLabel) {
+        console.debug(
+          `[rasterizeHero] ${debugLabel} visible=${cropped.hasVisibleContent} ` +
+          `size=${cropped.width}x${cropped.height} offset=(${cropped.offsetX},${cropped.offsetY})`
+        );
+      }
       resolve(cropped);
     }
 
@@ -207,10 +241,14 @@ export function rasterizeHero(hero) {
         ctx,
         canvas,
         textEl,
-        finish,
         () => {
+          console.debug('[rasterizeHero] textElement SVG rasterization succeeded');
+          finish({ padding: 14, debugLabel: 'textElement(svg)' });
+        },
+        () => {
+          console.debug('[rasterizeHero] textElement SVG rasterization failed; using canvas fallback');
           drawTextElement(ctx, canvas, textEl);
-          finish();
+          finish({ padding: 14, debugLabel: 'textElement(fallback)' });
         }
       );
     } else if (hero.type === 'text') {

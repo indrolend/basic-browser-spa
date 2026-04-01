@@ -102,7 +102,6 @@ function createTextProbe(text) {
   const probeHero = document.createElement('div');
   probeHero.className = 'spa-hero';
   probeHero.style.position = 'absolute';
-  probeHero.style.visibility = 'hidden';
   probeHero.style.pointerEvents = 'none';
   probeHero.style.margin = '0';
   probeHero.style.left = '-9999px';
