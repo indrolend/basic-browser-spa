@@ -57,6 +57,7 @@ let currentHeroSurfaceFrameId = null;
 let currentHeroSurfaceTrackingKey = null;
 let lastDesktopNavInputAt = 0;
 let activeGifPlayback = null;
+let giflerLoaderPromise = null;
 
 const DESKTOP_CHAIN_WINDOW_MS = 260;
 
@@ -148,50 +149,74 @@ function isGifHeroSpec(hero) {
 
 function stopActiveGifHeroPlayback() {
   if (!activeGifPlayback) return;
-  if (activeGifPlayback.rafId !== null) {
-    window.cancelAnimationFrame(activeGifPlayback.rafId);
+  if (typeof activeGifPlayback.stop === 'function') {
+    activeGifPlayback.stop();
   }
   activeGifPlayback = null;
+}
+
+function loadGifler() {
+  if (typeof window.gifler === 'function') return Promise.resolve(window.gifler);
+  if (giflerLoaderPromise) return giflerLoaderPromise;
+
+  giflerLoaderPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/gifler@0.1.0/gifler.min.js';
+    script.async = true;
+    script.onload = () => {
+      if (typeof window.gifler === 'function') resolve(window.gifler);
+      else reject(new Error('gifler loaded but window.gifler is unavailable'));
+    };
+    script.onerror = () => reject(new Error('Failed to load gifler'));
+    document.head.appendChild(script);
+  });
+
+  return giflerLoaderPromise;
 }
 
 function startGifHeroPlayback({ canvas, src, width = 320, height = 320, playbackKey }) {
   stopActiveGifHeroPlayback();
 
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
+  let disposed = false;
+  canvas.width = width;
+  canvas.height = height;
 
-  const feedImg = new window.Image();
-  feedImg.decoding = 'async';
-  let rafId = null;
-  let isActive = true;
-
-  const drawFrame = () => {
-    if (!isActive) return;
-    if (feedImg.complete && feedImg.naturalWidth && feedImg.naturalHeight) {
-      ctx.clearRect(0, 0, width, height);
-      ctx.drawImage(feedImg, 0, 0, feedImg.naturalWidth, feedImg.naturalHeight, 0, 0, width, height);
-    }
-    rafId = window.requestAnimationFrame(drawFrame);
-    activeGifPlayback = { rafId, canvas, playbackKey };
+  const playbackState = {
+    playbackKey,
+    stop: () => {
+      disposed = true;
+      if (typeof playbackState.animator?.stop === 'function') {
+        playbackState.animator.stop();
+      }
+    },
+    animator: null
   };
+  activeGifPlayback = playbackState;
 
-  feedImg.onload = () => {
-    console.debug(`[gifPlayback] started key=${playbackKey} src=${src}`);
-    drawFrame();
-  };
-  feedImg.onerror = () => {
-    console.warn(`[gifPlayback] failed to load src=${src}`);
-  };
-  feedImg.src = src;
-
-  activeGifPlayback = { rafId, canvas, playbackKey };
+  loadGifler()
+    .then((gifler) => {
+      if (disposed || activeGifPlayback !== playbackState) return;
+      const animator = gifler(src).animate(canvas);
+      playbackState.animator = animator;
+      console.debug(`[gifPlayback] started key=${playbackKey} src=${src} via gifler`);
+    })
+    .catch((err) => {
+      console.warn(`[gifPlayback] failed key=${playbackKey} src=${src}: ${err?.message || err}`);
+      if (disposed || activeGifPlayback !== playbackState) return;
+      const fallbackImg = new window.Image();
+      fallbackImg.onload = () => {
+        if (disposed || activeGifPlayback !== playbackState) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(fallbackImg, 0, 0, fallbackImg.naturalWidth, fallbackImg.naturalHeight, 0, 0, width, height);
+      };
+      fallbackImg.src = src;
+    });
 
   return () => {
-    isActive = false;
-    if (rafId !== null) {
-      window.cancelAnimationFrame(rafId);
-    }
-    if (activeGifPlayback?.playbackKey === playbackKey) {
+    playbackState.stop();
+    if (activeGifPlayback === playbackState) {
       activeGifPlayback = null;
     }
   };
