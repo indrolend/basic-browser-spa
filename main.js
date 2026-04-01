@@ -307,12 +307,34 @@ function setupItemNav() {
   navBar.appendChild(nextBtn);
 }
 
+function alignTransitionCanvas(transitionCanvas, fromSurface, toSurface) {
+  const root = document.getElementById('spa-root');
+  const hero = document.querySelector('#spa-hero-container .spa-hero');
+  const heroContainer = document.getElementById('spa-hero-container');
+  if (!root || !heroContainer) return;
+
+  const stageWidth = Math.max(fromSurface?.width || 0, toSurface?.width || 0, 1);
+  const stageHeight = Math.max(fromSurface?.height || 0, toSurface?.height || 0, 1);
+
+  transitionCanvas.width = stageWidth;
+  transitionCanvas.height = stageHeight;
+
+  const rootRect = root.getBoundingClientRect();
+  const anchorRect = (hero || heroContainer).getBoundingClientRect();
+  const centerX = anchorRect.left - rootRect.left + (anchorRect.width / 2);
+  const centerY = anchorRect.top - rootRect.top + (anchorRect.height / 2);
+
+  transitionCanvas.style.left = `${centerX}px`;
+  transitionCanvas.style.top = `${centerY}px`;
+}
+
 import { rasterizeHero } from './js/spa/rasterizeHero.js';
 import { transition } from './js/spa/particleTransitionEngine.js';
 
 async function runHeroTransition(fromSurface, toSurface, transitionOptions = {}) {
   const heroContainer = document.getElementById('spa-hero-container');
   const transitionCanvas = document.getElementById('transition-canvas');
+  alignTransitionCanvas(transitionCanvas, fromSurface, toSurface);
   const ctx = transitionCanvas.getContext('2d');
 
   heroContainer.style.visibility = 'hidden';

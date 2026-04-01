@@ -7,11 +7,11 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="spa-root" style="position:relative;">
+  <div id="spa-root">
     <div id="spa-hero-container"></div>
-    <canvas id="transition-canvas" width="320" height="320" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100;"></canvas>
+    <canvas id="transition-canvas" width="320" height="320" style="display:none;position:absolute;z-index:100;pointer-events:none;"></canvas>
+    <div id="spa-item-nav"></div>
   </div>
-  <div id="spa-item-nav"></div>
   <script type="module" src="main.js"></script>
 </body>
 </html>
