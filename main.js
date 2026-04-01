@@ -125,7 +125,7 @@ function createTextProbe(text) {
   probeHero.appendChild(probeText);
   container.appendChild(probeHero);
 
-  return { element: probeHero, cleanup: () => probeHero.remove() };
+  return { element: probeText, cleanup: () => probeHero.remove() };
 }
 
 async function rasterizeWithCleanup(input) {
@@ -231,10 +231,10 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
 
   if (hero.kind === 'text') {
     const container = document.getElementById('spa-hero-container');
-    const liveHeroEl = container?.querySelector('.spa-hero');
+    const liveTextEl = container?.querySelector('.spa-hero-text');
 
-    if (phase === 'from' && liveHeroEl instanceof window.HTMLElement) {
-      return { type: 'textElement', element: liveHeroEl };
+    if (phase === 'from' && liveTextEl instanceof window.HTMLElement) {
+      return { type: 'textElement', element: liveTextEl };
     }
 
     const probe = createTextProbe(hero.text);

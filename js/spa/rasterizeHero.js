@@ -52,6 +52,28 @@ function wrapTextLines(ctx, text, maxWidth, letterSpacingPx) {
   return lines;
 }
 
+function copyComputedStyle(sourceEl, targetEl) {
+  const computed = window.getComputedStyle(sourceEl);
+  for (let i = 0; i < computed.length; i += 1) {
+    const prop = computed[i];
+    targetEl.style.setProperty(prop, computed.getPropertyValue(prop), computed.getPropertyPriority(prop));
+  }
+}
+
+function inlineComputedStyles(sourceEl, cloneEl) {
+  copyComputedStyle(sourceEl, cloneEl);
+  const sourceChildren = sourceEl.children;
+  const cloneChildren = cloneEl.children;
+  const childCount = Math.min(sourceChildren.length, cloneChildren.length);
+  for (let i = 0; i < childCount; i += 1) {
+    const sourceChild = sourceChildren[i];
+    const cloneChild = cloneChildren[i];
+    if (sourceChild instanceof window.HTMLElement && cloneChild instanceof window.HTMLElement) {
+      inlineComputedStyles(sourceChild, cloneChild);
+    }
+  }
+}
+
 function drawTextElementViaSvg(ctx, canvas, textEl, onDone, onError) {
   const rect = textEl.getBoundingClientRect();
   const width = Math.max(1, Math.ceil(rect.width));
@@ -63,6 +85,7 @@ function drawTextElementViaSvg(ctx, canvas, textEl, onDone, onError) {
     return;
   }
 
+  inlineComputedStyles(textEl, clone);
   clone.style.margin = '0';
   clone.style.width = `${width}px`;
 
@@ -116,7 +139,7 @@ function drawTextElement(ctx, canvas, textEl) {
 }
 
 // Utility: Crop a canvas to its non-transparent bounding box
-function cropToContent(canvas) {
+function cropToContent(canvas, padding = 0) {
   const ctx = canvas.getContext('2d');
   const { width, height } = canvas;
   const imgData = ctx.getImageData(0, 0, width, height);
@@ -139,13 +162,18 @@ function cropToContent(canvas) {
     // No visible content, return original
     return { canvas, offsetX: 0, offsetY: 0, width, height };
   }
-  const cropW = maxX - minX + 1;
-  const cropH = maxY - minY + 1;
+  const extra = Math.max(0, Math.floor(padding));
+  const paddedMinX = Math.max(0, minX - extra);
+  const paddedMinY = Math.max(0, minY - extra);
+  const paddedMaxX = Math.min(width - 1, maxX + extra);
+  const paddedMaxY = Math.min(height - 1, maxY + extra);
+  const cropW = paddedMaxX - paddedMinX + 1;
+  const cropH = paddedMaxY - paddedMinY + 1;
   const cropped = document.createElement('canvas');
   cropped.width = cropW;
   cropped.height = cropH;
-  cropped.getContext('2d').drawImage(canvas, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
-  return { canvas: cropped, offsetX: minX, offsetY: minY, width: cropW, height: cropH };
+  cropped.getContext('2d').drawImage(canvas, paddedMinX, paddedMinY, cropW, cropH, 0, 0, cropW, cropH);
+  return { canvas: cropped, offsetX: paddedMinX, offsetY: paddedMinY, width: cropW, height: cropH };
 }
 
 /**
@@ -161,12 +189,8 @@ export function rasterizeHero(hero) {
     canvas.height = HERO_CANVAS_HEIGHT;
     const ctx = canvas.getContext('2d');
 
-    function finish(mode = 'crop') {
-      if (mode === 'preserve') {
-        resolve({ canvas, offsetX: 0, offsetY: 0, width: canvas.width, height: canvas.height });
-        return;
-      }
-      const cropped = cropToContent(canvas);
+    function finish({ padding = 0 } = {}) {
+      const cropped = cropToContent(canvas, padding);
       resolve(cropped);
     }
 
@@ -211,10 +235,10 @@ export function rasterizeHero(hero) {
         ctx,
         canvas,
         textEl,
-        () => finish('preserve'),
+        () => finish({ padding: 14 }),
         () => {
           drawTextElement(ctx, canvas, textEl);
-          finish('preserve');
+          finish({ padding: 14 });
         }
       );
     } else if (hero.type === 'text') {
