@@ -58,6 +58,8 @@ let currentHeroSurfaceTrackingKey = null;
 let lastDesktopNavInputAt = 0;
 let activeGifPlayback = null;
 let giflerLoaderPromise = null;
+let preparedToGifCanvas = null;
+let preparedToGifKey = null;
 
 const DESKTOP_CHAIN_WINDOW_MS = 260;
 
@@ -226,30 +228,27 @@ function startGifHeroPlayback({ canvas, src, width = 320, height = 320, playback
   };
 }
 
-function prewarmGifFirstFrame(src, width = 320, height = 320) {
-  return loadGifler().then((gifler) => new Promise((resolve) => {
-    const warmCanvas = document.createElement('canvas');
-    warmCanvas.width = width;
-    warmCanvas.height = height;
-    let resolved = false;
-    const animator = gifler(src).animate(warmCanvas, (ctx, frame) => {
-      if (!frame?.buffer) return;
-      ctx.clearRect(0, 0, width, height);
-      ctx.drawImage(frame.buffer, frame.x, frame.y);
-      if (!resolved) {
-        resolved = true;
-        animator?.stop?.();
-        resolve(warmCanvas);
-      }
-    });
+function getPreparedToGifCanvas(sectionIdx, itemIdx) {
+  const key = getHeroSurfaceKey(sectionIdx, itemIdx);
+  if (preparedToGifKey === key && preparedToGifCanvas instanceof window.HTMLCanvasElement) {
+    return preparedToGifCanvas;
+  }
+  return null;
+}
 
-    window.setTimeout(() => {
-      if (resolved) return;
-      resolved = true;
-      animator?.stop?.();
-      resolve(null);
-    }, 800);
-  }));
+function prepareToGifCanvas(sectionIdx, itemIdx, src, width = 320, height = 320) {
+  const key = getHeroSurfaceKey(sectionIdx, itemIdx);
+  const existing = getPreparedToGifCanvas(sectionIdx, itemIdx);
+  if (existing) return existing;
+
+  const canvas = document.createElement('canvas');
+  canvas.className = 'spa-hero-gif spa-hero-gif-canvas';
+  canvas.width = width;
+  canvas.height = height;
+  startGifHeroPlayback({ canvas, src, width, height, playbackKey: `prepared:${key}` });
+  preparedToGifCanvas = canvas;
+  preparedToGifKey = key;
+  return canvas;
 }
 
 async function refreshCurrentHeroSurface(sectionIdx, itemIdx) {
@@ -380,6 +379,14 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
     }
   }
 
+  if (phase === 'to' && isGifHeroSpec(hero)) {
+    const preparedCanvas = getPreparedToGifCanvas(sectionIdx, itemIdx);
+    if (preparedCanvas) {
+      console.debug('[heroCapture] to GIF uses prepared live canvas surface');
+      return { type: 'element', element: preparedCanvas };
+    }
+  }
+
   console.debug(`[heroCapture] image fallback uses src rasterization src=${hero.src} phase=${phase}`);
   return { type: 'gif', src: hero.src };
 }
@@ -454,20 +461,24 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
   const item = SPA_SECTIONS[sectionIdx].items[itemIdx];
   const heroSpec = getHeroSpec(sectionIdx, itemIdx);
 
-  stopActiveGifHeroPlayback();
+  if (!options.preserveActiveGifPlayback) {
+    stopActiveGifHeroPlayback();
+  }
   heroContainer.innerHTML = '';
   const hero = document.createElement('div');
   hero.className = 'spa-hero';
 
   if (heroSpec?.kind === 'image') {
     if (isGifHeroSpec(heroSpec)) {
-      const gifCanvas = document.createElement('canvas');
+      const gifCanvas = options.preparedGifCanvas instanceof window.HTMLCanvasElement
+        ? options.preparedGifCanvas
+        : document.createElement('canvas');
       gifCanvas.className = 'spa-hero-gif spa-hero-gif-canvas';
       gifCanvas.width = 320;
       gifCanvas.height = 320;
       gifCanvas.setAttribute('role', 'img');
       gifCanvas.setAttribute('aria-label', item.label);
-      if (options.gifWarmupSurface instanceof window.HTMLCanvasElement) {
+      if (options.gifWarmupSurface instanceof window.HTMLCanvasElement && !(options.preparedGifCanvas instanceof window.HTMLCanvasElement)) {
         const warmCtx = gifCanvas.getContext('2d');
         if (warmCtx) {
           warmCtx.clearRect(0, 0, gifCanvas.width, gifCanvas.height);
@@ -476,13 +487,15 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
         }
       }
       hero.appendChild(gifCanvas);
-      startGifHeroPlayback({
-        canvas: gifCanvas,
-        src: heroSpec.src,
-        width: 320,
-        height: 320,
-        playbackKey: getHeroSurfaceKey(sectionIdx, itemIdx)
-      });
+      if (!(options.preparedGifCanvas instanceof window.HTMLCanvasElement)) {
+        startGifHeroPlayback({
+          canvas: gifCanvas,
+          src: heroSpec.src,
+          width: 320,
+          height: 320,
+          playbackKey: getHeroSurfaceKey(sectionIdx, itemIdx)
+        });
+      }
     } else {
       const img = document.createElement('img');
       img.className = 'spa-hero-image';
@@ -619,9 +632,9 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
     const fromSectionIdx = currentSectionIdx;
     const fromItemIdx = currentItemIdx;
     const nextHeroSpec = getHeroSpec(nextSectionIdx, nextItemIdx);
-    const toGifWarmupPromise = isGifHeroSpec(nextHeroSpec)
-      ? prewarmGifFirstFrame(nextHeroSpec.src).catch(() => null)
-      : Promise.resolve(null);
+    const preparedTargetCanvas = isGifHeroSpec(nextHeroSpec)
+      ? prepareToGifCanvas(nextSectionIdx, nextItemIdx, nextHeroSpec.src)
+      : null;
 
     let didTransition = false;
     let didRenderDuringReveal = false;
@@ -639,8 +652,10 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
         await runHeroTransition(fromSurface, toSurface, {
           ...(navOptions.transitionOptions || {}),
           onBeforeReveal: async () => {
-            const warmSurface = await toGifWarmupPromise;
-            renderHeroDOM(nextSectionIdx, nextItemIdx, { gifWarmupSurface: warmSurface });
+            renderHeroDOM(nextSectionIdx, nextItemIdx, {
+              preparedGifCanvas: preparedTargetCanvas,
+              preserveActiveGifPlayback: !!preparedTargetCanvas
+            });
             updateSectionNav(nextSectionIdx);
             didRenderDuringReveal = true;
           }
@@ -653,6 +668,8 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
 
     currentSectionIdx = nextSectionIdx;
     currentItemIdx = nextItemIdx;
+    preparedToGifCanvas = null;
+    preparedToGifKey = null;
     if (didTransition && !didRenderDuringReveal) {
       renderHeroDOM(currentSectionIdx, currentItemIdx);
       updateSectionNav(currentSectionIdx);
