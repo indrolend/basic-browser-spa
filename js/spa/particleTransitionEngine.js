@@ -19,8 +19,8 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
   const width = ctx.canvas.width;
   const height = ctx.canvas.height;
   const PARTICLE_COUNT = Math.floor((Math.max(fromRegion.width, toRegion.width) * Math.max(fromRegion.height, toRegion.height)) / (PARTICLE_SIZE * PARTICLE_SIZE));
-  const EXPLODE_DURATION = 400;
-  const REFORM_DURATION = 600;
+  const EXPLODE_DURATION = 260;
+  const REFORM_DURATION = 420;
   const TOTAL_DURATION = EXPLODE_DURATION + REFORM_DURATION;
   const EXPLODE_RADIUS = Math.min(width, height) * 0.4;
   const particles = [];
@@ -59,6 +59,33 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
     return arr;
   }
 
+
+  function parseRgba(color) {
+    const match = /rgba\((\d+),(\d+),(\d+),([0-9.]+)\)/.exec(color);
+    if (!match) return [255, 255, 255, 1];
+    return [
+      Number(match[1]),
+      Number(match[2]),
+      Number(match[3]),
+      Number(match[4])
+    ];
+  }
+
+  function lerpColor(from, to, t) {
+    const p = Math.max(0, Math.min(1, t));
+    const r = Math.round(from[0] + (to[0] - from[0]) * p);
+    const g = Math.round(from[1] + (to[1] - from[1]) * p);
+    const b = Math.round(from[2] + (to[2] - from[2]) * p);
+    const a = from[3] + (to[3] - from[3]) * p;
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  function easeOutBack(t) {
+    const p = Math.max(0, Math.min(1, t));
+    const s = 1.1;
+    const u = p - 1;
+    return 1 + (s + 1) * u * u * u + s * u * u;
+  }
   function sampleByCoverage(list, count) {
     if (!list.length || count <= 0) return [];
 
@@ -95,8 +122,8 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
     const ex = start.x + Math.cos(angle) * radius;
     const ey = start.y + Math.sin(angle) * radius;
     particles.push({
-      x0: start.x, y0: start.y, color0: start.color,
-      x1: end.x, y1: end.y, color1: end.color,
+      x0: start.x, y0: start.y, color0: start.color, c0: parseRgba(start.color),
+      x1: end.x, y1: end.y, color1: end.color, c1: parseRgba(end.color),
       ex, ey
     });
   }
@@ -119,10 +146,11 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
       requestAnimationFrame(animate);
     } else if (t < TOTAL_DURATION) {
       const p = (t - EXPLODE_DURATION) / REFORM_DURATION;
+      const moveP = easeOutBack(p);
       for (const pt of particles) {
-        const x = pt.ex + (pt.x1 - pt.ex) * p;
-        const y = pt.ey + (pt.y1 - pt.ey) * p;
-        ctx.fillStyle = p < 0.5 ? pt.color0 : pt.color1;
+        const x = pt.ex + (pt.x1 - pt.ex) * moveP;
+        const y = pt.ey + (pt.y1 - pt.ey) * moveP;
+        ctx.fillStyle = lerpColor(pt.c0, pt.c1, p);
         ctx.beginPath();
         ctx.arc(x, y, PARTICLE_SIZE/2, 0, Math.PI*2);
         ctx.fill();
