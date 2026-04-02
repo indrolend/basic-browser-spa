@@ -36,6 +36,16 @@ function getFallbackTextCanvas(text) {
   return canvas;
 }
 
+function getSizedMediaCanvas(mediaEl) {
+  const rect = mediaEl.getBoundingClientRect();
+  const width = Math.max(1, Math.ceil(rect.width || 0));
+  const height = Math.max(1, Math.ceil(rect.height || 0));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  return canvas;
+}
+
 
 
 function parsePixelValue(value, fallback = 0) {
@@ -220,6 +230,8 @@ export function rasterizeHero(hero) {
       ? getSizedTextCanvas(hero.element)
       : hero.type === 'text'
         ? getFallbackTextCanvas(hero.text)
+        : hero.type === 'element' && hero.element instanceof window.HTMLElement
+          ? getSizedMediaCanvas(hero.element)
         : document.createElement('canvas');
     if (!canvas.width) canvas.width = HERO_CANVAS_WIDTH;
     if (!canvas.height) canvas.height = HERO_CANVAS_HEIGHT;
