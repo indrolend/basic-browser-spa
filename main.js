@@ -581,8 +581,13 @@ function alignTransitionCanvas(transitionCanvas, fromSurface, toSurface) {
   transitionCanvas.style.top = `${centerY}px`;
 }
 
-function getTransitionRegion(surface) {
+function getTransitionRegion(surface, phase) {
   if (!surface) return surface;
+
+  // Keep TO-media literal so the final reformed target matches the resting hero.
+  if (phase === 'to' && surface.surfaceKind === 'media') {
+    return surface;
+  }
 
   const footprintWidth = Math.round(surface.transitionFootprintWidth || 0);
   const footprintHeight = Math.round(surface.transitionFootprintHeight || 0);
@@ -628,8 +633,8 @@ async function runHeroTransition(fromSurface, toSurface, transitionOptions = {})
   const heroContainer = document.getElementById('spa-hero-container');
   const transitionCanvas = document.getElementById('transition-canvas');
   const { onBeforeReveal, ...engineOptions } = transitionOptions || {};
-  const fromRegion = getTransitionRegion(fromSurface);
-  const toRegion = getTransitionRegion(toSurface);
+  const fromRegion = getTransitionRegion(fromSurface, 'from');
+  const toRegion = getTransitionRegion(toSurface, 'to');
 
   alignTransitionCanvas(transitionCanvas, fromRegion, toRegion);
   const ctx = transitionCanvas.getContext('2d');
