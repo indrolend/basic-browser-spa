@@ -622,9 +622,41 @@ function alignTransitionCanvas(transitionCanvas, fromSurface, toSurface) {
 function getTransitionRegion(surface, phase) {
   if (!surface) return surface;
 
-  // Keep TO-media literal so the final reformed target matches the resting hero.
+  // For TO-media, transition region should match the displayed hero frame size.
+  // Keep cropped content, but center it inside the full display-sized region.
   if (phase === 'to' && surface.surfaceKind === 'media') {
-    return surface;
+    const frameWidth = Math.max(
+      1,
+      Math.round(surface.sourceCanvasWidth || 0),
+      Math.round(surface.transitionFootprintWidth || 0),
+      Math.round(surface.width || 0)
+    );
+    const frameHeight = Math.max(
+      1,
+      Math.round(surface.sourceCanvasHeight || 0),
+      Math.round(surface.transitionFootprintHeight || 0),
+      Math.round(surface.height || 0)
+    );
+
+    const framedCanvas = document.createElement('canvas');
+    framedCanvas.width = frameWidth;
+    framedCanvas.height = frameHeight;
+    const frameCtx = framedCanvas.getContext('2d');
+    if (!frameCtx) return surface;
+
+    frameCtx.clearRect(0, 0, frameWidth, frameHeight);
+    const srcWidth = Math.max(1, surface.width || 1);
+    const srcHeight = Math.max(1, surface.height || 1);
+    const dx = (frameWidth - srcWidth) / 2;
+    const dy = (frameHeight - srcHeight) / 2;
+    frameCtx.drawImage(surface.canvas, 0, 0, srcWidth, srcHeight, dx, dy, srcWidth, srcHeight);
+
+    return {
+      ...surface,
+      canvas: framedCanvas,
+      width: frameWidth,
+      height: frameHeight
+    };
   }
 
   const footprintWidth = Math.round(surface.transitionFootprintWidth || 0);
