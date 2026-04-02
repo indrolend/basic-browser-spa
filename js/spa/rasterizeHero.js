@@ -169,7 +169,7 @@ function drawTextElement(ctx, canvas, textEl) {
 }
 
 // Utility: Crop a canvas to its non-transparent bounding box
-export function cropToContent(canvas, padding = 0) {
+function cropToContent(canvas, padding = 0) {
   const ctx = canvas.getContext('2d');
   const { width, height } = canvas;
   const imgData = ctx.getImageData(0, 0, width, height);
@@ -219,8 +219,8 @@ export function rasterizeHero(hero) {
       : hero.type === 'text'
         ? getFallbackTextCanvas(hero.text)
         : document.createElement('canvas');
-    if (!canvas.width) canvas.width = HERO_CANVAS_WIDTH;
-    if (!canvas.height) canvas.height = HERO_CANVAS_HEIGHT;
+    if (canvas.width < HERO_CANVAS_WIDTH) canvas.width = HERO_CANVAS_WIDTH;
+    if (canvas.height < HERO_CANVAS_HEIGHT) canvas.height = HERO_CANVAS_HEIGHT;
     const ctx = canvas.getContext('2d');
 
     function finish({ padding = 0, debugLabel = '' } = {}) {
@@ -248,44 +248,7 @@ export function rasterizeHero(hero) {
       console.debug(`[rasterizeHero] branch=gif src=${hero.src}`);
       const img = new window.Image();
       img.onload = function() {
-        const natW = img.naturalWidth;
-        const natH = img.naturalHeight;
-        // Draw at natural size into a temporary canvas to detect actual content bounds.
-        // The GIF logical screen is larger than the visible logo due to transparent
-        // padding (e.g., 250×250 logical for a ~163×163 logo).  Using the logical
-        // dimensions to scale would produce a logo at ~1.28× while gifler's playback
-        // scales the delta frame (~163×163) to fill the 320×320 canvas at ~1.96×.
-        // Cropping to content bounds and then scaling those bounds to fit the raster
-        // canvas mirrors exactly what gifler does, ensuring the particle TO target
-        // matches the final DOM hero size and position with no visible snap.
-        const tmpCanvas = document.createElement('canvas');
-        tmpCanvas.width = natW;
-        tmpCanvas.height = natH;
-        tmpCanvas.getContext('2d').drawImage(img, 0, 0, natW, natH);
-        const bounds = cropToContent(tmpCanvas, 0);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if (bounds.hasVisibleContent && bounds.width > 0 && bounds.height > 0) {
-          const scale = Math.min(canvas.width / bounds.width, canvas.height / bounds.height);
-          const drawW = bounds.width * scale;
-          const drawH = bounds.height * scale;
-          const dx = (canvas.width - drawW) / 2;
-          const dy = (canvas.height - drawH) / 2;
-          ctx.drawImage(tmpCanvas, bounds.offsetX, bounds.offsetY, bounds.width, bounds.height, dx, dy, drawW, drawH);
-          console.debug(
-            `[rasterizeHero] gif logical=${natW}x${natH} ` +
-            `content=${bounds.width}x${bounds.height}@(${bounds.offsetX},${bounds.offsetY}) ` +
-            `scale=${scale.toFixed(3)} drawn=${drawW.toFixed(0)}x${drawH.toFixed(0)} ` +
-            `offset=(${dx.toFixed(0)},${dy.toFixed(0)})`
-          );
-        } else {
-          // No visible content in the first frame; fall back to scaling the full logical frame.
-          const scale = Math.min(canvas.width / natW, canvas.height / natH);
-          const drawW = natW * scale;
-          const drawH = natH * scale;
-          ctx.drawImage(img, (canvas.width - drawW) / 2, (canvas.height - drawH) / 2, drawW, drawH);
-          console.debug(`[rasterizeHero] gif no visible content; fallback logical=${natW}x${natH}`);
-        }
-        finish({ debugLabel: 'gif(surface)' });
+        drawCenteredImage(img);
       };
       img.onerror = function() {
         reject(new Error('Failed to load GIF'));
