@@ -4,8 +4,6 @@
 const HERO_CANVAS_WIDTH = 320;
 const HERO_CANVAS_HEIGHT = 320;
 const TEXT_RASTER_CANVAS_PADDING = 32;
-// Fallback for the CSS --panel variable used as .spa-hero-gif background.
-const GIF_CANVAS_BACKGROUND_FALLBACK = '#222';
 
 function getSizedTextCanvas(textEl) {
   const rect = textEl.getBoundingClientRect();
@@ -237,12 +235,8 @@ export function rasterizeHero(hero) {
     }
 
 
-    function drawCenteredImage(img, sourceWidth = img.width, sourceHeight = img.height, canvasFill = null) {
+    function drawCenteredImage(img, sourceWidth = img.width, sourceHeight = img.height) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (canvasFill !== null) {
-        ctx.fillStyle = canvasFill;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
       const scale = Math.min(canvas.width / sourceWidth, canvas.height / sourceHeight);
       const w = sourceWidth * scale;
       const h = sourceHeight * scale;
@@ -254,14 +248,44 @@ export function rasterizeHero(hero) {
       console.debug(`[rasterizeHero] branch=gif src=${hero.src}`);
       const img = new window.Image();
       img.onload = function() {
-        // Fill with the hero canvas CSS background so the TO surface matches
-        // the full 320×320 visual footprint of the .spa-hero-gif element at rest
-        // (which shows background: var(--panel) around the logo).
-        // Without this, particles only form at opaque logo pixels (~180px), but
-        // the hero element appears as a 320px dark box — causing the visible
-        // size mismatch on recombination.
-        const panelBg = (window.getComputedStyle(document.documentElement).getPropertyValue('--panel') || '').trim() || GIF_CANVAS_BACKGROUND_FALLBACK;
-        drawCenteredImage(img, img.width, img.height, panelBg);
+        const natW = img.naturalWidth;
+        const natH = img.naturalHeight;
+        // Draw at natural size into a temporary canvas to detect actual content bounds.
+        // The GIF logical screen is larger than the visible logo due to transparent
+        // padding (e.g., 250×250 logical for a ~163×163 logo).  Using the logical
+        // dimensions to scale would produce a logo at ~1.28× while gifler's playback
+        // scales the delta frame (~163×163) to fill the 320×320 canvas at ~1.96×.
+        // Cropping to content bounds and then scaling those bounds to fit the raster
+        // canvas mirrors exactly what gifler does, ensuring the particle TO target
+        // matches the final DOM hero size and position with no visible snap.
+        const tmpCanvas = document.createElement('canvas');
+        tmpCanvas.width = natW;
+        tmpCanvas.height = natH;
+        tmpCanvas.getContext('2d').drawImage(img, 0, 0, natW, natH);
+        const bounds = cropToContent(tmpCanvas, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (bounds.hasVisibleContent && bounds.width > 0 && bounds.height > 0) {
+          const scale = Math.min(canvas.width / bounds.width, canvas.height / bounds.height);
+          const drawW = bounds.width * scale;
+          const drawH = bounds.height * scale;
+          const dx = (canvas.width - drawW) / 2;
+          const dy = (canvas.height - drawH) / 2;
+          ctx.drawImage(tmpCanvas, bounds.offsetX, bounds.offsetY, bounds.width, bounds.height, dx, dy, drawW, drawH);
+          console.debug(
+            `[rasterizeHero] gif logical=${natW}x${natH} ` +
+            `content=${bounds.width}x${bounds.height}@(${bounds.offsetX},${bounds.offsetY}) ` +
+            `scale=${scale.toFixed(3)} drawn=${drawW.toFixed(0)}x${drawH.toFixed(0)} ` +
+            `offset=(${dx.toFixed(0)},${dy.toFixed(0)})`
+          );
+        } else {
+          // No visible content in the first frame; fall back to scaling the full logical frame.
+          const scale = Math.min(canvas.width / natW, canvas.height / natH);
+          const drawW = natW * scale;
+          const drawH = natH * scale;
+          ctx.drawImage(img, (canvas.width - drawW) / 2, (canvas.height - drawH) / 2, drawW, drawH);
+          console.debug(`[rasterizeHero] gif no visible content; fallback logical=${natW}x${natH}`);
+        }
+        finish();
       };
       img.onerror = function() {
         reject(new Error('Failed to load GIF'));
