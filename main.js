@@ -581,6 +581,46 @@ function alignTransitionCanvas(transitionCanvas, fromSurface, toSurface) {
   transitionCanvas.style.top = `${centerY}px`;
 }
 
+function getTransitionRegion(surface) {
+  if (!surface) return surface;
+
+  const footprintWidth = Math.round(surface.transitionFootprintWidth || 0);
+  const footprintHeight = Math.round(surface.transitionFootprintHeight || 0);
+  const usesMediaFootprint =
+    surface.surfaceKind === 'media' &&
+    footprintWidth > 0 &&
+    footprintHeight > 0;
+
+  if (!usesMediaFootprint) {
+    return surface;
+  }
+
+  const frameWidth = Math.max(surface.width || 1, footprintWidth);
+  const frameHeight = Math.max(surface.height || 1, footprintHeight);
+  const framedCanvas = document.createElement('canvas');
+  framedCanvas.width = frameWidth;
+  framedCanvas.height = frameHeight;
+  const frameCtx = framedCanvas.getContext('2d');
+  if (!frameCtx) return surface;
+
+  frameCtx.clearRect(0, 0, frameWidth, frameHeight);
+  const srcWidth = Math.max(1, surface.width || 1);
+  const srcHeight = Math.max(1, surface.height || 1);
+  const scale = Math.min(frameWidth / srcWidth, frameHeight / srcHeight);
+  const drawWidth = srcWidth * scale;
+  const drawHeight = srcHeight * scale;
+  const dx = (frameWidth - drawWidth) / 2;
+  const dy = (frameHeight - drawHeight) / 2;
+  frameCtx.drawImage(surface.canvas, 0, 0, srcWidth, srcHeight, dx, dy, drawWidth, drawHeight);
+
+  return {
+    ...surface,
+    canvas: framedCanvas,
+    width: frameWidth,
+    height: frameHeight
+  };
+}
+
 import { rasterizeHero } from './js/spa/rasterizeHero.js';
 import { transition } from './js/spa/particleTransitionEngine.js';
 
@@ -588,7 +628,10 @@ async function runHeroTransition(fromSurface, toSurface, transitionOptions = {})
   const heroContainer = document.getElementById('spa-hero-container');
   const transitionCanvas = document.getElementById('transition-canvas');
   const { onBeforeReveal, ...engineOptions } = transitionOptions || {};
-  alignTransitionCanvas(transitionCanvas, fromSurface, toSurface);
+  const fromRegion = getTransitionRegion(fromSurface);
+  const toRegion = getTransitionRegion(toSurface);
+
+  alignTransitionCanvas(transitionCanvas, fromRegion, toRegion);
   const ctx = transitionCanvas.getContext('2d');
 
   heroContainer.style.visibility = 'hidden';
@@ -602,18 +645,19 @@ async function runHeroTransition(fromSurface, toSurface, transitionOptions = {})
   function centerDraw(context, src, region) {
     const dx = (transitionCanvas.width - region.width) / 2;
     const dy = (transitionCanvas.height - region.height) / 2;
-    context.drawImage(region.canvas, 0, 0, region.width, region.height, dx, dy, region.width, region.height);
+    const drawSource = region?.canvas || src;
+    context.drawImage(drawSource, 0, 0, region.width, region.height, dx, dy, region.width, region.height);
   }
 
   try {
     await new Promise((resolve) => {
       transition(
-        fromSurface.canvas,
-        toSurface.canvas,
+        fromRegion.canvas,
+        toRegion.canvas,
         {
           ctx,
-          fromRegion: fromSurface,
-          toRegion: toSurface,
+          fromRegion,
+          toRegion,
           centerDraw,
           ...engineOptions
         },

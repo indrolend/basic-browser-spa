@@ -223,7 +223,7 @@ export function rasterizeHero(hero) {
     if (!canvas.height) canvas.height = HERO_CANVAS_HEIGHT;
     const ctx = canvas.getContext('2d');
 
-    function finish({ padding = 0, debugLabel = '' } = {}) {
+    function finish({ padding = 0, debugLabel = '', surfaceKind = 'media', transitionFootprintWidth = null, transitionFootprintHeight = null } = {}) {
       const cropped = cropToContent(canvas, padding);
       if (debugLabel) {
         console.debug(
@@ -231,7 +231,14 @@ export function rasterizeHero(hero) {
           `size=${cropped.width}x${cropped.height} offset=(${cropped.offsetX},${cropped.offsetY})`
         );
       }
-      resolve(cropped);
+      resolve({
+        ...cropped,
+        surfaceKind,
+        sourceCanvasWidth: canvas.width,
+        sourceCanvasHeight: canvas.height,
+        transitionFootprintWidth: Number.isFinite(transitionFootprintWidth) ? transitionFootprintWidth : null,
+        transitionFootprintHeight: Number.isFinite(transitionFootprintHeight) ? transitionFootprintHeight : null
+      });
     }
 
 
@@ -241,7 +248,11 @@ export function rasterizeHero(hero) {
       const w = sourceWidth * scale;
       const h = sourceHeight * scale;
       ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
-      finish();
+      finish({
+        surfaceKind: 'media',
+        transitionFootprintWidth: canvas.width,
+        transitionFootprintHeight: canvas.height
+      });
     }
 
     if (hero.type === 'gif') {
@@ -297,12 +308,12 @@ export function rasterizeHero(hero) {
         textEl,
         () => {
           console.debug('[rasterizeHero] textElement SVG rasterization succeeded');
-          finish({ padding: 14, debugLabel: 'textElement(svg)' });
+          finish({ padding: 14, debugLabel: 'textElement(svg)', surfaceKind: 'text' });
         },
         () => {
           console.debug('[rasterizeHero] textElement SVG rasterization failed; using canvas fallback');
           drawTextElement(ctx, canvas, textEl);
-          finish({ padding: 14, debugLabel: 'textElement(fallback)' });
+          finish({ padding: 14, debugLabel: 'textElement(fallback)', surfaceKind: 'text' });
         }
       );
     } else if (hero.type === 'text') {
@@ -312,7 +323,7 @@ export function rasterizeHero(hero) {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(hero.text, canvas.width / 2, canvas.height / 2);
-      finish();
+      finish({ surfaceKind: 'text' });
     } else {
       reject(new Error('Unknown hero type'));
     }
