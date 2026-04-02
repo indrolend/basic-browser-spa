@@ -3,8 +3,38 @@
 
 const HERO_CANVAS_WIDTH = 320;
 const HERO_CANVAS_HEIGHT = 320;
+const TEXT_RASTER_CANVAS_PADDING = 32;
 
+function getSizedTextCanvas(textEl) {
+  const rect = textEl.getBoundingClientRect();
+  const width = Math.max(
+    HERO_CANVAS_WIDTH,
+    Math.ceil(rect.width || 0) + (TEXT_RASTER_CANVAS_PADDING * 2)
+  );
+  const height = Math.max(
+    HERO_CANVAS_HEIGHT,
+    Math.ceil(rect.height || 0) + (TEXT_RASTER_CANVAS_PADDING * 2)
+  );
 
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  return canvas;
+}
+
+function getFallbackTextCanvas(text) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const fontSizePx = 40;
+  ctx.font = `700 ${fontSizePx}px SF Mono, Menlo, Monaco, Consolas, monospace`;
+  const measuredWidth = ctx.measureText(text || '').width;
+  canvas.width = Math.max(
+    HERO_CANVAS_WIDTH,
+    Math.ceil(measuredWidth) + (TEXT_RASTER_CANVAS_PADDING * 2)
+  );
+  canvas.height = HERO_CANVAS_HEIGHT;
+  return canvas;
+}
 
 function parsePixelValue(value, fallback = 0) {
   const parsed = Number.parseFloat(value || '');
@@ -184,9 +214,13 @@ function cropToContent(canvas, padding = 0) {
  */
 export function rasterizeHero(hero) {
   return new Promise((resolve, reject) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = HERO_CANVAS_WIDTH;
-    canvas.height = HERO_CANVAS_HEIGHT;
+    const canvas = hero.type === 'textElement' && hero.element instanceof window.HTMLElement
+      ? getSizedTextCanvas(hero.element)
+      : hero.type === 'text'
+        ? getFallbackTextCanvas(hero.text)
+        : document.createElement('canvas');
+    if (!canvas.width) canvas.width = HERO_CANVAS_WIDTH;
+    if (!canvas.height) canvas.height = HERO_CANVAS_HEIGHT;
     const ctx = canvas.getContext('2d');
 
     function finish({ padding = 0, debugLabel = '' } = {}) {
