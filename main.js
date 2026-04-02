@@ -275,26 +275,6 @@ function prepareToGifCanvas(sectionIdx, itemIdx, src, width = 320, height = 320)
   return canvas;
 }
 
-function hasPreparedGifFrame(sectionIdx, itemIdx) {
-  const preparedPlaybackKey = `prepared:${getHeroSurfaceKey(sectionIdx, itemIdx)}`;
-  return (
-    activeGifPlayback?.playbackKey === preparedPlaybackKey &&
-    !!activeGifPlayback?.hasPaintedFrame
-  );
-}
-
-async function waitForPreparedGifFrame(sectionIdx, itemIdx, timeoutMs = 140) {
-  if (hasPreparedGifFrame(sectionIdx, itemIdx)) return true;
-  if (!(getPreparedToGifCanvas(sectionIdx, itemIdx) instanceof window.HTMLCanvasElement)) return false;
-
-  const start = performance.now();
-  while (performance.now() - start < timeoutMs) {
-    await new Promise((resolve) => window.requestAnimationFrame(resolve));
-    if (hasPreparedGifFrame(sectionIdx, itemIdx)) return true;
-  }
-  return hasPreparedGifFrame(sectionIdx, itemIdx);
-}
-
 async function refreshCurrentHeroSurface(sectionIdx, itemIdx) {
   const surfaceKey = getHeroSurfaceKey(sectionIdx, itemIdx);
 
@@ -423,14 +403,6 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
     }
   }
 
-  if (phase === 'to' && isGifHeroSpec(hero)) {
-    const preparedGifCanvas = getPreparedToGifCanvas(sectionIdx, itemIdx);
-    if (preparedGifCanvas instanceof window.HTMLCanvasElement && hasPreparedGifFrame(sectionIdx, itemIdx)) {
-      console.debug('[heroCapture] to GIF uses prepared playback canvas surface');
-      return { type: 'element', element: preparedGifCanvas };
-    }
-  }
-
   console.debug(`[heroCapture] image fallback uses src rasterization src=${hero.src} phase=${phase}`);
   return { type: 'gif', src: hero.src };
 }
@@ -462,18 +434,8 @@ async function buildHeroSurface(sectionIdx, itemIdx, phase) {
     }
   }
 
-  let input = buildHeroRenderInput(sectionIdx, itemIdx, phase);
+  const input = buildHeroRenderInput(sectionIdx, itemIdx, phase);
   if (!input) throw new Error(`Missing hero render input for phase "${phase}"`);
-
-  if (phase === 'to' && input.type === 'gif' && isGifHeroSpec(hero)) {
-    const didPaintPreparedFrame = await waitForPreparedGifFrame(sectionIdx, itemIdx);
-    if (didPaintPreparedFrame) {
-      const preparedInput = buildHeroRenderInput(sectionIdx, itemIdx, phase);
-      if (preparedInput?.type === 'element') {
-        input = preparedInput;
-      }
-    }
-  }
 
   if (phase === 'from' && input.type === 'element') {
     const fallbackInput = buildHeroRenderInput(sectionIdx, itemIdx, 'to');
@@ -619,83 +581,6 @@ function alignTransitionCanvas(transitionCanvas, fromSurface, toSurface) {
   transitionCanvas.style.top = `${centerY}px`;
 }
 
-function getTransitionRegion(surface, phase) {
-  if (!surface) return surface;
-
-  // For TO-media, transition region should match the displayed hero frame size.
-  // Keep cropped content, but center it inside the full display-sized region.
-  if (phase === 'to' && surface.surfaceKind === 'media') {
-    const frameWidth = Math.max(
-      1,
-      Math.round(surface.sourceCanvasWidth || 0),
-      Math.round(surface.transitionFootprintWidth || 0),
-      Math.round(surface.width || 0)
-    );
-    const frameHeight = Math.max(
-      1,
-      Math.round(surface.sourceCanvasHeight || 0),
-      Math.round(surface.transitionFootprintHeight || 0),
-      Math.round(surface.height || 0)
-    );
-
-    const framedCanvas = document.createElement('canvas');
-    framedCanvas.width = frameWidth;
-    framedCanvas.height = frameHeight;
-    const frameCtx = framedCanvas.getContext('2d');
-    if (!frameCtx) return surface;
-
-    frameCtx.clearRect(0, 0, frameWidth, frameHeight);
-    const srcWidth = Math.max(1, surface.width || 1);
-    const srcHeight = Math.max(1, surface.height || 1);
-    const dx = (frameWidth - srcWidth) / 2;
-    const dy = (frameHeight - srcHeight) / 2;
-    frameCtx.drawImage(surface.canvas, 0, 0, srcWidth, srcHeight, dx, dy, srcWidth, srcHeight);
-
-    return {
-      ...surface,
-      canvas: framedCanvas,
-      width: frameWidth,
-      height: frameHeight
-    };
-  }
-
-  const footprintWidth = Math.round(surface.transitionFootprintWidth || 0);
-  const footprintHeight = Math.round(surface.transitionFootprintHeight || 0);
-  const usesMediaFootprint =
-    surface.surfaceKind === 'media' &&
-    footprintWidth > 0 &&
-    footprintHeight > 0;
-
-  if (!usesMediaFootprint) {
-    return surface;
-  }
-
-  const frameWidth = Math.max(surface.width || 1, footprintWidth);
-  const frameHeight = Math.max(surface.height || 1, footprintHeight);
-  const framedCanvas = document.createElement('canvas');
-  framedCanvas.width = frameWidth;
-  framedCanvas.height = frameHeight;
-  const frameCtx = framedCanvas.getContext('2d');
-  if (!frameCtx) return surface;
-
-  frameCtx.clearRect(0, 0, frameWidth, frameHeight);
-  const srcWidth = Math.max(1, surface.width || 1);
-  const srcHeight = Math.max(1, surface.height || 1);
-  const scale = Math.min(frameWidth / srcWidth, frameHeight / srcHeight);
-  const drawWidth = srcWidth * scale;
-  const drawHeight = srcHeight * scale;
-  const dx = (frameWidth - drawWidth) / 2;
-  const dy = (frameHeight - drawHeight) / 2;
-  frameCtx.drawImage(surface.canvas, 0, 0, srcWidth, srcHeight, dx, dy, drawWidth, drawHeight);
-
-  return {
-    ...surface,
-    canvas: framedCanvas,
-    width: frameWidth,
-    height: frameHeight
-  };
-}
-
 import { rasterizeHero } from './js/spa/rasterizeHero.js';
 import { transition } from './js/spa/particleTransitionEngine.js';
 
@@ -703,10 +588,7 @@ async function runHeroTransition(fromSurface, toSurface, transitionOptions = {})
   const heroContainer = document.getElementById('spa-hero-container');
   const transitionCanvas = document.getElementById('transition-canvas');
   const { onBeforeReveal, ...engineOptions } = transitionOptions || {};
-  const fromRegion = getTransitionRegion(fromSurface, 'from');
-  const toRegion = getTransitionRegion(toSurface, 'to');
-
-  alignTransitionCanvas(transitionCanvas, fromRegion, toRegion);
+  alignTransitionCanvas(transitionCanvas, fromSurface, toSurface);
   const ctx = transitionCanvas.getContext('2d');
 
   heroContainer.style.visibility = 'hidden';
@@ -717,15 +599,22 @@ async function runHeroTransition(fromSurface, toSurface, transitionOptions = {})
   transitionCanvas.style.transition = '';
   ctx.clearRect(0, 0, transitionCanvas.width, transitionCanvas.height);
 
+  function centerDraw(context, src, region) {
+    const dx = (transitionCanvas.width - region.width) / 2;
+    const dy = (transitionCanvas.height - region.height) / 2;
+    context.drawImage(region.canvas, 0, 0, region.width, region.height, dx, dy, region.width, region.height);
+  }
+
   try {
     await new Promise((resolve) => {
       transition(
-        fromRegion.canvas,
-        toRegion.canvas,
+        fromSurface.canvas,
+        toSurface.canvas,
         {
           ctx,
-          fromRegion,
-          toRegion,
+          fromRegion: fromSurface,
+          toRegion: toSurface,
+          centerDraw,
           ...engineOptions
         },
         resolve
