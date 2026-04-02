@@ -592,6 +592,8 @@ async function runHeroTransition(fromSurface, toSurface, transitionOptions = {})
   const ctx = transitionCanvas.getContext('2d');
 
   heroContainer.style.visibility = 'hidden';
+  heroContainer.style.opacity = '0';
+  heroContainer.style.transition = '';
   transitionCanvas.style.display = 'block';
   transitionCanvas.style.opacity = '1';
   transitionCanvas.style.transition = '';
@@ -623,12 +625,16 @@ async function runHeroTransition(fromSurface, toSurface, transitionOptions = {})
       await onBeforeReveal();
     }
     heroContainer.style.visibility = 'visible';
-    transitionCanvas.style.transition = `opacity ${REVEAL_HANDOFF_FADE_MS}ms linear`;
+    heroContainer.style.transition = `opacity ${REVEAL_HANDOFF_FADE_MS}ms ease-out`;
+    transitionCanvas.style.transition = `opacity ${REVEAL_HANDOFF_FADE_MS}ms ease-in`;
+    await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    heroContainer.style.opacity = '1';
     transitionCanvas.style.opacity = '0';
     await new Promise((resolve) => window.setTimeout(resolve, REVEAL_HANDOFF_FADE_MS));
     transitionCanvas.style.display = 'none';
     transitionCanvas.style.opacity = '1';
     transitionCanvas.style.transition = '';
+    heroContainer.style.transition = '';
   }
 }
 
