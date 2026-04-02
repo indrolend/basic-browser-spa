@@ -169,7 +169,7 @@ function drawTextElement(ctx, canvas, textEl) {
 }
 
 // Utility: Crop a canvas to its non-transparent bounding box
-function cropToContent(canvas, padding = 0) {
+export function cropToContent(canvas, padding = 0) {
   const ctx = canvas.getContext('2d');
   const { width, height } = canvas;
   const imgData = ctx.getImageData(0, 0, width, height);
@@ -285,7 +285,7 @@ export function rasterizeHero(hero) {
           ctx.drawImage(img, (canvas.width - drawW) / 2, (canvas.height - drawH) / 2, drawW, drawH);
           console.debug(`[rasterizeHero] gif no visible content; fallback logical=${natW}x${natH}`);
         }
-        finish();
+        finish({ debugLabel: 'gif(surface)' });
       };
       img.onerror = function() {
         reject(new Error('Failed to load GIF'));

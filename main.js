@@ -215,6 +215,33 @@ function startGifHeroPlayback({ canvas, src, width = 320, height = 320, playback
         const dy = (height - drawH) / 2;
         ctx.clearRect(0, 0, width, height);
         ctx.drawImage(frame.buffer, 0, 0, srcW, srcH, dx, dy, drawW, drawH);
+        if (!playbackState.hasPaintedFrame) {
+          // INSTRUMENTATION: log the exact dimensions gifler uses to scale this GIF.
+          // frame.width  = Image Descriptor width (may be delta-frame subrect, e.g. 163)
+          // frame.buffer.width = composited logical-screen width (full screen, e.g. 250)
+          // srcW = what the code actually uses: frame.width if truthy, else buffer.width
+          console.debug(
+            `[gifPlayback] INSTRUMENT first-frame key=${playbackKey} ` +
+            `frame.width=${frame.width} frame.height=${frame.height} ` +
+            `buffer.width=${frame.buffer.width} buffer.height=${frame.buffer.height} ` +
+            `srcW=${srcW} srcH=${srcH} ` +
+            `scale=${scale.toFixed(3)} drawW=${drawW.toFixed(0)} drawH=${drawH.toFixed(0)} ` +
+            `dx=${dx.toFixed(0)} dy=${dy.toFixed(0)}`
+          );
+          // After the draw call settles, measure the actual visible content bounds
+          // of the painted canvas. This is the "resting state" footprint that the
+          // TO raster surface must match for a seamless morph handoff.
+          window.requestAnimationFrame(() => {
+            if (disposed || activeGifPlayback !== playbackState) return;
+            const bounds = cropToContent(canvas, 0);
+            console.debug(
+              `[gifPlayback] INSTRUMENT canvas-content key=${playbackKey} ` +
+              `canvas=${canvas.width}x${canvas.height} ` +
+              `visible=${bounds.hasVisibleContent} ` +
+              `content=${bounds.width}x${bounds.height}@(${bounds.offsetX},${bounds.offsetY})`
+            );
+          });
+        }
         playbackState.hasPaintedFrame = true;
       });
       playbackState.animator = animator;
@@ -581,7 +608,7 @@ function alignTransitionCanvas(transitionCanvas, fromSurface, toSurface) {
   transitionCanvas.style.top = `${centerY}px`;
 }
 
-import { rasterizeHero } from './js/spa/rasterizeHero.js';
+import { rasterizeHero, cropToContent } from './js/spa/rasterizeHero.js';
 import { transition } from './js/spa/particleTransitionEngine.js';
 
 async function runHeroTransition(fromSurface, toSurface, transitionOptions = {}) {
@@ -677,6 +704,32 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
         buildHeroSurface(nextSectionIdx, nextItemIdx, 'to')
       ]);
 
+      // INSTRUMENTATION: compare the surfaces the particle engine will use.
+      // from-surface: content bounds captured from the live gifler canvas (or text)
+      // to-surface:   content bounds from rasterizeHero (crop-then-scale for gif)
+      // These must match for the morph to feel seamless.
+      console.debug(
+        `[heroCapture] INSTRUMENT from-surface: ` +
+        `${fromSurface?.width}x${fromSurface?.height}@(${fromSurface?.offsetX},${fromSurface?.offsetY}) ` +
+        `canvas=${fromSurface?.canvas?.width}x${fromSurface?.canvas?.height}`
+      );
+      console.debug(
+        `[heroCapture] INSTRUMENT to-surface: ` +
+        `${toSurface?.width}x${toSurface?.height}@(${toSurface?.offsetX},${toSurface?.offsetY}) ` +
+        `canvas=${toSurface?.canvas?.width}x${toSurface?.canvas?.height}`
+      );
+      // Also measure the prepared GIF canvas (which has been playing via gifler during
+      // the transition build phase), giving us the "resting state" footprint of the TO hero.
+      if (preparedTargetCanvas instanceof window.HTMLCanvasElement) {
+        const prepBounds = cropToContent(preparedTargetCanvas, 0);
+        console.debug(
+          `[heroCapture] INSTRUMENT prepared-gif-canvas: ` +
+          `canvas=${preparedTargetCanvas.width}x${preparedTargetCanvas.height} ` +
+          `visible=${prepBounds.hasVisibleContent} ` +
+          `content=${prepBounds.width}x${prepBounds.height}@(${prepBounds.offsetX},${prepBounds.offsetY})`
+        );
+      }
+
       if (fromSurface && toSurface) {
         await runHeroTransition(fromSurface, toSurface, {
           ...(navOptions.transitionOptions || {}),
@@ -692,6 +745,43 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
             });
             updateSectionNav(nextSectionIdx);
             didRenderDuringReveal = true;
+            // INSTRUMENTATION: measure the actual DOM hero canvas that will be revealed.
+            // getBoundingClientRect() gives the on-screen element size.
+            // cropToContent gives the visible content bounds within that canvas.
+            // These should match the to-surface bounds above for a seamless handoff.
+            const heroContainer = document.getElementById('spa-hero-container');
+            const heroGifCanvas = heroContainer?.querySelector('.spa-hero-gif-canvas');
+            if (heroGifCanvas instanceof window.HTMLCanvasElement) {
+              const rect = heroGifCanvas.getBoundingClientRect();
+              console.debug(
+                `[heroCapture] INSTRUMENT dom-hero getBoundingClientRect: ${rect.width}x${rect.height} ` +
+                `canvas-px=${heroGifCanvas.width}x${heroGifCanvas.height}`
+              );
+              // Schedule after at least one gifler frame paints (if canvas just started)
+              window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
+                  const bounds = cropToContent(heroGifCanvas, 0);
+                  console.debug(
+                    `[heroCapture] INSTRUMENT dom-hero content-bounds: ` +
+                    `visible=${bounds.hasVisibleContent} ` +
+                    `content=${bounds.width}x${bounds.height}@(${bounds.offsetX},${bounds.offsetY})`
+                  );
+                  // KEY COMPARISON: to-surface vs DOM hero content bounds
+                  if (toSurface) {
+                    const wDiff = Math.abs(toSurface.width - bounds.width);
+                    const hDiff = Math.abs(toSurface.height - bounds.height);
+                    const oxDiff = Math.abs(toSurface.offsetX - bounds.offsetX);
+                    const oyDiff = Math.abs(toSurface.offsetY - bounds.offsetY);
+                    console.debug(
+                      `[heroCapture] INSTRUMENT MISMATCH? ` +
+                      `to-surface=${toSurface.width}x${toSurface.height}@(${toSurface.offsetX},${toSurface.offsetY}) ` +
+                      `dom-hero=${bounds.width}x${bounds.height}@(${bounds.offsetX},${bounds.offsetY}) ` +
+                      `delta-w=${wDiff} delta-h=${hDiff} delta-ox=${oxDiff} delta-oy=${oyDiff}`
+                    );
+                  }
+                });
+              });
+            }
           }
         });
         didTransition = true;
