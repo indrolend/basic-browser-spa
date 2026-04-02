@@ -201,16 +201,17 @@ export function rasterizeHero(hero) {
     }
 
 
-    function drawCenteredImage(img) {
+    function drawCenteredImage(img, sourceWidth = img.width, sourceHeight = img.height) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
-      const w = img.width * scale;
-      const h = img.height * scale;
+      const scale = Math.min(canvas.width / sourceWidth, canvas.height / sourceHeight);
+      const w = sourceWidth * scale;
+      const h = sourceHeight * scale;
       ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
       finish();
     }
 
     if (hero.type === 'gif') {
+      console.debug(`[rasterizeHero] branch=gif src=${hero.src}`);
       const img = new window.Image();
       img.onload = function() {
         drawCenteredImage(img);
@@ -220,16 +221,35 @@ export function rasterizeHero(hero) {
       };
       img.src = hero.src;
     } else if (hero.type === 'element') {
-      const imgEl = hero.element;
+      const sourceEl = hero.element;
+      if (sourceEl instanceof window.HTMLCanvasElement) {
+        const srcW = sourceEl.width;
+        const srcH = sourceEl.height;
+        if (!srcW || !srcH) {
+          reject(new Error('Canvas element not ready'));
+          return;
+        }
+        console.debug(`[rasterizeHero] branch=element live=true canvas=${srcW}x${srcH}`);
+        drawCenteredImage(sourceEl, srcW, srcH);
+        return;
+      }
+
+      const imgEl = sourceEl;
       if (!(imgEl instanceof window.HTMLImageElement)) {
         reject(new Error('Invalid image element'));
         return;
       }
+      const src = imgEl.currentSrc || imgEl.src || '';
+      const isGifSource = /\.gif(?:[?#]|$)/i.test(src);
+      console.debug(
+        `[rasterizeHero] branch=element live=true gif=${isGifSource} complete=${imgEl.complete} natural=${imgEl.naturalWidth}x${imgEl.naturalHeight}`
+      );
       if (!imgEl.complete || !imgEl.naturalWidth || !imgEl.naturalHeight) {
         reject(new Error('Image element not ready'));
         return;
       }
       drawCenteredImage(imgEl);
+      console.debug(`[rasterizeHero] element capture drawn src=${src}`);
     } else if (hero.type === 'textElement') {
       const textEl = hero.element;
       if (!(textEl instanceof window.HTMLElement)) {
