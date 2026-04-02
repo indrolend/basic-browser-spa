@@ -62,6 +62,7 @@ let preparedToGifCanvas = null;
 let preparedToGifKey = null;
 
 const DESKTOP_CHAIN_WINDOW_MS = 260;
+const REVEAL_HANDOFF_FADE_MS = 70;
 
 function isSameTarget(a, b) {
   return !!a && !!b && a.sectionIdx === b.sectionIdx && a.itemIdx === b.itemIdx;
@@ -592,6 +593,8 @@ async function runHeroTransition(fromSurface, toSurface, transitionOptions = {})
 
   heroContainer.style.visibility = 'hidden';
   transitionCanvas.style.display = 'block';
+  transitionCanvas.style.opacity = '1';
+  transitionCanvas.style.transition = '';
   ctx.clearRect(0, 0, transitionCanvas.width, transitionCanvas.height);
 
   function centerDraw(context, src, region) {
@@ -619,8 +622,13 @@ async function runHeroTransition(fromSurface, toSurface, transitionOptions = {})
     if (typeof onBeforeReveal === 'function') {
       await onBeforeReveal();
     }
-    transitionCanvas.style.display = 'none';
     heroContainer.style.visibility = 'visible';
+    transitionCanvas.style.transition = `opacity ${REVEAL_HANDOFF_FADE_MS}ms linear`;
+    transitionCanvas.style.opacity = '0';
+    await new Promise((resolve) => window.setTimeout(resolve, REVEAL_HANDOFF_FADE_MS));
+    transitionCanvas.style.display = 'none';
+    transitionCanvas.style.opacity = '1';
+    transitionCanvas.style.transition = '';
   }
 }
 
