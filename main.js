@@ -717,13 +717,6 @@ async function runHeroTransition(fromSurface, toSurface, transitionOptions = {})
   transitionCanvas.style.transition = '';
   ctx.clearRect(0, 0, transitionCanvas.width, transitionCanvas.height);
 
-  function centerDraw(context, src, region) {
-    const dx = (transitionCanvas.width - region.width) / 2;
-    const dy = (transitionCanvas.height - region.height) / 2;
-    const drawSource = region?.canvas || src;
-    context.drawImage(drawSource, 0, 0, region.width, region.height, dx, dy, region.width, region.height);
-  }
-
   try {
     await new Promise((resolve) => {
       transition(
@@ -733,7 +726,6 @@ async function runHeroTransition(fromSurface, toSurface, transitionOptions = {})
           ctx,
           fromRegion,
           toRegion,
-          centerDraw,
           ...engineOptions
         },
         resolve
