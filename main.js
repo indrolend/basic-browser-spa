@@ -275,6 +275,26 @@ function prepareToGifCanvas(sectionIdx, itemIdx, src, width = 320, height = 320)
   return canvas;
 }
 
+function hasPreparedGifFrame(sectionIdx, itemIdx) {
+  const preparedPlaybackKey = `prepared:${getHeroSurfaceKey(sectionIdx, itemIdx)}`;
+  return (
+    activeGifPlayback?.playbackKey === preparedPlaybackKey &&
+    !!activeGifPlayback?.hasPaintedFrame
+  );
+}
+
+async function waitForPreparedGifFrame(sectionIdx, itemIdx, timeoutMs = 140) {
+  if (hasPreparedGifFrame(sectionIdx, itemIdx)) return true;
+  if (!(getPreparedToGifCanvas(sectionIdx, itemIdx) instanceof window.HTMLCanvasElement)) return false;
+
+  const start = performance.now();
+  while (performance.now() - start < timeoutMs) {
+    await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    if (hasPreparedGifFrame(sectionIdx, itemIdx)) return true;
+  }
+  return hasPreparedGifFrame(sectionIdx, itemIdx);
+}
+
 async function refreshCurrentHeroSurface(sectionIdx, itemIdx) {
   const surfaceKey = getHeroSurfaceKey(sectionIdx, itemIdx);
 
@@ -403,6 +423,14 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
     }
   }
 
+  if (phase === 'to' && isGifHeroSpec(hero)) {
+    const preparedGifCanvas = getPreparedToGifCanvas(sectionIdx, itemIdx);
+    if (preparedGifCanvas instanceof window.HTMLCanvasElement && hasPreparedGifFrame(sectionIdx, itemIdx)) {
+      console.debug('[heroCapture] to GIF uses prepared playback canvas surface');
+      return { type: 'element', element: preparedGifCanvas };
+    }
+  }
+
   console.debug(`[heroCapture] image fallback uses src rasterization src=${hero.src} phase=${phase}`);
   return { type: 'gif', src: hero.src };
 }
@@ -434,8 +462,18 @@ async function buildHeroSurface(sectionIdx, itemIdx, phase) {
     }
   }
 
-  const input = buildHeroRenderInput(sectionIdx, itemIdx, phase);
+  let input = buildHeroRenderInput(sectionIdx, itemIdx, phase);
   if (!input) throw new Error(`Missing hero render input for phase "${phase}"`);
+
+  if (phase === 'to' && input.type === 'gif' && isGifHeroSpec(hero)) {
+    const didPaintPreparedFrame = await waitForPreparedGifFrame(sectionIdx, itemIdx);
+    if (didPaintPreparedFrame) {
+      const preparedInput = buildHeroRenderInput(sectionIdx, itemIdx, phase);
+      if (preparedInput?.type === 'element') {
+        input = preparedInput;
+      }
+    }
+  }
 
   if (phase === 'from' && input.type === 'element') {
     const fallbackInput = buildHeroRenderInput(sectionIdx, itemIdx, 'to');
