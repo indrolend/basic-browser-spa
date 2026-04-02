@@ -36,6 +36,18 @@ function getFallbackTextCanvas(text) {
   return canvas;
 }
 
+function getSizedMediaCanvas(mediaEl) {
+  const rect = mediaEl.getBoundingClientRect();
+  const width = Math.max(1, Math.ceil(rect.width || 0));
+  const height = Math.max(1, Math.ceil(rect.height || 0));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  return canvas;
+}
+
+
+
 function parsePixelValue(value, fallback = 0) {
   const parsed = Number.parseFloat(value || '');
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -218,13 +230,24 @@ export function rasterizeHero(hero) {
       ? getSizedTextCanvas(hero.element)
       : hero.type === 'text'
         ? getFallbackTextCanvas(hero.text)
+        : hero.type === 'element' && hero.element instanceof window.HTMLElement
+          ? getSizedMediaCanvas(hero.element)
         : document.createElement('canvas');
     if (!canvas.width) canvas.width = HERO_CANVAS_WIDTH;
     if (!canvas.height) canvas.height = HERO_CANVAS_HEIGHT;
     const ctx = canvas.getContext('2d');
 
-    function finish({ padding = 0, debugLabel = '' } = {}) {
-      const cropped = cropToContent(canvas, padding);
+    function finish({ padding = 0, debugLabel = '', preserveFrame = false } = {}) {
+      const cropped = preserveFrame
+        ? {
+          canvas,
+          offsetX: 0,
+          offsetY: 0,
+          width: canvas.width,
+          height: canvas.height,
+          hasVisibleContent: true
+        }
+        : cropToContent(canvas, padding);
       if (debugLabel) {
         console.debug(
           `[rasterizeHero] ${debugLabel} visible=${cropped.hasVisibleContent} ` +
@@ -241,7 +264,7 @@ export function rasterizeHero(hero) {
       const w = sourceWidth * scale;
       const h = sourceHeight * scale;
       ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
-      finish();
+      finish({ preserveFrame: true });
     }
 
     if (hero.type === 'gif') {
