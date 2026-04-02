@@ -27,7 +27,7 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
   const particles = [];
 
   // Helper: sample canvas pixels into particle positions/colors, centered
-  function sampleParticles(region) {
+  function sampleParticles(region, alphaCutoff = 32) {
     const c = document.createElement('canvas');
     c.width = width;
     c.height = height;
@@ -43,7 +43,7 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
       for (let x = 0; x < width; x += PARTICLE_SIZE) {
         const idx = (y * width + x) * 4;
         const r = imgData[idx], g = imgData[idx+1], b = imgData[idx+2], a = imgData[idx+3];
-        if (a > 32) {
+        if (a > alphaCutoff) {
           result.push({ x, y, color: `rgba(${r},${g},${b},${a/255})` });
         }
       }
@@ -100,8 +100,8 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
 
   // Sample from and to states using cropped/centered regions.
   // Build correspondences so both footprints are represented even when sizes differ.
-  const rawFromParticles = sampleParticles(fromRegion);
-  const rawToParticles = sampleParticles(toRegion);
+  const rawFromParticles = sampleParticles(fromRegion, 32);
+  const rawToParticles = sampleParticles(toRegion, 0);
 
   const fromParticles = rawFromParticles.length ? rawFromParticles : rawToParticles;
   const toParticles = rawToParticles.length ? rawToParticles : rawFromParticles;
