@@ -4,6 +4,8 @@
 const HERO_CANVAS_WIDTH = 320;
 const HERO_CANVAS_HEIGHT = 320;
 const TEXT_RASTER_CANVAS_PADDING = 32;
+// Fallback for the CSS --panel variable used as .spa-hero-gif background.
+const GIF_CANVAS_BACKGROUND_FALLBACK = '#222';
 
 function getSizedTextCanvas(textEl) {
   const rect = textEl.getBoundingClientRect();
@@ -235,8 +237,12 @@ export function rasterizeHero(hero) {
     }
 
 
-    function drawCenteredImage(img, sourceWidth = img.width, sourceHeight = img.height) {
+    function drawCenteredImage(img, sourceWidth = img.width, sourceHeight = img.height, canvasFill = null) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (canvasFill !== null) {
+        ctx.fillStyle = canvasFill;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
       const scale = Math.min(canvas.width / sourceWidth, canvas.height / sourceHeight);
       const w = sourceWidth * scale;
       const h = sourceHeight * scale;
@@ -248,7 +254,14 @@ export function rasterizeHero(hero) {
       console.debug(`[rasterizeHero] branch=gif src=${hero.src}`);
       const img = new window.Image();
       img.onload = function() {
-        drawCenteredImage(img);
+        // Fill with the hero canvas CSS background so the TO surface matches
+        // the full 320×320 visual footprint of the .spa-hero-gif element at rest
+        // (which shows background: var(--panel) around the logo).
+        // Without this, particles only form at opaque logo pixels (~180px), but
+        // the hero element appears as a 320px dark box — causing the visible
+        // size mismatch on recombination.
+        const panelBg = (window.getComputedStyle(document.documentElement).getPropertyValue('--panel') || '').trim() || GIF_CANVAS_BACKGROUND_FALLBACK;
+        drawCenteredImage(img, img.width, img.height, panelBg);
       };
       img.onerror = function() {
         reject(new Error('Failed to load GIF'));
