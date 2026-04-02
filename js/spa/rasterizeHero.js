@@ -219,8 +219,8 @@ export function rasterizeHero(hero) {
       : hero.type === 'text'
         ? getFallbackTextCanvas(hero.text)
         : document.createElement('canvas');
-    if (!canvas.width) canvas.width = HERO_CANVAS_WIDTH;
-    if (!canvas.height) canvas.height = HERO_CANVAS_HEIGHT;
+    if (canvas.width < HERO_CANVAS_WIDTH) canvas.width = HERO_CANVAS_WIDTH;
+    if (canvas.height < HERO_CANVAS_HEIGHT) canvas.height = HERO_CANVAS_HEIGHT;
     const ctx = canvas.getContext('2d');
 
     function finish({ padding = 0, debugLabel = '' } = {}) {
