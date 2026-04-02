@@ -237,8 +237,17 @@ export function rasterizeHero(hero) {
     if (!canvas.height) canvas.height = HERO_CANVAS_HEIGHT;
     const ctx = canvas.getContext('2d');
 
-    function finish({ padding = 0, debugLabel = '' } = {}) {
-      const cropped = cropToContent(canvas, padding);
+    function finish({ padding = 0, debugLabel = '', preserveFrame = false } = {}) {
+      const cropped = preserveFrame
+        ? {
+          canvas,
+          offsetX: 0,
+          offsetY: 0,
+          width: canvas.width,
+          height: canvas.height,
+          hasVisibleContent: true
+        }
+        : cropToContent(canvas, padding);
       if (debugLabel) {
         console.debug(
           `[rasterizeHero] ${debugLabel} visible=${cropped.hasVisibleContent} ` +
@@ -255,7 +264,7 @@ export function rasterizeHero(hero) {
       const w = sourceWidth * scale;
       const h = sourceHeight * scale;
       ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
-      finish();
+      finish({ preserveFrame: true });
     }
 
     if (hero.type === 'gif') {
