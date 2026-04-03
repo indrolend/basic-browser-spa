@@ -74,6 +74,11 @@ body {
   width: min(100%, 38rem);
   min-height: 320px;
   text-align: center;
+  cursor: grab;
+}
+
+.spa-hero:active {
+  cursor: grabbing;
 }
 
 .spa-hero-image,
