@@ -116,11 +116,11 @@ body {
   height: auto;
   max-height: 60vh;
   border-radius: 16px;
-  box-shadow: 0 4px 32px #000a;
 }
 
 .spa-hero-image {
   background: var(--panel);
+  box-shadow: 0 4px 32px #000a;
 }
 
 .spa-hero-text {
