@@ -481,6 +481,7 @@ function updateSectionNav(sectionIdx) {
     btn.style.background = idx === sectionIdx ? '#333' : '';
     btn.setAttribute('aria-current', idx === sectionIdx ? 'page' : 'false');
     btn.onclick = () => goTo(idx, 0);
+    btn.addEventListener('touchend', (e) => { e.preventDefault(); goTo(idx, 0); });
     sectionNav.appendChild(btn);
   });
 }
@@ -559,6 +560,7 @@ function setupItemNav() {
   prevBtn.textContent = '← Prev';
   prevBtn.setAttribute('aria-label', 'Previous item');
   prevBtn.onclick = prevItem;
+  prevBtn.addEventListener('touchend', (e) => { e.preventDefault(); prevItem(); });
   navBar.appendChild(prevBtn);
 
   const nextBtn = document.createElement('button');
@@ -567,6 +569,7 @@ function setupItemNav() {
   nextBtn.textContent = 'Next →';
   nextBtn.setAttribute('aria-label', 'Next item');
   nextBtn.onclick = nextItem;
+  nextBtn.addEventListener('touchend', (e) => { e.preventDefault(); nextItem(); });
   navBar.appendChild(nextBtn);
 }
 
