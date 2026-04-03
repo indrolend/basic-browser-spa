@@ -71,6 +71,8 @@ let pullFromSurfacePromise = null;
 let pullToSurfacePromise = null;
 let pullPreviewParticlesBase = null; // sampled once when Phase B begins
 let pullPreviewParticles = null;     // updated every frame; passed to transitionFromPull on release
+let pullPreviewCanvasW = 0;          // canvas dimensions when pullPreviewParticlesBase was sampled
+let pullPreviewCanvasH = 0;
 
 const DESKTOP_CHAIN_WINDOW_MS = 260;
 const REVEAL_HANDOFF_FADE_MS = 70;
@@ -836,6 +838,8 @@ function renderPullPreview(pullVector, pullNormalized) {
   // Sample particles once on first entry to Phase B
   if (!pullPreviewParticlesBase) {
     pullPreviewParticlesBase = samplePullParticles(pullFromSurface, cW, cH);
+    pullPreviewCanvasW = cW;
+    pullPreviewCanvasH = cH;
   }
 
   // Phase B (0.25–0.65): hero fades out, particles fade in, edges fray first
@@ -1003,8 +1007,12 @@ async function onSlingshotRelease({ pullNormalized }) {
       // to the new canvas coordinate space (center offset may have shifted).
       const newCW = transitionCanvas.width;
       const newCH = transitionCanvas.height;
-      const oldCW = fromSurface.width  + STAGE_PADDING_PX * 2;
-      const oldCH = fromSurface.height + STAGE_PADDING_PX * 2;
+      // Use the recorded canvas dimensions from when pullPreviewParticlesBase was sampled.
+      // alignTransitionCanvas at lock-time used max(fromSurface.width, 320) + 2*PADDING, which
+      // may differ from fromSurface.width + 2*PADDING — using the wrong value causes the whole
+      // cloud to jump bottom-right on release before snapping back.
+      const oldCW = pullPreviewCanvasW || (fromSurface.width  + STAGE_PADDING_PX * 2);
+      const oldCH = pullPreviewCanvasH || (fromSurface.height + STAGE_PADDING_PX * 2);
       const shiftX = (newCW - oldCW) / 2;
       const shiftY = (newCH - oldCH) / 2;
       const remapped = (shiftX === 0 && shiftY === 0)
@@ -1106,6 +1114,8 @@ function cleanupSlingshotPull() {
   pullToSurfacePromise      = null;
   pullPreviewParticlesBase  = null;
   pullPreviewParticles      = null;
+  pullPreviewCanvasW        = 0;
+  pullPreviewCanvasH        = 0;
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
