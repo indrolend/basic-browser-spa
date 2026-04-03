@@ -90,8 +90,8 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
     (PARTICLE_SIZE * PARTICLE_SIZE)
   );
   const timingProfile = options.timingProfile === 'chained' ? 'chained' : 'default';
-  const EXPLODE_DURATION = timingProfile === 'chained' ? 180 : 260;
-  const REFORM_DURATION  = timingProfile === 'chained' ? 280 : 420;
+  const EXPLODE_DURATION = timingProfile === 'chained' ?  80 : 120;
+  const REFORM_DURATION  = timingProfile === 'chained' ? 160 : 230;
   const TOTAL_DURATION   = EXPLODE_DURATION + REFORM_DURATION;
   const EXPLODE_RADIUS   = Math.min(width, height) * (timingProfile === 'chained' ? 0.34 : 0.4);
   const particles = [];
@@ -168,8 +168,8 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
 export function transitionFromPull(pulledParticles, toRegion, ctx, options, onComplete) {
   const width  = ctx.canvas.width;
   const height = ctx.canvas.height;
-  const SNAP_DURATION   = 160; // ms — elastic snap-back from pulled to rest positions
-  const REFORM_DURATION = 520; // ms — reform from rest positions to target shape (160+520=680ms, matching button-press total)
+  const SNAP_DURATION   =  80; // ms — elastic snap-back from pulled to rest positions
+  const REFORM_DURATION = 270; // ms — reform from rest positions to target shape (80+270=350ms, matching button-press total)
 
   if (!pulledParticles || !pulledParticles.length) {
     if (typeof onComplete === 'function') onComplete();
