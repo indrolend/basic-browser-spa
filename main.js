@@ -486,6 +486,25 @@ function updateSectionNav(sectionIdx) {
   });
 }
 
+function updateItemDots(sectionIdx, itemIdx) {
+  const dotsBar = document.getElementById('spa-dots');
+  if (!dotsBar) return;
+  const items = SPA_SECTIONS[sectionIdx]?.items || [];
+  dotsBar.innerHTML = '';
+  if (items.length <= 1) return;
+  items.forEach((item, idx) => {
+    const dot = document.createElement('button');
+    dot.type = 'button';
+    dot.className = 'spa-dot';
+    dot.setAttribute('role', 'tab');
+    dot.setAttribute('aria-label', item.label);
+    dot.setAttribute('aria-selected', idx === itemIdx ? 'true' : 'false');
+    dot.onclick = () => goTo(sectionIdx, idx);
+    dot.addEventListener('touchend', (e) => { e.preventDefault(); goTo(sectionIdx, idx); });
+    dotsBar.appendChild(dot);
+  });
+}
+
 function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
   const heroContainer = document.getElementById('spa-hero-container');
   const item = SPA_SECTIONS[sectionIdx].items[itemIdx];
@@ -547,6 +566,7 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
 
 function render() {
   updateSectionNav(currentSectionIdx);
+  updateItemDots(currentSectionIdx, currentItemIdx);
   renderHeroDOM(currentSectionIdx, currentItemIdx);
 }
 
@@ -718,6 +738,7 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
               preserveActiveGifPlayback: canReusePreparedGif
             });
             updateSectionNav(nextSectionIdx);
+            updateItemDots(nextSectionIdx, nextItemIdx);
             didRenderDuringReveal = true;
           }
         });
@@ -734,6 +755,7 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
     if (didTransition && !didRenderDuringReveal) {
       renderHeroDOM(currentSectionIdx, currentItemIdx);
       updateSectionNav(currentSectionIdx);
+      updateItemDots(currentSectionIdx, currentItemIdx);
     } else if (!didTransition) {
       render();
     }
@@ -1065,6 +1087,7 @@ async function onSlingshotRelease({ pullNormalized }) {
     preserveActiveGifPlayback: canReusePreparedGif
   });
   updateSectionNav(targetSectionIdx);
+  updateItemDots(targetSectionIdx, targetItemIdx);
 
   heroContainer.style.visibility = 'visible';
   heroContainer.style.transition = `opacity ${REVEAL_HANDOFF_FADE_MS}ms ease-out`;
