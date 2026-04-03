@@ -11,7 +11,7 @@
   box-sizing: border-box;
 }
 
-html {
+html, body {
   touch-action: manipulation;
 }
 
@@ -58,6 +58,7 @@ body {
   align-items: center;
   justify-content: center;
   width: 100%;
+  touch-action: none;
 }
 
 #spa-item-nav {

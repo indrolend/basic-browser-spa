@@ -547,8 +547,8 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
     hero.setAttribute('tabindex', '0');
     hero.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
         if (!isTransitioning && !isPulling) {
-          e.preventDefault();
           window.open(clickAction, '_blank', 'noopener,noreferrer');
         }
       }

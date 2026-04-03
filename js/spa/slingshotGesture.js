@@ -113,7 +113,6 @@ export function initSlingshot(element, callbacks = {}) {
       } else {
         // Pointer released without reaching the drag threshold — treat as a tap.
         if (typeof onTap === 'function') onTap();
-        else if (typeof onCancel === 'function') onCancel();
       }
       return;
     }
