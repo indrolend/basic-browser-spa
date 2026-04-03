@@ -861,24 +861,29 @@ function renderPullPreview(pullVector, pullNormalized) {
     ctx.restore();
   }
 
-  // Elastic directional stretch: each particle is displaced along the pull axis
-  // in proportion to its signed projection onto that axis.
-  // Particles on the pull side stretch forward; particles on the opposite side
-  // stretch backward. The centroid stays at canvas center — nothing drifts off-screen.
-  const STRETCH_MAX = 55; // px — maximum stretch at pullNormalized = 1
+  // Asymmetric directional stretch: trailing-side particles (opposite to pull) get
+  // ~3× more displacement than leading-side particles. This creates a "lagging behind"
+  // smear — the cloud trails in the direction opposite to the pull — while keeping
+  // the centroid very close to canvas center (net shift < ~15px at full pull).
+  const STRETCH_MAX = 55; // px — baseline at pullNormalized = 1
   const fraying = phaseB + phaseC * 0.6;
   const current = [];
   for (const p of pullPreviewParticlesBase) {
     // Signed projection onto pull axis, normalised to roughly ±1 across the canvas
-    const proj       = (p.cx * pullNx + p.cy * pullNy) / (maxRadius * 0.5);
-    const stretchAmt = proj * pullNormalized * STRETCH_MAX;
+    const proj      = (p.cx * pullNx + p.cy * pullNy) / (maxRadius * 0.5);
+    // Asymmetric scale: leading particles barely move; trailing particles stretch far back
+    const asymScale  = proj >= 0 ? 0.4 : 1.2;
+    const stretchAmt = proj * pullNormalized * STRETCH_MAX * asymScale;
 
-    // Radial edge fray (random per-particle direction, grows with phase and edge position)
+    // Directional fray: bias ~55 % toward the trailing direction for a comet-tail smear
     const edgeFactor = Math.min(1, Math.sqrt(p.cx * p.cx + p.cy * p.cy) / (maxRadius * 0.6));
     const frayAmt    = fraying * edgeFactor * 20 * pullNormalized;
+    const TRAIL_BIAS = 0.55;
+    const frayDirX   = (-pullNx) * TRAIL_BIAS + p.frayX * (1 - TRAIL_BIAS);
+    const frayDirY   = (-pullNy) * TRAIL_BIAS + p.frayY * (1 - TRAIL_BIAS);
 
-    const px = p.x + pullNx * stretchAmt + p.frayX * frayAmt;
-    const py = p.y + pullNy * stretchAmt + p.frayY * frayAmt;
+    const px = p.x + pullNx * stretchAmt + frayDirX * frayAmt;
+    const py = p.y + pullNy * stretchAmt + frayDirY * frayAmt;
     current.push({ x: px, y: py, color: p.color });
     ctx.fillStyle = p.color;
     ctx.beginPath();
@@ -1005,8 +1010,13 @@ async function onSlingshotRelease({ pullNormalized }) {
       const remapped = (shiftX === 0 && shiftY === 0)
         ? pullPreviewParticles
         : pullPreviewParticles.map(p => ({ x: p.x + shiftX, y: p.y + shiftY, color: p.color }));
+      // Also remap the base rest-positions (used for snap-back phase in transitionFromPull)
+      const remappedBase = !pullPreviewParticlesBase ? null
+        : (shiftX === 0 && shiftY === 0)
+          ? pullPreviewParticlesBase.map(p => ({ x: p.x, y: p.y, color: p.color }))
+          : pullPreviewParticlesBase.map(p => ({ x: p.x + shiftX, y: p.y + shiftY, color: p.color }));
       await new Promise((resolve) => {
-        transitionFromPull(remapped, toSurface, ctx, {}, resolve);
+        transitionFromPull(remapped, toSurface, ctx, { fromParticlesBase: remappedBase }, resolve);
       });
     } else {
       // Fast swipe that didn't reach the particle phase: fall back to standard transition.

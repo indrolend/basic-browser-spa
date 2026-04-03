@@ -168,7 +168,8 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
 export function transitionFromPull(pulledParticles, toRegion, ctx, options, onComplete) {
   const width  = ctx.canvas.width;
   const height = ctx.canvas.height;
-  const REFORM_DURATION = 380;
+  const SNAP_DURATION   = 160; // ms — elastic snap-back from pulled to rest positions
+  const REFORM_DURATION = 350; // ms — reform from rest positions to target shape
 
   if (!pulledParticles || !pulledParticles.length) {
     if (typeof onComplete === 'function') onComplete();
@@ -184,32 +185,66 @@ export function transitionFromPull(pulledParticles, toRegion, ctx, options, onCo
   const N      = pulledParticles.length;
   const toPool = shuffle(sampleByCoverage(rawToParticles, N));
 
+  // from-particles base = from-surface rest positions (before pull stretch).
+  // When provided they form the elastic snap-back target (Phase 1), and the
+  // reform origin (Phase 2), making the release feel like a true elastic rebound
+  // that then transforms into the target image — all centred on screen.
+  const fromBase = options && options.fromParticlesBase;
+  const hasSnap  = fromBase && fromBase.length >= N;
+
   const particles = [];
   for (let i = 0; i < N; i++) {
-    const start = pulledParticles[i];
-    const end   = toPool[i % toPool.length];
+    const pulled = pulledParticles[i];
+    const end    = toPool[i % toPool.length];
+    const mid    = hasSnap ? fromBase[i] : pulled; // snap-back / reform origin
     particles.push({
-      x0: start.x, y0: start.y, c0: parseRgba(start.color),
-      x1: end.x,   y1: end.y,   c1: parseRgba(end.color)
+      x0: pulled.x, y0: pulled.y, c0: parseRgba(pulled.color),
+      xm: mid.x,    ym: mid.y,                          // rest position
+      x1: end.x,    y1: end.y,   c1: parseRgba(end.color)
     });
   }
 
   let startTime = null;
   function animate(ts) {
     if (!startTime) startTime = ts;
-    const p     = Math.min((ts - startTime) / REFORM_DURATION, 1);
-    const moveP = easeOutBack(p);
+    const elapsed = ts - startTime;
     ctx.clearRect(0, 0, width, height);
-    for (const pt of particles) {
-      ctx.fillStyle = lerpColor(pt.c0, pt.c1, p);
-      ctx.beginPath();
-      ctx.arc(pt.x0 + (pt.x1 - pt.x0) * moveP, pt.y0 + (pt.y1 - pt.y0) * moveP, PARTICLE_SIZE / 2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    if (p < 1) {
+
+    if (hasSnap && elapsed < SNAP_DURATION) {
+      // Phase 1: snap-back — pulled positions → from-surface rest positions (ease-out)
+      const raw  = elapsed / SNAP_DURATION;
+      const ease = 1 - (1 - raw) * (1 - raw); // ease-out quad
+      for (const pt of particles) {
+        ctx.fillStyle = `rgba(${pt.c0[0]},${pt.c0[1]},${pt.c0[2]},${pt.c0[3]})`;
+        ctx.beginPath();
+        ctx.arc(
+          pt.x0 + (pt.xm - pt.x0) * ease,
+          pt.y0 + (pt.ym - pt.y0) * ease,
+          PARTICLE_SIZE / 2, 0, Math.PI * 2
+        );
+        ctx.fill();
+      }
       requestAnimationFrame(animate);
     } else {
-      if (typeof onComplete === 'function') onComplete();
+      // Phase 2: reform — rest positions → target positions (ease-out-back for bounce)
+      const reformElapsed = elapsed - (hasSnap ? SNAP_DURATION : 0);
+      const p     = Math.min(reformElapsed / REFORM_DURATION, 1);
+      const moveP = easeOutBack(p);
+      for (const pt of particles) {
+        ctx.fillStyle = lerpColor(pt.c0, pt.c1, p);
+        ctx.beginPath();
+        ctx.arc(
+          pt.xm + (pt.x1 - pt.xm) * moveP,
+          pt.ym + (pt.y1 - pt.ym) * moveP,
+          PARTICLE_SIZE / 2, 0, Math.PI * 2
+        );
+        ctx.fill();
+      }
+      if (p < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        if (typeof onComplete === 'function') onComplete();
+      }
     }
   }
   requestAnimationFrame(animate);
