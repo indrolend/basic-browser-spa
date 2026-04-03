@@ -110,6 +110,20 @@ body {
   cursor: grabbing;
 }
 
+.spa-hero--linkable {
+  cursor: pointer;
+}
+
+.spa-hero--linkable:active {
+  cursor: pointer;
+}
+
+.spa-hero--linkable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 6px;
+  border-radius: 16px;
+}
+
 .spa-hero-image,
 .spa-hero-gif {
   width: min(80vw, 320px);

@@ -106,6 +106,16 @@ function getHeroSpec(sectionIdx, itemIdx) {
   return { kind: 'text', text: item.label };
 }
 
+function getItemClickAction(sectionIdx, itemIdx) {
+  const routes = window.__INDROLEND_ROUTES__;
+  if (!routes) return null;
+  const section = SPA_SECTIONS[sectionIdx];
+  const item = section?.items[itemIdx];
+  if (!section || !item) return null;
+  const key = `${section.id}/${item.id}`;
+  return routes.items?.[key]?.clickAction ?? null;
+}
+
 function getNextTarget(sectionIdx, itemIdx) {
   const section = SPA_SECTIONS[sectionIdx];
   if (itemIdx < section.items.length - 1) {
@@ -524,6 +534,26 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
   heroContainer.innerHTML = '';
   const hero = document.createElement('div');
   hero.className = 'spa-hero';
+
+  const clickAction = getItemClickAction(sectionIdx, itemIdx);
+  if (typeof clickAction === 'string' && clickAction.startsWith('http')) {
+    hero.classList.add('spa-hero--linkable');
+    hero.setAttribute('role', 'link');
+    hero.setAttribute('aria-label', `Open ${item.label}`);
+    hero.setAttribute('tabindex', '0');
+    const openLink = () => {
+      if (!isTransitioning && !isPulling) {
+        window.open(clickAction, '_blank', 'noopener,noreferrer');
+      }
+    };
+    addActivationHandler(hero, openLink);
+    hero.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openLink();
+      }
+    });
+  }
 
   if (heroSpec?.kind === 'image') {
     if (isGifHeroSpec(heroSpec)) {
