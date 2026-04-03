@@ -552,25 +552,34 @@ function render() {
 
 function setupItemNav() {
   const navBar = document.getElementById('spa-item-nav');
-  if (!navBar || navBar.children.length > 0) return;
+  if (!navBar) return;
 
-  const prevBtn = document.createElement('button');
-  prevBtn.type = 'button';
-  prevBtn.className = 'spa-nav-btn';
-  prevBtn.textContent = '← Prev';
-  prevBtn.setAttribute('aria-label', 'Previous item');
+  let prevBtn = document.getElementById('spa-prev-btn');
+  if (!prevBtn) {
+    prevBtn = document.createElement('button');
+    prevBtn.type = 'button';
+    prevBtn.id = 'spa-prev-btn';
+    prevBtn.className = 'spa-nav-btn';
+    prevBtn.textContent = '← Prev';
+    prevBtn.setAttribute('aria-label', 'Previous item');
+    navBar.appendChild(prevBtn);
+  }
+
+  let nextBtn = document.getElementById('spa-next-btn');
+  if (!nextBtn) {
+    nextBtn = document.createElement('button');
+    nextBtn.type = 'button';
+    nextBtn.id = 'spa-next-btn';
+    nextBtn.className = 'spa-nav-btn';
+    nextBtn.textContent = 'Next →';
+    nextBtn.setAttribute('aria-label', 'Next item');
+    navBar.appendChild(nextBtn);
+  }
+
   prevBtn.onclick = prevItem;
   prevBtn.addEventListener('touchend', (e) => { e.preventDefault(); prevItem(); });
-  navBar.appendChild(prevBtn);
-
-  const nextBtn = document.createElement('button');
-  nextBtn.type = 'button';
-  nextBtn.className = 'spa-nav-btn';
-  nextBtn.textContent = 'Next →';
-  nextBtn.setAttribute('aria-label', 'Next item');
   nextBtn.onclick = nextItem;
   nextBtn.addEventListener('touchend', (e) => { e.preventDefault(); nextItem(); });
-  navBar.appendChild(nextBtn);
 }
 
 const STAGE_PADDING_PX = 72;

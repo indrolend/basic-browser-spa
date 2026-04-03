@@ -16,6 +16,7 @@ body {
   color: var(--fg);
   margin: 0;
   font-family: 'SF Mono', Menlo, Monaco, Consolas, monospace;
+  height: 100vh;
   height: 100svh;
   overflow: hidden;
 }
@@ -37,6 +38,7 @@ body {
 
 #spa-root {
   position: relative;
+  height: 100vh;
   height: 100svh;
   display: flex;
   flex-direction: column;
