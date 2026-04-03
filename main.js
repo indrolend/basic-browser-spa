@@ -116,6 +116,10 @@ function getItemClickAction(sectionIdx, itemIdx) {
   return routes.items?.[key]?.clickAction ?? null;
 }
 
+function isExternalLink(action) {
+  return typeof action === 'string' && action.startsWith('http');
+}
+
 function getNextTarget(sectionIdx, itemIdx) {
   const section = SPA_SECTIONS[sectionIdx];
   if (itemIdx < section.items.length - 1) {
@@ -536,21 +540,17 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
   hero.className = 'spa-hero';
 
   const clickAction = getItemClickAction(sectionIdx, itemIdx);
-  if (typeof clickAction === 'string' && clickAction.startsWith('http')) {
+  if (isExternalLink(clickAction)) {
     hero.classList.add('spa-hero--linkable');
     hero.setAttribute('role', 'link');
     hero.setAttribute('aria-label', `Open ${item.label}`);
     hero.setAttribute('tabindex', '0');
-    const openLink = () => {
-      if (!isTransitioning && !isPulling) {
-        window.open(clickAction, '_blank', 'noopener,noreferrer');
-      }
-    };
-    addActivationHandler(hero, openLink);
     hero.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        openLink();
+        if (!isTransitioning && !isPulling) {
+          e.preventDefault();
+          window.open(clickAction, '_blank', 'noopener,noreferrer');
+        }
       }
     });
   }
@@ -969,6 +969,14 @@ function renderPullPreview(pullVector, pullNormalized) {
 
 // ─── Slingshot callbacks ──────────────────────────────────────────────────────
 
+function onSlingshotTap() {
+  if (isTransitioning || isPulling) return;
+  const action = getItemClickAction(currentSectionIdx, currentItemIdx);
+  if (isExternalLink(action)) {
+    window.open(action, '_blank', 'noopener,noreferrer');
+  }
+}
+
 function onSlingshotArm() {
   // Intentionally empty — gesture module handles touch-action: none.
   // onLock guards the expensive work.
@@ -1203,6 +1211,7 @@ startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
 
 initSlingshot(document.getElementById('spa-hero-container'), {
   onArm:     onSlingshotArm,
+  onTap:     onSlingshotTap,
   onLock:    onSlingshotLock,
   onPull:    onSlingshotPull,
   onRelease: onSlingshotRelease,

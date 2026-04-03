@@ -7,7 +7,7 @@ const LOCK_THRESHOLD_PX = 15;  // minimum drag before direction is committed
 const MAX_PULL_DISTANCE = 120; // px at which pullNormalized reaches 1.0
 
 export function initSlingshot(element, callbacks = {}) {
-  const { onArm, onLock, onPull, onRelease, onCancel } = callbacks;
+  const { onArm, onLock, onPull, onRelease, onCancel, onTap } = callbacks;
 
   let phase = 'idle'; // idle | armed | locked
   let pointerId = null;
@@ -108,7 +108,13 @@ export function initSlingshot(element, callbacks = {}) {
     lockedDirection = null;
 
     if (isCancelled || !wasLocked) {
-      if (typeof onCancel === 'function') onCancel();
+      if (isCancelled) {
+        if (typeof onCancel === 'function') onCancel();
+      } else {
+        // Pointer released without reaching the drag threshold — treat as a tap.
+        if (typeof onTap === 'function') onTap();
+        else if (typeof onCancel === 'function') onCancel();
+      }
       return;
     }
 
