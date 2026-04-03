@@ -61,6 +61,19 @@ let giflerLoaderPromise = null;
 let preparedToGifCanvas = null;
 let preparedToGifKey = null;
 
+// ─── Slingshot pull state ─────────────────────────────────────────────────────
+let isPulling = false;
+let pullTargetSectionIdx = null;
+let pullTargetItemIdx = null;
+let pullFromSurface = null;
+let pullToSurface = null;
+let pullFromSurfacePromise = null;
+let pullToSurfacePromise = null;
+let pullPreviewParticlesBase = null; // sampled once when Phase B begins
+let pullPreviewParticles = null;     // updated every frame; passed to transitionFromPull on release
+let pullPreviewCanvasW = 0;          // canvas dimensions when pullPreviewParticlesBase was sampled
+let pullPreviewCanvasH = 0;
+
 const DESKTOP_CHAIN_WINDOW_MS = 260;
 const REVEAL_HANDOFF_FADE_MS = 70;
 
@@ -468,7 +481,27 @@ function updateSectionNav(sectionIdx) {
     btn.style.background = idx === sectionIdx ? '#333' : '';
     btn.setAttribute('aria-current', idx === sectionIdx ? 'page' : 'false');
     btn.onclick = () => goTo(idx, 0);
+    btn.addEventListener('touchend', (e) => { e.preventDefault(); goTo(idx, 0); });
     sectionNav.appendChild(btn);
+  });
+}
+
+function updateItemDots(sectionIdx, itemIdx) {
+  const dotsBar = document.getElementById('spa-dots');
+  if (!dotsBar) return;
+  const items = SPA_SECTIONS[sectionIdx]?.items || [];
+  dotsBar.innerHTML = '';
+  if (items.length <= 1) return;
+  items.forEach((item, idx) => {
+    const dot = document.createElement('button');
+    dot.type = 'button';
+    dot.className = 'spa-dot';
+    dot.setAttribute('role', 'tab');
+    dot.setAttribute('aria-label', item.label);
+    dot.setAttribute('aria-selected', idx === itemIdx ? 'true' : 'false');
+    dot.onclick = () => goTo(sectionIdx, idx);
+    dot.addEventListener('touchend', (e) => { e.preventDefault(); goTo(sectionIdx, idx); });
+    dotsBar.appendChild(dot);
   });
 }
 
@@ -533,29 +566,43 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
 
 function render() {
   updateSectionNav(currentSectionIdx);
+  updateItemDots(currentSectionIdx, currentItemIdx);
   renderHeroDOM(currentSectionIdx, currentItemIdx);
 }
 
 function setupItemNav() {
   const navBar = document.getElementById('spa-item-nav');
-  if (!navBar || navBar.children.length > 0) return;
+  if (!navBar) return;
 
-  const prevBtn = document.createElement('button');
-  prevBtn.type = 'button';
-  prevBtn.className = 'spa-nav-btn';
-  prevBtn.textContent = '← Prev';
-  prevBtn.setAttribute('aria-label', 'Previous item');
+  let prevBtn = document.getElementById('spa-prev-btn');
+  if (!prevBtn) {
+    prevBtn = document.createElement('button');
+    prevBtn.type = 'button';
+    prevBtn.id = 'spa-prev-btn';
+    prevBtn.className = 'spa-nav-btn';
+    prevBtn.textContent = '← Prev';
+    prevBtn.setAttribute('aria-label', 'Previous item');
+    navBar.appendChild(prevBtn);
+  }
+
+  let nextBtn = document.getElementById('spa-next-btn');
+  if (!nextBtn) {
+    nextBtn = document.createElement('button');
+    nextBtn.type = 'button';
+    nextBtn.id = 'spa-next-btn';
+    nextBtn.className = 'spa-nav-btn';
+    nextBtn.textContent = 'Next →';
+    nextBtn.setAttribute('aria-label', 'Next item');
+    navBar.appendChild(nextBtn);
+  }
+
   prevBtn.onclick = prevItem;
-  navBar.appendChild(prevBtn);
-
-  const nextBtn = document.createElement('button');
-  nextBtn.type = 'button';
-  nextBtn.className = 'spa-nav-btn';
-  nextBtn.textContent = 'Next →';
-  nextBtn.setAttribute('aria-label', 'Next item');
+  prevBtn.addEventListener('touchend', (e) => { e.preventDefault(); prevItem(); });
   nextBtn.onclick = nextItem;
-  navBar.appendChild(nextBtn);
+  nextBtn.addEventListener('touchend', (e) => { e.preventDefault(); nextItem(); });
 }
+
+const STAGE_PADDING_PX = 72;
 
 function alignTransitionCanvas(transitionCanvas, fromSurface, toSurface) {
   const root = document.getElementById('spa-root');
@@ -563,7 +610,6 @@ function alignTransitionCanvas(transitionCanvas, fromSurface, toSurface) {
   const heroContainer = document.getElementById('spa-hero-container');
   if (!root || !heroContainer) return;
 
-  const STAGE_PADDING_PX = 72;
   const baseStageWidth = Math.max(fromSurface?.width || 0, toSurface?.width || 0, 1);
   const baseStageHeight = Math.max(fromSurface?.height || 0, toSurface?.height || 0, 1);
   const stageWidth = baseStageWidth + (STAGE_PADDING_PX * 2);
@@ -582,7 +628,8 @@ function alignTransitionCanvas(transitionCanvas, fromSurface, toSurface) {
 }
 
 import { rasterizeHero } from './js/spa/rasterizeHero.js';
-import { transition } from './js/spa/particleTransitionEngine.js';
+import { transition, transitionFromPull } from './js/spa/particleTransitionEngine.js';
+import { initSlingshot } from './js/spa/slingshotGesture.js';
 
 async function runHeroTransition(fromSurface, toSurface, transitionOptions = {}) {
   const heroContainer = document.getElementById('spa-hero-container');
@@ -691,6 +738,7 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
               preserveActiveGifPlayback: canReusePreparedGif
             });
             updateSectionNav(nextSectionIdx);
+            updateItemDots(nextSectionIdx, nextItemIdx);
             didRenderDuringReveal = true;
           }
         });
@@ -707,6 +755,7 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
     if (didTransition && !didRenderDuringReveal) {
       renderHeroDOM(currentSectionIdx, currentItemIdx);
       updateSectionNav(currentSectionIdx);
+      updateItemDots(currentSectionIdx, currentItemIdx);
     } else if (!didTransition) {
       render();
     }
@@ -760,29 +809,360 @@ window.addEventListener('keydown', (e) => {
   if (isNext) nextItem(navOptions);
 });
 
-let touchStartX = null;
-let touchStartY = null;
-window.addEventListener('touchstart', (e) => {
-  if (e.touches.length === 1) {
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
+// ─── Pull preview helpers ─────────────────────────────────────────────────────
+
+const SLINGSHOT_PARTICLE_SIZE = 4;
+const SLINGSHOT_MIN_RELEASE   = 0.15; // pullNormalized must exceed this to commit
+
+function samplePullParticles(surface, canvasW, canvasH) {
+  const offscreen = document.createElement('canvas');
+  offscreen.width  = canvasW;
+  offscreen.height = canvasH;
+  const octx = offscreen.getContext('2d');
+  const dx = (canvasW - surface.width)  / 2;
+  const dy = (canvasH - surface.height) / 2;
+  octx.clearRect(0, 0, canvasW, canvasH);
+  octx.drawImage(surface.canvas, 0, 0, surface.width, surface.height, dx, dy, surface.width, surface.height);
+  const imgData = octx.getImageData(0, 0, canvasW, canvasH).data;
+  const cX = canvasW / 2;
+  const cY = canvasH / 2;
+  const out = [];
+  for (let y = 0; y < canvasH; y += SLINGSHOT_PARTICLE_SIZE) {
+    for (let x = 0; x < canvasW; x += SLINGSHOT_PARTICLE_SIZE) {
+      const idx = (y * canvasW + x) * 4;
+      const r = imgData[idx], g = imgData[idx + 1], b = imgData[idx + 2], a = imgData[idx + 3];
+      if (a > 32) {
+        out.push({
+          x, y,
+          cx: x - cX, cy: y - cY,                     // offset from canvas center
+          color: `rgba(${r},${g},${b},${a / 255})`,
+          frayX: (Math.random() - 0.5) * 2,            // stable per-particle random direction
+          frayY: (Math.random() - 0.5) * 2
+        });
+      }
+    }
   }
-});
-window.addEventListener('touchend', (e) => {
-  if (touchStartX === null || touchStartY === null) return;
-  const dx = e.changedTouches[0].clientX - touchStartX;
-  const dy = e.changedTouches[0].clientY - touchStartY;
-  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30) {
-    if (dx < 0) nextItem();
-    else prevItem();
-  } else if (Math.abs(dy) > 30) {
-    if (dy < 0) nextItem();
-    else prevItem();
+  return out;
+}
+
+function renderPullPreview(pullVector, pullNormalized) {
+  if (!pullFromSurface) return;
+
+  const transitionCanvas = document.getElementById('transition-canvas');
+  const ctx = transitionCanvas.getContext('2d');
+  const cW  = transitionCanvas.width;
+  const cH  = transitionCanvas.height;
+
+  ctx.clearRect(0, 0, cW, cH);
+
+  // Hero is always drawn at canvas center — no translation, never drifts off-screen
+  const drawX = (cW - pullFromSurface.width)  / 2;
+  const drawY = (cH - pullFromSurface.height) / 2;
+
+  if (pullNormalized < 0.25) {
+    // Phase A — solid hero, centered, no offset
+    ctx.drawImage(
+      pullFromSurface.canvas, 0, 0, pullFromSurface.width, pullFromSurface.height,
+      drawX, drawY, pullFromSurface.width, pullFromSurface.height
+    );
+    pullPreviewParticles = null;
+    return;
   }
-  touchStartX = null;
-  touchStartY = null;
-});
+
+  // Sample particles once on first entry to Phase B
+  if (!pullPreviewParticlesBase) {
+    pullPreviewParticlesBase = samplePullParticles(pullFromSurface, cW, cH);
+    pullPreviewCanvasW = cW;
+    pullPreviewCanvasH = cH;
+  }
+
+  // Phase B (0.25–0.65): hero fades out, particles fade in, edges fray first
+  // Phase C (0.65–1.0):  fully particle-based, maximum fray
+  const phaseB = pullNormalized < 0.65 ? (pullNormalized - 0.25) / 0.40 : 1.0;
+  const phaseC = pullNormalized >= 0.65 ? (pullNormalized - 0.65) / 0.35 : 0.0;
+  const heroAlpha = 1 - phaseB;
+  const maxRadius = Math.sqrt((cW / 2) * (cW / 2) + (cH / 2) * (cH / 2));
+
+  // Pull direction unit vector
+  const pullDist = Math.sqrt(pullVector.x * pullVector.x + pullVector.y * pullVector.y) || 1;
+  const pullNx   = pullVector.x / pullDist;
+  const pullNy   = pullVector.y / pullDist;
+
+  // Draw fading hero image beneath particles (always centered, no offset)
+  if (heroAlpha > 0.01) {
+    ctx.save();
+    ctx.globalAlpha = heroAlpha;
+    ctx.drawImage(
+      pullFromSurface.canvas, 0, 0, pullFromSurface.width, pullFromSurface.height,
+      drawX, drawY, pullFromSurface.width, pullFromSurface.height
+    );
+    ctx.restore();
+  }
+
+  // Asymmetric directional stretch: trailing-side particles (opposite to pull) get
+  // ~3× more displacement than leading-side particles. This creates a "lagging behind"
+  // smear — the cloud trails in the direction opposite to the pull — while keeping
+  // the centroid very close to canvas center (net shift < ~15px at full pull).
+  const STRETCH_MAX = 55; // px — baseline at pullNormalized = 1
+  const fraying = phaseB + phaseC * 0.6;
+  const current = [];
+  for (const p of pullPreviewParticlesBase) {
+    // Signed projection onto pull axis, normalised to roughly ±1 across the canvas
+    const proj      = (p.cx * pullNx + p.cy * pullNy) / (maxRadius * 0.5);
+    // Asymmetric scale: leading particles barely move; trailing particles stretch far back
+    const asymScale  = proj >= 0 ? 0.4 : 1.2;
+    const stretchAmt = proj * pullNormalized * STRETCH_MAX * asymScale;
+
+    // Directional fray: bias ~55 % toward the trailing direction for a comet-tail smear
+    const edgeFactor = Math.min(1, Math.sqrt(p.cx * p.cx + p.cy * p.cy) / (maxRadius * 0.6));
+    const frayAmt    = fraying * edgeFactor * 20 * pullNormalized;
+    const TRAIL_BIAS = 0.55;
+    const frayDirX   = (-pullNx) * TRAIL_BIAS + p.frayX * (1 - TRAIL_BIAS);
+    const frayDirY   = (-pullNy) * TRAIL_BIAS + p.frayY * (1 - TRAIL_BIAS);
+
+    const px = p.x + pullNx * stretchAmt + frayDirX * frayAmt;
+    const py = p.y + pullNy * stretchAmt + frayDirY * frayAmt;
+    current.push({ x: px, y: py, color: p.color });
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(px, py, SLINGSHOT_PARTICLE_SIZE / 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  pullPreviewParticles = current;
+}
+
+// ─── Slingshot callbacks ──────────────────────────────────────────────────────
+
+function onSlingshotArm() {
+  // Intentionally empty — gesture module handles touch-action: none.
+  // onLock guards the expensive work.
+}
+
+function onSlingshotLock({ direction, pullVector, pullNormalized }) {
+  if (isTransitioning || isPulling) return;
+
+  const from   = { sectionIdx: currentSectionIdx, itemIdx: currentItemIdx };
+  const target = direction === 'next'
+    ? getNextTarget(from.sectionIdx, from.itemIdx)
+    : getPrevTarget(from.sectionIdx, from.itemIdx);
+
+  if (isSameTarget(target, from)) return;
+
+  isPulling       = true;
+  isTransitioning = true;
+  pullTargetSectionIdx = target.sectionIdx;
+  pullTargetItemIdx    = target.itemIdx;
+  activeTarget = { sectionIdx: target.sectionIdx, itemIdx: target.itemIdx };
+
+  stopActiveGifHeroPlayback();
+  stopCurrentHeroSurfaceTracking();
+
+  // Use the already-cached surface immediately for non-GIF heroes so the first
+  // pull frame is visible with no async delay.
+  const fromHeroSpec = getHeroSpec(from.sectionIdx, from.itemIdx);
+  if (
+    !isGifHeroSpec(fromHeroSpec) &&
+    currentHeroSurface &&
+    currentHeroSurfaceKey === getHeroSurfaceKey(from.sectionIdx, from.itemIdx)
+  ) {
+    pullFromSurface = currentHeroSurface;
+  }
+
+  // Kick off rasterization in parallel. GIF heroes need a fresh live capture;
+  // the to-surface always needs fresh rasterization.
+  const nextHeroSpec = getHeroSpec(target.sectionIdx, target.itemIdx);
+  if (isGifHeroSpec(nextHeroSpec)) {
+    prepareToGifCanvas(target.sectionIdx, target.itemIdx, nextHeroSpec.src);
+  }
+
+  pullFromSurfacePromise = buildHeroSurface(from.sectionIdx, from.itemIdx, 'from')
+    .then(s => { pullFromSurface = s; return s; })
+    .catch(() => null);
+  pullToSurfacePromise = buildHeroSurface(target.sectionIdx, target.itemIdx, 'to')
+    .then(s => { pullToSurface = s; return s; })
+    .catch(() => null);
+
+  // Show transition canvas and hide hero DOM immediately
+  const heroContainer    = document.getElementById('spa-hero-container');
+  const transitionCanvas = document.getElementById('transition-canvas');
+  const fallbackSize     = { width: 320, height: 320 };
+  alignTransitionCanvas(transitionCanvas, pullFromSurface || fallbackSize, fallbackSize);
+  heroContainer.style.visibility = 'hidden';
+  heroContainer.style.opacity    = '0';
+  heroContainer.style.transition = '';
+  transitionCanvas.style.display    = 'block';
+  transitionCanvas.style.opacity    = '1';
+  transitionCanvas.style.transition = '';
+
+  renderPullPreview(pullVector, pullNormalized);
+}
+
+function onSlingshotPull({ pullVector, pullNormalized }) {
+  if (!isPulling) return;
+  renderPullPreview(pullVector, pullNormalized);
+}
+
+async function onSlingshotRelease({ pullNormalized }) {
+  if (!isPulling) return;
+
+  if (pullNormalized < SLINGSHOT_MIN_RELEASE) {
+    cancelSlingshot();
+    return;
+  }
+
+  // Await surfaces — typically already resolved, but guard against fast swipes
+  let fromSurface, toSurface;
+  try {
+    [fromSurface, toSurface] = await Promise.all([pullFromSurfacePromise, pullToSurfacePromise]);
+  } catch (_) {
+    cancelSlingshot();
+    return;
+  }
+  if (!fromSurface || !toSurface) {
+    cancelSlingshot();
+    return;
+  }
+
+  const targetSectionIdx = pullTargetSectionIdx;
+  const targetItemIdx    = pullTargetItemIdx;
+  const heroContainer    = document.getElementById('spa-hero-container');
+  const transitionCanvas = document.getElementById('transition-canvas');
+
+  // Re-align canvas to actual resolved surface sizes before starting animation.
+  // Resizing the canvas clears it — the animation starts on the next rAF, so
+  // the last pull preview frame remains visible for one frame (seamless handoff).
+  alignTransitionCanvas(transitionCanvas, fromSurface, toSurface);
+  const ctx = transitionCanvas.getContext('2d');
+
+  try {
+    if (pullPreviewParticles && pullPreviewParticles.length > 0) {
+      // True slingshot: reform directly from the pulled particle positions.
+      // The canvas was just re-aligned, so we need to remap particle positions
+      // to the new canvas coordinate space (center offset may have shifted).
+      const newCW = transitionCanvas.width;
+      const newCH = transitionCanvas.height;
+      // Use the recorded canvas dimensions from when pullPreviewParticlesBase was sampled.
+      // alignTransitionCanvas at lock-time used max(fromSurface.width, 320) + 2*PADDING, which
+      // may differ from fromSurface.width + 2*PADDING — using the wrong value causes the whole
+      // cloud to jump bottom-right on release before snapping back.
+      const oldCW = pullPreviewCanvasW || (fromSurface.width  + STAGE_PADDING_PX * 2);
+      const oldCH = pullPreviewCanvasH || (fromSurface.height + STAGE_PADDING_PX * 2);
+      const shiftX = (newCW - oldCW) / 2;
+      const shiftY = (newCH - oldCH) / 2;
+      const remapped = (shiftX === 0 && shiftY === 0)
+        ? pullPreviewParticles
+        : pullPreviewParticles.map(p => ({ x: p.x + shiftX, y: p.y + shiftY, color: p.color }));
+      // Also remap the base rest-positions (used for snap-back phase in transitionFromPull)
+      const remappedBase = !pullPreviewParticlesBase ? null
+        : (shiftX === 0 && shiftY === 0)
+          ? pullPreviewParticlesBase.map(p => ({ x: p.x, y: p.y, color: p.color }))
+          : pullPreviewParticlesBase.map(p => ({ x: p.x + shiftX, y: p.y + shiftY, color: p.color }));
+      await new Promise((resolve) => {
+        transitionFromPull(remapped, toSurface, ctx, { fromParticlesBase: remappedBase }, resolve);
+      });
+    } else {
+      // Fast swipe that didn't reach the particle phase: fall back to standard transition.
+      await new Promise((resolve) => {
+        transition(fromSurface.canvas, toSurface.canvas, { ctx, fromRegion: fromSurface, toRegion: toSurface }, resolve);
+      });
+    }
+  } catch (_) {
+    cancelSlingshot();
+    return;
+  }
+
+  // Reveal target hero — identical handoff sequence as runHeroTransition
+  const preparedPlaybackKey = `prepared:${getHeroSurfaceKey(targetSectionIdx, targetItemIdx)}`;
+  const targetHeroSpec      = getHeroSpec(targetSectionIdx, targetItemIdx);
+  const preparedTargetCanvas = isGifHeroSpec(targetHeroSpec)
+    ? getPreparedToGifCanvas(targetSectionIdx, targetItemIdx)
+    : null;
+  const canReusePreparedGif =
+    preparedTargetCanvas instanceof window.HTMLCanvasElement &&
+    activeGifPlayback?.playbackKey === preparedPlaybackKey &&
+    activeGifPlayback?.hasPaintedFrame;
+
+  renderHeroDOM(targetSectionIdx, targetItemIdx, {
+    preparedGifCanvas:        canReusePreparedGif ? preparedTargetCanvas : null,
+    preserveActiveGifPlayback: canReusePreparedGif
+  });
+  updateSectionNav(targetSectionIdx);
+  updateItemDots(targetSectionIdx, targetItemIdx);
+
+  heroContainer.style.visibility = 'visible';
+  heroContainer.style.transition = `opacity ${REVEAL_HANDOFF_FADE_MS}ms ease-out`;
+  transitionCanvas.style.transition = `opacity ${REVEAL_HANDOFF_FADE_MS}ms ease-in`;
+  await new Promise((resolve) => window.requestAnimationFrame(resolve));
+  heroContainer.style.opacity   = '1';
+  transitionCanvas.style.opacity = '0';
+  await new Promise((resolve) => window.setTimeout(resolve, REVEAL_HANDOFF_FADE_MS));
+  transitionCanvas.style.display    = 'none';
+  transitionCanvas.style.opacity    = '1';
+  transitionCanvas.style.transition = '';
+  heroContainer.style.transition    = '';
+
+  // Commit navigation state
+  currentSectionIdx   = targetSectionIdx;
+  currentItemIdx      = targetItemIdx;
+  preparedToGifCanvas = null;
+  preparedToGifKey    = null;
+
+  cleanupSlingshotPull();
+  startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
+
+  if (queuedTarget) {
+    const latest = queuedTarget;
+    queuedTarget = null;
+    if (!isSameTarget(latest, { sectionIdx: currentSectionIdx, itemIdx: currentItemIdx })) {
+      void goTo(latest.sectionIdx, latest.itemIdx, { transitionOptions: latest.transitionOptions || undefined });
+    }
+  }
+}
+
+function onSlingshotCancel() {
+  if (!isPulling) return;
+  cancelSlingshot();
+}
+
+function cancelSlingshot() {
+  const heroContainer    = document.getElementById('spa-hero-container');
+  const transitionCanvas = document.getElementById('transition-canvas');
+  transitionCanvas.style.display    = 'none';
+  transitionCanvas.style.opacity    = '1';
+  transitionCanvas.style.transition = '';
+  heroContainer.style.visibility = 'visible';
+  heroContainer.style.opacity    = '1';
+  heroContainer.style.transition = '';
+  cleanupSlingshotPull();
+  startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
+}
+
+function cleanupSlingshotPull() {
+  isPulling            = false;
+  isTransitioning      = false;
+  activeTarget         = null;
+  pullTargetSectionIdx = null;
+  pullTargetItemIdx    = null;
+  pullFromSurface      = null;
+  pullToSurface        = null;
+  pullFromSurfacePromise    = null;
+  pullToSurfacePromise      = null;
+  pullPreviewParticlesBase  = null;
+  pullPreviewParticles      = null;
+  pullPreviewCanvasW        = 0;
+  pullPreviewCanvasH        = 0;
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
 
 setupItemNav();
 render();
 startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
+
+initSlingshot(document.getElementById('spa-hero-container'), {
+  onArm:     onSlingshotArm,
+  onLock:    onSlingshotLock,
+  onPull:    onSlingshotPull,
+  onRelease: onSlingshotRelease,
+  onCancel:  onSlingshotCancel
+});

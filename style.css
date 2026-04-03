@@ -16,6 +16,7 @@ body {
   color: var(--fg);
   margin: 0;
   font-family: 'SF Mono', Menlo, Monaco, Consolas, monospace;
+  height: 100vh;
   height: 100svh;
   overflow: hidden;
 }
@@ -37,6 +38,7 @@ body {
 
 #spa-root {
   position: relative;
+  height: 100vh;
   height: 100svh;
   display: flex;
   flex-direction: column;
@@ -66,6 +68,33 @@ body {
   padding: 0 0.5rem;
 }
 
+#spa-dots {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.6rem 0 0;
+  min-height: 12px;
+}
+
+.spa-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #444;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+  flex-shrink: 0;
+}
+
+.spa-dot[aria-selected="true"] {
+  background: var(--accent);
+  transform: scale(1.35);
+}
+
 .spa-hero {
   display: flex;
   flex-direction: column;
@@ -74,6 +103,11 @@ body {
   width: min(100%, 38rem);
   min-height: 320px;
   text-align: center;
+  cursor: grab;
+}
+
+.spa-hero:active {
+  cursor: grabbing;
 }
 
 .spa-hero-image,
@@ -82,8 +116,11 @@ body {
   height: auto;
   max-height: 60vh;
   border-radius: 16px;
-  box-shadow: 0 4px 32px #000a;
+}
+
+.spa-hero-image {
   background: var(--panel);
+  box-shadow: 0 4px 32px #000a;
 }
 
 .spa-hero-text {
@@ -107,6 +144,7 @@ body {
   font-size: 1rem;
   line-height: 1.2;
   cursor: pointer;
+  touch-action: manipulation;
   transition: background 0.2s;
 }
 
