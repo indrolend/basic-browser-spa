@@ -776,7 +776,6 @@ window.addEventListener('keydown', (e) => {
 // ─── Pull preview helpers ─────────────────────────────────────────────────────
 
 const SLINGSHOT_PARTICLE_SIZE = 4;
-const SLINGSHOT_PULL_DAMPING  = 0.55; // elastic feel: hero doesn't follow 1:1
 const SLINGSHOT_MIN_RELEASE   = 0.15; // pullNormalized must exceed this to commit
 
 function samplePullParticles(surface, canvasW, canvasH) {
@@ -820,14 +819,12 @@ function renderPullPreview(pullVector, pullNormalized) {
 
   ctx.clearRect(0, 0, cW, cH);
 
-  // Elastically damped draw offset — hero follows finger but lags behind
-  const drawOffX = pullVector.x * pullNormalized * SLINGSHOT_PULL_DAMPING;
-  const drawOffY = pullVector.y * pullNormalized * SLINGSHOT_PULL_DAMPING;
-  const drawX    = (cW - pullFromSurface.width)  / 2 + drawOffX;
-  const drawY    = (cH - pullFromSurface.height) / 2 + drawOffY;
+  // Hero is always drawn at canvas center — no translation, never drifts off-screen
+  const drawX = (cW - pullFromSurface.width)  / 2;
+  const drawY = (cH - pullFromSurface.height) / 2;
 
   if (pullNormalized < 0.25) {
-    // Phase A — solid hero offset: coherent object being pulled
+    // Phase A — solid hero, centered, no offset
     ctx.drawImage(
       pullFromSurface.canvas, 0, 0, pullFromSurface.width, pullFromSurface.height,
       drawX, drawY, pullFromSurface.width, pullFromSurface.height
@@ -848,7 +845,12 @@ function renderPullPreview(pullVector, pullNormalized) {
   const heroAlpha = 1 - phaseB;
   const maxRadius = Math.sqrt((cW / 2) * (cW / 2) + (cH / 2) * (cH / 2));
 
-  // Draw fading hero image beneath particles
+  // Pull direction unit vector
+  const pullDist = Math.sqrt(pullVector.x * pullVector.x + pullVector.y * pullVector.y) || 1;
+  const pullNx   = pullVector.x / pullDist;
+  const pullNy   = pullVector.y / pullDist;
+
+  // Draw fading hero image beneath particles (always centered, no offset)
   if (heroAlpha > 0.01) {
     ctx.save();
     ctx.globalAlpha = heroAlpha;
@@ -859,15 +861,24 @@ function renderPullPreview(pullVector, pullNormalized) {
     ctx.restore();
   }
 
-  // Draw particles with edge-first fray
-  const fraying  = phaseB + phaseC * 0.6;
-  const current  = [];
+  // Elastic directional stretch: each particle is displaced along the pull axis
+  // in proportion to its signed projection onto that axis.
+  // Particles on the pull side stretch forward; particles on the opposite side
+  // stretch backward. The centroid stays at canvas center — nothing drifts off-screen.
+  const STRETCH_MAX = 55; // px — maximum stretch at pullNormalized = 1
+  const fraying = phaseB + phaseC * 0.6;
+  const current = [];
   for (const p of pullPreviewParticlesBase) {
-    // Edge particles fray more than center particles
+    // Signed projection onto pull axis, normalised to roughly ±1 across the canvas
+    const proj       = (p.cx * pullNx + p.cy * pullNy) / (maxRadius * 0.5);
+    const stretchAmt = proj * pullNormalized * STRETCH_MAX;
+
+    // Radial edge fray (random per-particle direction, grows with phase and edge position)
     const edgeFactor = Math.min(1, Math.sqrt(p.cx * p.cx + p.cy * p.cy) / (maxRadius * 0.6));
     const frayAmt    = fraying * edgeFactor * 20 * pullNormalized;
-    const px = p.x + drawOffX + p.frayX * frayAmt;
-    const py = p.y + drawOffY + p.frayY * frayAmt;
+
+    const px = p.x + pullNx * stretchAmt + p.frayX * frayAmt;
+    const py = p.y + pullNy * stretchAmt + p.frayY * frayAmt;
     current.push({ x: px, y: py, color: p.color });
     ctx.fillStyle = p.color;
     ctx.beginPath();
