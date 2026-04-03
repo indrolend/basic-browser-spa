@@ -123,6 +123,7 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
 
   let startTime = null;
   function animate(ts) {
+    if (!ctx.canvas.isConnected) return; // canvas removed from DOM — stop loop
     if (!startTime) startTime = ts;
     const t = ts - startTime;
     ctx.clearRect(0, 0, width, height);
@@ -209,6 +210,7 @@ export function transitionFromPull(pulledParticles, toRegion, ctx, options, onCo
 
   let startTime = null;
   function animate(ts) {
+    if (!ctx.canvas.isConnected) return; // canvas removed from DOM — stop loop
     if (!startTime) startTime = ts;
     const elapsed = ts - startTime;
     ctx.clearRect(0, 0, width, height);

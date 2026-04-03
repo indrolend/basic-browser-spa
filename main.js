@@ -77,6 +77,16 @@ let pullPreviewCanvasH = 0;
 const DESKTOP_CHAIN_WINDOW_MS = 260;
 const REVEAL_HANDOFF_FADE_MS = 70;
 
+// Unified fast-click helper: fires handler on touchend (immediately, no 300ms delay)
+// and on click (mouse fallback). The touchend listener calls preventDefault() so the
+// synthetic click generated after touch is suppressed, avoiding a double-fire.
+// Screen readers (VoiceOver, TalkBack) fire `click` directly via accessibility APIs
+// rather than through the touch event chain, so they use the onclick path unaffected.
+function addActivationHandler(element, handler) {
+  element.addEventListener('touchend', (e) => { e.preventDefault(); handler(); });
+  element.onclick = handler;
+}
+
 function isSameTarget(a, b) {
   return !!a && !!b && a.sectionIdx === b.sectionIdx && a.itemIdx === b.itemIdx;
 }
@@ -480,8 +490,7 @@ function updateSectionNav(sectionIdx) {
     btn.style.fontWeight = idx === sectionIdx ? 'bold' : 'normal';
     btn.style.background = idx === sectionIdx ? '#333' : '';
     btn.setAttribute('aria-current', idx === sectionIdx ? 'page' : 'false');
-    btn.onclick = () => goTo(idx, 0);
-    btn.addEventListener('touchend', (e) => { e.preventDefault(); goTo(idx, 0); });
+    addActivationHandler(btn, () => goTo(idx, 0));
     sectionNav.appendChild(btn);
   });
 }
@@ -499,8 +508,7 @@ function updateItemDots(sectionIdx, itemIdx) {
     dot.setAttribute('role', 'tab');
     dot.setAttribute('aria-label', item.label);
     dot.setAttribute('aria-selected', idx === itemIdx ? 'true' : 'false');
-    dot.onclick = () => goTo(sectionIdx, idx);
-    dot.addEventListener('touchend', (e) => { e.preventDefault(); goTo(sectionIdx, idx); });
+    addActivationHandler(dot, () => goTo(sectionIdx, idx));
     dotsBar.appendChild(dot);
   });
 }
@@ -596,10 +604,8 @@ function setupItemNav() {
     navBar.appendChild(nextBtn);
   }
 
-  prevBtn.onclick = prevItem;
-  prevBtn.addEventListener('touchend', (e) => { e.preventDefault(); prevItem(); });
-  nextBtn.onclick = nextItem;
-  nextBtn.addEventListener('touchend', (e) => { e.preventDefault(); nextItem(); });
+  addActivationHandler(prevBtn, prevItem);
+  addActivationHandler(nextBtn, nextItem);
 }
 
 const STAGE_PADDING_PX = 72;
@@ -1071,51 +1077,57 @@ async function onSlingshotRelease({ pullNormalized }) {
     return;
   }
 
-  // Reveal target hero — identical handoff sequence as runHeroTransition
-  const preparedPlaybackKey = `prepared:${getHeroSurfaceKey(targetSectionIdx, targetItemIdx)}`;
-  const targetHeroSpec      = getHeroSpec(targetSectionIdx, targetItemIdx);
-  const preparedTargetCanvas = isGifHeroSpec(targetHeroSpec)
-    ? getPreparedToGifCanvas(targetSectionIdx, targetItemIdx)
-    : null;
-  const canReusePreparedGif =
-    preparedTargetCanvas instanceof window.HTMLCanvasElement &&
-    activeGifPlayback?.playbackKey === preparedPlaybackKey &&
-    activeGifPlayback?.hasPaintedFrame;
+  // Reveal + commit — wrapped so any unexpected DOM error still resets state.
+  try {
+    // Reveal target hero — identical handoff sequence as runHeroTransition
+    const preparedPlaybackKey = `prepared:${getHeroSurfaceKey(targetSectionIdx, targetItemIdx)}`;
+    const targetHeroSpec      = getHeroSpec(targetSectionIdx, targetItemIdx);
+    const preparedTargetCanvas = isGifHeroSpec(targetHeroSpec)
+      ? getPreparedToGifCanvas(targetSectionIdx, targetItemIdx)
+      : null;
+    const canReusePreparedGif =
+      preparedTargetCanvas instanceof window.HTMLCanvasElement &&
+      activeGifPlayback?.playbackKey === preparedPlaybackKey &&
+      activeGifPlayback?.hasPaintedFrame;
 
-  renderHeroDOM(targetSectionIdx, targetItemIdx, {
-    preparedGifCanvas:        canReusePreparedGif ? preparedTargetCanvas : null,
-    preserveActiveGifPlayback: canReusePreparedGif
-  });
-  updateSectionNav(targetSectionIdx);
-  updateItemDots(targetSectionIdx, targetItemIdx);
+    renderHeroDOM(targetSectionIdx, targetItemIdx, {
+      preparedGifCanvas:        canReusePreparedGif ? preparedTargetCanvas : null,
+      preserveActiveGifPlayback: canReusePreparedGif
+    });
+    updateSectionNav(targetSectionIdx);
+    updateItemDots(targetSectionIdx, targetItemIdx);
 
-  heroContainer.style.visibility = 'visible';
-  heroContainer.style.transition = `opacity ${REVEAL_HANDOFF_FADE_MS}ms ease-out`;
-  transitionCanvas.style.transition = `opacity ${REVEAL_HANDOFF_FADE_MS}ms ease-in`;
-  await new Promise((resolve) => window.requestAnimationFrame(resolve));
-  heroContainer.style.opacity   = '1';
-  transitionCanvas.style.opacity = '0';
-  await new Promise((resolve) => window.setTimeout(resolve, REVEAL_HANDOFF_FADE_MS));
-  transitionCanvas.style.display    = 'none';
-  transitionCanvas.style.opacity    = '1';
-  transitionCanvas.style.transition = '';
-  heroContainer.style.transition    = '';
+    heroContainer.style.visibility = 'visible';
+    heroContainer.style.transition = `opacity ${REVEAL_HANDOFF_FADE_MS}ms ease-out`;
+    transitionCanvas.style.transition = `opacity ${REVEAL_HANDOFF_FADE_MS}ms ease-in`;
+    await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    heroContainer.style.opacity   = '1';
+    transitionCanvas.style.opacity = '0';
+    await new Promise((resolve) => window.setTimeout(resolve, REVEAL_HANDOFF_FADE_MS));
+    transitionCanvas.style.display    = 'none';
+    transitionCanvas.style.opacity    = '1';
+    transitionCanvas.style.transition = '';
+    heroContainer.style.transition    = '';
 
-  // Commit navigation state
-  currentSectionIdx   = targetSectionIdx;
-  currentItemIdx      = targetItemIdx;
-  preparedToGifCanvas = null;
-  preparedToGifKey    = null;
+    // Commit navigation state
+    currentSectionIdx   = targetSectionIdx;
+    currentItemIdx      = targetItemIdx;
+    preparedToGifCanvas = null;
+    preparedToGifKey    = null;
 
-  cleanupSlingshotPull();
-  startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
+    cleanupSlingshotPull();
+    startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
 
-  if (queuedTarget) {
-    const latest = queuedTarget;
-    queuedTarget = null;
-    if (!isSameTarget(latest, { sectionIdx: currentSectionIdx, itemIdx: currentItemIdx })) {
-      void goTo(latest.sectionIdx, latest.itemIdx, { transitionOptions: latest.transitionOptions || undefined });
+    if (queuedTarget) {
+      const latest = queuedTarget;
+      queuedTarget = null;
+      if (!isSameTarget(latest, { sectionIdx: currentSectionIdx, itemIdx: currentItemIdx })) {
+        void goTo(latest.sectionIdx, latest.itemIdx, { transitionOptions: latest.transitionOptions || undefined });
+      }
     }
+  } catch (err) {
+    console.warn('[slingshot] release reveal failed:', err);
+    cancelSlingshot();
   }
 }
 

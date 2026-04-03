@@ -25,6 +25,21 @@ export function initSlingshot(element, callbacks = {}) {
     return Math.sqrt(dx * dx + dy * dy);
   }
 
+  // Move/up/cancel listeners are added to window (not element) so that events
+  // are received even when setPointerCapture fails or the pointer leaves the
+  // element boundary before the LOCK_THRESHOLD_PX is crossed.
+  function addWindowListeners() {
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerCancel);
+  }
+
+  function removeWindowListeners() {
+    window.removeEventListener('pointermove', handlePointerMove);
+    window.removeEventListener('pointerup', handlePointerUp);
+    window.removeEventListener('pointercancel', handlePointerCancel);
+  }
+
   function handlePointerDown(e) {
     if (phase !== 'idle') return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -37,8 +52,12 @@ export function initSlingshot(element, callbacks = {}) {
     lastPullNormalized = 0;
     lockedDirection = null;
 
-    try { element.setPointerCapture(e.pointerId); } catch (_) {}
+    // setPointerCapture routes captured events back to this element so they
+    // continue to bubble up to our window listeners. If capture fails the
+    // window listeners still receive all events — the fallback is seamless.
+    try { element.setPointerCapture(e.pointerId); } catch (_e) { /* intentionally ignored */ }
     element.style.touchAction = 'none';
+    addWindowListeners();
 
     if (typeof onArm === 'function') onArm();
   }
@@ -77,6 +96,7 @@ export function initSlingshot(element, callbacks = {}) {
     if (e && e.pointerId !== pointerId) return;
     if (phase === 'idle') return;
 
+    removeWindowListeners();
     element.style.touchAction = '';
     const wasLocked = phase === 'locked';
     const savedDirection = lockedDirection;
@@ -101,16 +121,16 @@ export function initSlingshot(element, callbacks = {}) {
   function handlePointerCancel(e) { finalize(e, true); }
 
   element.addEventListener('pointerdown', handlePointerDown);
-  element.addEventListener('pointermove', handlePointerMove);
-  element.addEventListener('pointerup', handlePointerUp);
-  element.addEventListener('pointercancel', handlePointerCancel);
+  // pointermove / pointerup / pointercancel are registered on window dynamically
+  // inside handlePointerDown and cleaned up inside finalize().
 
   return {
     destroy() {
       element.removeEventListener('pointerdown', handlePointerDown);
-      element.removeEventListener('pointermove', handlePointerMove);
-      element.removeEventListener('pointerup', handlePointerUp);
-      element.removeEventListener('pointercancel', handlePointerCancel);
+      // Cancel any in-progress gesture so callbacks and touchAction are cleaned up.
+      if (phase !== 'idle') finalize(null, true);
+      // Guard: remove window listeners in case finalize was already called.
+      removeWindowListeners();
       element.style.touchAction = '';
       phase = 'idle';
       pointerId = null;
