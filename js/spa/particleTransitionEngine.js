@@ -182,7 +182,10 @@ export function transitionFromPull(pulledParticles, toRegion, ctx, options, onCo
     return;
   }
 
-  const N      = pulledParticles.length;
+  // Use the larger of the pull count and the to-image's natural density so the
+  // target is never under-populated (the main cause of sparse-looking reform on
+  // GIFs when the from-surface had fewer opaque pixels than the to-surface).
+  const N      = Math.max(pulledParticles.length, rawToParticles.length);
   const toPool = shuffle(sampleByCoverage(rawToParticles, N));
 
   // from-particles base = from-surface rest positions (before pull stretch).
@@ -190,13 +193,13 @@ export function transitionFromPull(pulledParticles, toRegion, ctx, options, onCo
   // reform origin (Phase 2), making the release feel like a true elastic rebound
   // that then transforms into the target image — all centred on screen.
   const fromBase = options && options.fromParticlesBase;
-  const hasSnap  = fromBase && fromBase.length >= N;
+  const hasSnap  = fromBase && fromBase.length > 0;
 
   const particles = [];
   for (let i = 0; i < N; i++) {
-    const pulled = pulledParticles[i];
+    const pulled = pulledParticles[i % pulledParticles.length];
     const end    = toPool[i % toPool.length];
-    const mid    = hasSnap ? fromBase[i] : pulled; // snap-back / reform origin
+    const mid    = hasSnap ? fromBase[i % fromBase.length] : pulled; // snap-back / reform origin
     particles.push({
       x0: pulled.x, y0: pulled.y, c0: parseRgba(pulled.color),
       xm: mid.x,    ym: mid.y,                          // rest position
