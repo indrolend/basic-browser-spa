@@ -169,7 +169,7 @@ export function transitionFromPull(pulledParticles, toRegion, ctx, options, onCo
   const width  = ctx.canvas.width;
   const height = ctx.canvas.height;
   const SNAP_DURATION   = 160; // ms — elastic snap-back from pulled to rest positions
-  const REFORM_DURATION = 350; // ms — reform from rest positions to target shape
+  const REFORM_DURATION = 520; // ms — reform from rest positions to target shape (160+520=680ms, matching button-press total)
 
   if (!pulledParticles || !pulledParticles.length) {
     if (typeof onComplete === 'function') onComplete();
