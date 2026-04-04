@@ -74,6 +74,11 @@ let pullPreviewParticles = null;     // updated every frame; passed to transitio
 let pullPreviewCanvasW = 0;          // canvas dimensions when pullPreviewParticlesBase was sampled
 let pullPreviewCanvasH = 0;
 
+// Game-mode slingshot targets (parallel to pullTargetSectionIdx/ItemIdx but in
+// game-section coordinates rather than SPA-section coordinates).
+let gameModePullSecIdx  = null;
+let gameModePullItemIdx = null;
+
 const DESKTOP_CHAIN_WINDOW_MS = 260;
 const REVEAL_HANDOFF_FADE_MS = 70;
 
@@ -871,15 +876,69 @@ function getDesktopNavOptions() {
 }
 
 function prevItem(navOptions = {}) {
-  if (isAsymptoteGameActive) { window.__SPA_GameNav?.navigatePrev?.(); return; }
+  if (isAsymptoteGameActive) { void gameNavigateWithTransition('prev', navOptions); return; }
   const target = getPrevTarget(currentSectionIdx, currentItemIdx);
   goTo(target.sectionIdx, target.itemIdx, navOptions);
 }
 
 function nextItem(navOptions = {}) {
-  if (isAsymptoteGameActive) { window.__SPA_GameNav?.navigateNext?.(); return; }
+  if (isAsymptoteGameActive) { void gameNavigateWithTransition('next', navOptions); return; }
   const target = getNextTarget(currentSectionIdx, currentItemIdx);
   goTo(target.sectionIdx, target.itemIdx, navOptions);
+}
+
+// Button/keyboard-triggered in-game navigation with a full particle transition.
+// Mirrors the structure of goTo() but operates on game-section coordinates and
+// uses buildHeroProbe() for both surfaces.
+async function gameNavigateWithTransition(direction, navOptions = {}) {
+  if (isTransitioning || isPulling) return;
+  const gameNav = window.__SPA_GameNav;
+  if (!gameNav) return;
+
+  isTransitioning = true;
+  stopCurrentHeroSurfaceTracking();
+
+  const fromTarget = gameNav.getFromTarget();
+  const toTarget   = gameNav.getToTarget(direction);
+
+  try {
+    // From-surface: prefer the continuously-tracked cached surface (fastest path).
+    const fromSurfaceKey = getHeroSurfaceKey(currentSectionIdx, currentItemIdx);
+    const fromSurfaceP = (currentHeroSurface && currentHeroSurfaceKey === fromSurfaceKey)
+      ? Promise.resolve(currentHeroSurface)
+      : (function () {
+          const probe = gameNav.buildHeroProbe(fromTarget.sectionIdx, fromTarget.itemIdx);
+          return probe
+            ? rasterizeWithCleanup({ type: 'textElement', element: probe.element, cleanup: probe.cleanup })
+            : Promise.reject(new Error('no from probe'));
+        }());
+
+    // To-surface: always built from an off-screen probe (target is not in the DOM yet).
+    const toProbe = gameNav.buildHeroProbe(toTarget.sectionIdx, toTarget.itemIdx);
+    const toSurfaceP = toProbe
+      ? rasterizeWithCleanup({ type: 'textElement', element: toProbe.element, cleanup: toProbe.cleanup })
+      : Promise.reject(new Error('no to probe'));
+
+    const [fromSurface, toSurface] = await Promise.all([fromSurfaceP, toSurfaceP]);
+
+    if (fromSurface && toSurface) {
+      await runHeroTransition(fromSurface, toSurface, {
+        ...(navOptions.transitionOptions || {}),
+        onBeforeReveal: async () => {
+          gameNav.commitTo(toTarget.sectionIdx, toTarget.itemIdx);
+        }
+      });
+    } else {
+      gameNav.commitTo(toTarget.sectionIdx, toTarget.itemIdx);
+    }
+  } catch (err) {
+    console.warn('[game nav transition] failed, falling back to instant nav:', err);
+    const gameNav2 = window.__SPA_GameNav;
+    if (gameNav2) gameNav2.commitTo(toTarget.sectionIdx, toTarget.itemIdx);
+  } finally {
+    isTransitioning = false;
+    startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
+  }
 }
 
 window.addEventListener('keydown', (e) => {
@@ -1050,12 +1109,59 @@ function onSlingshotArm() {
 function onSlingshotLock({ direction, pullVector, pullNormalized }) {
   if (isTransitioning || isPulling) return;
 
-  // When game is active, route the swipe gesture to game navigation.
-  // Set isPulling/isTransitioning to block concurrent SPA navigations.
+  // ── Game mode: full pull-preview setup (identical pipeline to SPA path) ──────
   if (isAsymptoteGameActive) {
+    const gameNav = window.__SPA_GameNav;
+    if (!gameNav) return;
+
+    const target = gameNav.getToTarget(direction);
+
     isPulling       = true;
     isTransitioning = true;
-    window.__SPA_GameNav?.beginSwipe?.(direction);
+    gameModePullSecIdx  = target.sectionIdx;
+    gameModePullItemIdx = target.itemIdx;
+    activeTarget = { sectionIdx: currentSectionIdx, itemIdx: currentItemIdx };
+
+    stopCurrentHeroSurfaceTracking();
+
+    // From-surface: use already-cached surface (tracking has been running since entry)
+    const fromSurfaceKey = getHeroSurfaceKey(currentSectionIdx, currentItemIdx);
+    if (currentHeroSurface && currentHeroSurfaceKey === fromSurfaceKey) {
+      pullFromSurface = currentHeroSurface;
+    }
+
+    // Kick off async rasterization for both surfaces in parallel.
+    // From: live .spa-hero-text element or cached surface.
+    pullFromSurfacePromise = (function () {
+      if (pullFromSurface) return Promise.resolve(pullFromSurface);
+      const heroContainer = document.getElementById('spa-hero-container');
+      const liveTextEl = heroContainer?.querySelector('.spa-hero-text');
+      if (liveTextEl) {
+        return rasterizeHero({ type: 'textElement', element: liveTextEl });
+      }
+      return Promise.reject(new Error('no game from surface'));
+    }()).then(s => { pullFromSurface = s; return s; }).catch(() => null);
+
+    // To: build an off-screen probe for the target game item.
+    pullToSurfacePromise = (function () {
+      const probe = gameNav.buildHeroProbe(target.sectionIdx, target.itemIdx);
+      if (!probe) return Promise.reject(new Error('no game to probe'));
+      return rasterizeWithCleanup({ type: 'textElement', element: probe.element, cleanup: probe.cleanup });
+    }()).then(s => { pullToSurface = s; return s; }).catch(() => null);
+
+    // Show transition canvas, hide hero DOM — identical to SPA path.
+    const heroContainer    = document.getElementById('spa-hero-container');
+    const transitionCanvas = document.getElementById('transition-canvas');
+    const fallbackSize     = { width: 320, height: 320 };
+    alignTransitionCanvas(transitionCanvas, pullFromSurface || fallbackSize, fallbackSize);
+    heroContainer.style.visibility = 'hidden';
+    heroContainer.style.opacity    = '0';
+    heroContainer.style.transition = '';
+    transitionCanvas.style.display    = 'block';
+    transitionCanvas.style.opacity    = '1';
+    transitionCanvas.style.transition = '';
+
+    renderPullPreview(pullVector, pullNormalized);
     return;
   }
 
@@ -1132,12 +1238,83 @@ function onSlingshotPull({ pullVector, pullNormalized }) {
 async function onSlingshotRelease({ pullNormalized }) {
   if (!isPulling) return;
 
-  // In game mode: commit or cancel the pending swipe.
+  // ── Game mode: run the same transitionFromPull/transition animation ──────────
   if (isAsymptoteGameActive) {
-    if (pullNormalized >= SLINGSHOT_MIN_RELEASE) {
-      window.__SPA_GameNav?.commitSwipe?.();
-    } else {
-      window.__SPA_GameNav?.cancelSwipe?.();
+    if (pullNormalized < SLINGSHOT_MIN_RELEASE) {
+      cancelSlingshot();
+      return;
+    }
+
+    let fromSurface, toSurface;
+    try {
+      [fromSurface, toSurface] = await Promise.all([pullFromSurfacePromise, pullToSurfacePromise]);
+    } catch (_) {
+      cancelSlingshot();
+      return;
+    }
+    if (!fromSurface || !toSurface) {
+      cancelSlingshot();
+      return;
+    }
+
+    const targetSecIdx  = gameModePullSecIdx;
+    const targetItemIdx = gameModePullItemIdx;
+    const heroContainer    = document.getElementById('spa-hero-container');
+    const transitionCanvas = document.getElementById('transition-canvas');
+
+    // Re-align canvas to the fully-resolved surface sizes before animating.
+    alignTransitionCanvas(transitionCanvas, fromSurface, toSurface);
+    const ctx = transitionCanvas.getContext('2d');
+
+    try {
+      if (pullPreviewParticles && pullPreviewParticles.length > 0) {
+        const newCW = transitionCanvas.width;
+        const newCH = transitionCanvas.height;
+        const oldCW = pullPreviewCanvasW || (fromSurface.width  + STAGE_PADDING_PX * 2);
+        const oldCH = pullPreviewCanvasH || (fromSurface.height + STAGE_PADDING_PX * 2);
+        const shiftX = (newCW - oldCW) / 2;
+        const shiftY = (newCH - oldCH) / 2;
+        const remapped = (shiftX === 0 && shiftY === 0)
+          ? pullPreviewParticles
+          : pullPreviewParticles.map(p => ({ x: p.x + shiftX, y: p.y + shiftY, color: p.color }));
+        const remappedBase = !pullPreviewParticlesBase ? null
+          : (shiftX === 0 && shiftY === 0)
+            ? pullPreviewParticlesBase.map(p => ({ x: p.x, y: p.y, color: p.color }))
+            : pullPreviewParticlesBase.map(p => ({ x: p.x + shiftX, y: p.y + shiftY, color: p.color }));
+        await new Promise((resolve) => {
+          transitionFromPull(remapped, toSurface, ctx, { fromParticlesBase: remappedBase }, resolve);
+        });
+      } else {
+        await new Promise((resolve) => {
+          transition(fromSurface.canvas, toSurface.canvas, { ctx, fromRegion: fromSurface, toRegion: toSurface }, resolve);
+        });
+      }
+    } catch (_) {
+      cancelSlingshot();
+      return;
+    }
+
+    // Reveal + commit — identical handoff sequence as runHeroTransition / SPA path
+    try {
+      window.__SPA_GameNav?.commitTo?.(targetSecIdx, targetItemIdx);
+
+      heroContainer.style.visibility = 'visible';
+      heroContainer.style.transition = `opacity ${REVEAL_HANDOFF_FADE_MS}ms ease-out`;
+      transitionCanvas.style.transition = `opacity ${REVEAL_HANDOFF_FADE_MS}ms ease-in`;
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+      heroContainer.style.opacity    = '1';
+      transitionCanvas.style.opacity = '0';
+      await new Promise((resolve) => window.setTimeout(resolve, REVEAL_HANDOFF_FADE_MS));
+      transitionCanvas.style.display    = 'none';
+      transitionCanvas.style.opacity    = '1';
+      transitionCanvas.style.transition = '';
+      heroContainer.style.transition    = '';
+
+      cleanupSlingshotPull();
+      startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
+    } catch (err) {
+      console.warn('[game slingshot] release reveal failed:', err);
+      cancelSlingshot();
     }
     return;
   }
@@ -1273,11 +1450,8 @@ async function onSlingshotRelease({ pullNormalized }) {
 
 function onSlingshotCancel() {
   if (!isPulling) return;
-  // In game mode, route to game's cancel handler so pendingSwipeDir is cleared.
-  if (isAsymptoteGameActive) {
-    window.__SPA_GameNav?.cancelSwipe?.();
-    return;
-  }
+  // In game mode the pull state is managed by main.js, so cancelSlingshot()
+  // is the correct cleanup path (restores DOM, resets pull vars).
   cancelSlingshot();
 }
 
@@ -1317,6 +1491,8 @@ function cleanupSlingshotPull() {
   pullPreviewParticles      = null;
   pullPreviewCanvasW        = 0;
   pullPreviewCanvasH        = 0;
+  gameModePullSecIdx  = null;
+  gameModePullItemIdx = null;
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────

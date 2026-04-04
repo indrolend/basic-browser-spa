@@ -547,42 +547,50 @@
     });
   }
 
-  // ── SWIPE HANDLING ───────────────────────────────────────────────────────────
+  // ── HERO PROBE ───────────────────────────────────────────────────────────────
 
-  // Slingshot callbacks — called from main.js when game is active.
-  // beginSwipe: records direction + dims hero (immediate drag feedback)
-  // commitSwipe: navigates + restores hero + resets slingshot state
-  // cancelSwipe: restores hero + resets slingshot state (no navigation)
+  // Builds an off-screen .spa-hero/.spa-hero-text element for a given game
+  // section/item so main.js can rasterize it as a transition surface.
+  // Mirrors createTextProbe() in main.js exactly.
+  function buildGameHeroProbe(secIdx, itemIdx) {
+    var sec  = GAME_SECTIONS[secIdx];
+    var item = sec && sec.items[itemIdx];
+    if (!sec || !item) return null;
 
-  var pendingSwipeDir = null;
-
-  function beginSwipe(direction) {
-    pendingSwipeDir = direction;
     var heroContainer = document.getElementById('spa-hero-container');
-    if (heroContainer) heroContainer.style.opacity = '0.6';
+    if (!heroContainer) return null;
+
+    var probeHero = document.createElement('div');
+    probeHero.className = 'spa-hero';
+    probeHero.style.position = 'absolute';
+    probeHero.style.pointerEvents = 'none';
+    probeHero.style.margin = '0';
+    probeHero.style.left = '-9999px';
+    probeHero.style.top  = '-9999px';
+
+    // Match width of the live hero so font wrapping is identical
+    var liveHeroEl = heroContainer.querySelector('.spa-hero:not([style*="-9999px"])');
+    if (liveHeroEl) {
+      var liveRect = liveHeroEl.getBoundingClientRect();
+      if (liveRect.width > 0) probeHero.style.width = liveRect.width + 'px';
+    } else {
+      probeHero.style.width = Math.max(220, Math.min(heroContainer.clientWidth || 320, 608)) + 'px';
+    }
+
+    var probeText = document.createElement('div');
+    probeText.className = 'spa-hero-text';
+    probeText.textContent = getItemHeroText(sec, item);
+    probeText.style.margin = '0';
+
+    probeHero.appendChild(probeText);
+    heroContainer.appendChild(probeHero);
+
+    return { element: probeText, cleanup: function () { probeHero.remove(); } };
   }
 
-  function commitSwipe() {
-    var dir = pendingSwipeDir;
-    pendingSwipeDir = null;
-    restoreHeroOpacity();
-    var target = (dir === 'next') ? getNextGameTarget() : getPrevGameTarget();
-    navigateTo(target.sectionIdx, target.itemIdx);
-    if (window.__SPA_CancelSlingshot) window.__SPA_CancelSlingshot();
-  }
+  // ── NAVIGATION ─ (instant, no particle effect — used by dot/tab clicks) ──────
 
-  function cancelSwipe() {
-    pendingSwipeDir = null;
-    restoreHeroOpacity();
-    if (window.__SPA_CancelSlingshot) window.__SPA_CancelSlingshot();
-  }
-
-  function restoreHeroOpacity() {
-    var heroContainer = document.getElementById('spa-hero-container');
-    if (heroContainer) heroContainer.style.opacity = '';
-  }
-
-  // Immediate navigation (prev/next buttons or keyboard shortcuts).
+  // Immediate navigation (dot clicks, section-tab clicks).
   function navigateInDir(dir) {
     var target = (dir === 'next') ? getNextGameTarget() : getPrevGameTarget();
     navigateTo(target.sectionIdx, target.itemIdx);
@@ -630,12 +638,28 @@
     startRender();
 
     window.__SPA_GameNav = {
-      beginSwipe:   beginSwipe,
-      commitSwipe:  commitSwipe,
-      cancelSwipe:  cancelSwipe,
-      onTap:        doCurrentItemAction,
+      // Read current game position
+      getFromTarget: function () {
+        var sec = getCurrentSection();
+        return { sectionIdx: state.sectionIdx, itemIdx: state.itemIndices[sec.id] };
+      },
+      // Compute next/prev game target without changing state
+      getToTarget: function (direction) {
+        return direction === 'next' ? getNextGameTarget() : getPrevGameTarget();
+      },
+      // Build an off-screen hero probe for the given game item (for rasterization)
+      buildHeroProbe: function (secIdx, itemIdx) {
+        return buildGameHeroProbe(secIdx, itemIdx);
+      },
+      // Navigate game to a specific section/item and rebuild DOM
+      commitTo: function (secIdx, itemIdx) {
+        navigateTo(secIdx, itemIdx);
+      },
+      // Instant navigation (dot / section-tab clicks; no particle effect)
       navigateNext: function () { navigateInDir('next'); },
-      navigatePrev: function () { navigateInDir('prev'); }
+      navigatePrev: function () { navigateInDir('prev'); },
+      // Action tap — activates current item
+      onTap: doCurrentItemAction
     };
   }
 
