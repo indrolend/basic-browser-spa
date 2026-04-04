@@ -83,8 +83,11 @@ const REVEAL_HANDOFF_FADE_MS = 70;
 // accidentally swipe out of the game.
 let isAsymptoteGameActive = false;
 window.__SPA_SetGameMode = (active) => { isAsymptoteGameActive = !!active; };
-// Navigate to home/swarm — used by the game's exit (✕) button.
+// Navigate to home — used by the game's exit (✕) button.
 window.__SPA_GoHome = () => goTo(0, 0);
+// Reset slingshot pull state — called by game commitSwipe / cancelSwipe so the
+// gesture system is cleanly unblocked after a game navigation.
+window.__SPA_CancelSlingshot = () => { cancelSlingshot(); };
 
 // Unified fast-click helper: fires handler on touchend (immediately, no 300ms delay)
 // and on click (mouse fallback). The touchend listener calls preventDefault() so the
@@ -868,11 +871,13 @@ function getDesktopNavOptions() {
 }
 
 function prevItem(navOptions = {}) {
+  if (isAsymptoteGameActive) { window.__SPA_GameNav?.navigatePrev?.(); return; }
   const target = getPrevTarget(currentSectionIdx, currentItemIdx);
   goTo(target.sectionIdx, target.itemIdx, navOptions);
 }
 
 function nextItem(navOptions = {}) {
+  if (isAsymptoteGameActive) { window.__SPA_GameNav?.navigateNext?.(); return; }
   const target = getNextTarget(currentSectionIdx, currentItemIdx);
   goTo(target.sectionIdx, target.itemIdx, navOptions);
 }
@@ -1016,6 +1021,21 @@ function renderPullPreview(pullVector, pullNormalized) {
 
 function onSlingshotTap() {
   if (isTransitioning || isPulling) return;
+
+  // When game is active, tap activates the current game item.
+  if (isAsymptoteGameActive) {
+    window.__SPA_GameNav?.onTap?.();
+    return;
+  }
+
+  // Tap on the Asymptote Engine hero — enter the game.
+  const section = SPA_SECTIONS[currentSectionIdx];
+  const item    = section?.items[currentItemIdx];
+  if (section?.id === 'games' && item?.id === 'asymptote') {
+    window.__SPA_Views?.games?.onEnterGame?.();
+    return;
+  }
+
   const action = getItemClickAction(currentSectionIdx, currentItemIdx);
   if (isExternalLink(action)) {
     window.open(action, '_blank', 'noopener,noreferrer');
@@ -1028,7 +1048,16 @@ function onSlingshotArm() {
 }
 
 function onSlingshotLock({ direction, pullVector, pullNormalized }) {
-  if (isTransitioning || isPulling || isAsymptoteGameActive) return;
+  if (isTransitioning || isPulling) return;
+
+  // When game is active, route the swipe gesture to game navigation.
+  // Set isPulling/isTransitioning to block concurrent SPA navigations.
+  if (isAsymptoteGameActive) {
+    isPulling       = true;
+    isTransitioning = true;
+    window.__SPA_GameNav?.beginSwipe?.(direction);
+    return;
+  }
 
   const from   = { sectionIdx: currentSectionIdx, itemIdx: currentItemIdx };
   const target = direction === 'next'
@@ -1102,6 +1131,16 @@ function onSlingshotPull({ pullVector, pullNormalized }) {
 
 async function onSlingshotRelease({ pullNormalized }) {
   if (!isPulling) return;
+
+  // In game mode: commit or cancel the pending swipe.
+  if (isAsymptoteGameActive) {
+    if (pullNormalized >= SLINGSHOT_MIN_RELEASE) {
+      window.__SPA_GameNav?.commitSwipe?.();
+    } else {
+      window.__SPA_GameNav?.cancelSwipe?.();
+    }
+    return;
+  }
 
   if (pullNormalized < SLINGSHOT_MIN_RELEASE) {
     cancelSlingshot();
@@ -1234,6 +1273,11 @@ async function onSlingshotRelease({ pullNormalized }) {
 
 function onSlingshotCancel() {
   if (!isPulling) return;
+  // In game mode, route to game's cancel handler so pendingSwipeDir is cleared.
+  if (isAsymptoteGameActive) {
+    window.__SPA_GameNav?.cancelSwipe?.();
+    return;
+  }
   cancelSlingshot();
 }
 
