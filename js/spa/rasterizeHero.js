@@ -104,6 +104,23 @@ function inlineComputedStyles(sourceEl, cloneEl) {
   }
 }
 
+function compositeCanvasChildren(ctx, targetCanvas, textEl) {
+  const canvasEls = textEl.querySelectorAll('canvas');
+  if (!canvasEls.length) return;
+  const parentRect = textEl.getBoundingClientRect();
+  const parentW    = Math.max(1, Math.ceil(parentRect.width));
+  const parentH    = Math.max(1, Math.ceil(parentRect.height));
+  canvasEls.forEach((srcCanvas) => {
+    if (!srcCanvas.width || !srcCanvas.height) return;
+    const srcRect = srcCanvas.getBoundingClientRect();
+    const relLeft = srcRect.left - parentRect.left;
+    const relTop  = srcRect.top  - parentRect.top;
+    const dstX = (targetCanvas.width  - parentW) / 2 + relLeft;
+    const dstY = (targetCanvas.height - parentH) / 2 + relTop;
+    ctx.drawImage(srcCanvas, dstX, dstY, srcRect.width, srcRect.height);
+  });
+}
+
 function drawTextElementViaSvg(ctx, canvas, textEl, onDone, onError) {
   const rect = textEl.getBoundingClientRect();
   const width = Math.max(1, Math.ceil(rect.width));
@@ -116,8 +133,15 @@ function drawTextElementViaSvg(ctx, canvas, textEl, onDone, onError) {
   }
 
   inlineComputedStyles(textEl, clone);
-  clone.style.margin = '0';
-  clone.style.width = `${width}px`;
+  clone.style.margin   = '0';
+  clone.style.width    = `${width}px`;
+  // Probe elements use off-screen absolute positioning (left: -9999px) to hide
+  // them from view. Reset to relative so SVG foreignObject renders at the origin.
+  clone.style.position = 'relative';
+  clone.style.left     = 'auto';
+  clone.style.top      = 'auto';
+  clone.style.right    = 'auto';
+  clone.style.bottom   = 'auto';
 
   const serializer = new window.XMLSerializer();
   const escaped = serializer.serializeToString(clone)
@@ -135,6 +159,13 @@ function drawTextElementViaSvg(ctx, canvas, textEl, onDone, onError) {
   img.onload = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
+    // Composite any live canvas children (e.g. the asymptote animation) behind
+    // the text. destination-over places new pixels only where alpha is zero,
+    // so the already-drawn text stays on top.
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-over';
+    compositeCanvasChildren(ctx, canvas, textEl);
+    ctx.restore();
     onDone();
   };
   img.onerror = () => onError(new Error('Failed to rasterize text element via SVG'));
@@ -302,6 +333,11 @@ export function rasterizeHero(hero) {
         () => {
           console.debug('[rasterizeHero] textElement SVG rasterization failed; using canvas fallback');
           drawTextElement(ctx, canvas, textEl);
+          // Composite any live canvas children behind the text (same as SVG path).
+          ctx.save();
+          ctx.globalCompositeOperation = 'destination-over';
+          compositeCanvasChildren(ctx, canvas, textEl);
+          ctx.restore();
           finish({ padding: 14, debugLabel: 'textElement(fallback)' });
         }
       );

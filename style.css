@@ -129,6 +129,28 @@ body {
   border-radius: 16px;
 }
 
+/* Text-type hero rendered as an obvious button box */
+.spa-hero--text {
+  background: var(--panel);
+  border: 2px solid #2f2f2f;
+  border-radius: 12px;
+  padding: 2rem 2.5rem;
+  min-height: unset;
+  box-shadow: 0 2px 20px #0005;
+  transition: background 0.15s, border-color 0.15s;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.spa-hero--text:hover {
+  background: var(--panel-active);
+  border-color: var(--accent);
+}
+
+.spa-hero--text.spa-hero--linkable:focus-visible {
+  border-radius: 12px;
+}
+
 .spa-hero-image,
 .spa-hero-gif {
   width: min(80vw, 320px);
@@ -209,9 +231,76 @@ body {
     min-height: 240px;
   }
 
+  .spa-hero--text {
+    padding: 1.5rem 1.75rem;
+    border-radius: 10px;
+  }
+
   .spa-hero-image,
   .spa-hero-gif {
     width: min(86vw, 320px);
     max-height: 50vh;
+  }
+}
+
+/* ─── Asymptote Game ─────────────────────────────────────────────────────────── */
+/* The game renders into the existing SPA DOM elements, so it inherits all the  */
+/* .spa-nav-btn, .spa-hero, .spa-hero-text, .spa-dot styles defined above.      */
+/* Only game-specific additions are defined here.                                */
+
+/* Stats bar — sits inside #spa-section-nav above the section tabs.
+   It is 100% wide so the flex-wrap in #spa-section-nav pushes the tabs below. */
+.asy-stats-bar {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: #aaa;
+  padding-bottom: 0.2rem;
+}
+
+.asy-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3em;
+}
+
+.asy-label {
+  color: #555;
+}
+
+/* Description line shown beneath the .spa-hero-text for generator/upgrade/sacrifice items */
+.spa-hero-subtext {
+  font-size: clamp(0.75rem, 2.5vw, 0.9rem);
+  color: #666;
+  letter-spacing: 0.03em;
+  line-height: 1.5;
+  max-width: 32rem;
+  text-align: center;
+  margin: 0.5rem 0 0;
+  padding: 0 1rem;
+}
+
+/* Dim hero text when the item cannot currently be actioned (e.g. can't afford) */
+.asy-hero--dim .spa-hero-text {
+  color: #4a4a4a;
+}
+
+/* Exit button — inherits .spa-nav-btn; slightly faded to distinguish from section tabs */
+.asy-exit-btn {
+  opacity: 0.65;
+}
+
+.asy-exit-btn:hover,
+.asy-exit-btn:active {
+  opacity: 1;
+}
+
+@media (max-width: 480px) {
+  .asy-stats-bar {
+    gap: 0.75rem;
+    font-size: 0.68rem;
   }
 }
