@@ -159,7 +159,7 @@ function createTextProbe(text) {
   if (!container) return null;
 
   const probeHero = document.createElement('div');
-  probeHero.className = 'spa-hero spa-hero--text';
+  probeHero.className = 'spa-hero';
   probeHero.setAttribute('data-probe', '1');
   probeHero.style.position = 'absolute';
   probeHero.style.pointerEvents = 'none';
@@ -427,7 +427,7 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
 
   if (hero.kind === 'text') {
     const container = document.getElementById('spa-hero-container');
-    const liveHeroEl = container?.querySelector('.spa-hero--text:not([data-probe])');
+    const liveHeroEl = container?.querySelector('.spa-hero:not([data-probe])');
 
     if (phase === 'from' && liveHeroEl instanceof window.HTMLElement) {
       return { type: 'textElement', element: liveHeroEl };
@@ -624,7 +624,6 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
       hero.appendChild(img);
     }
   } else {
-    hero.classList.add('spa-hero--text');
     const textDiv = document.createElement('div');
     textDiv.className = 'spa-hero-text';
     textDiv.textContent = heroSpec?.text || item.label;
