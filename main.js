@@ -433,6 +433,16 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
       return { type: 'textElement', element: liveHeroEl };
     }
 
+    // Allow view modules to supply a richer probe (e.g. canvas animation + text).
+    const sectionId = SPA_SECTIONS[sectionIdx]?.id;
+    const itemId    = SPA_SECTIONS[sectionIdx]?.items[itemIdx]?.id;
+    if (sectionId && itemId) {
+      const viewProbe = window.__SPA_Views?.[sectionId]?.buildHeroProbe?.(itemId, container);
+      if (viewProbe) {
+        return { type: 'textElement', element: viewProbe.element, cleanup: viewProbe.cleanup };
+      }
+    }
+
     const probe = createTextProbe(hero.text);
     if (probe) {
       return { type: 'textElement', element: probe.element, cleanup: probe.cleanup };

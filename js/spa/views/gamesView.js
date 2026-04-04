@@ -52,11 +52,21 @@
     if (window.AsymptoteApp) window.AsymptoteApp.enterGame();
   }
 
+  // buildHeroProbe: returns a { element, cleanup } probe that carries the
+  // mount-animation canvas so particle transitions show the animated surface.
+  function buildHeroProbe(itemId, containerEl) {
+    if (itemId !== 'asymptote') return null;
+    return (window.AsymptoteApp && window.AsymptoteApp.buildMountHeroProbe)
+      ? window.AsymptoteApp.buildMountHeroProbe(containerEl)
+      : null;
+  }
+
   if (!window.__SPA_Views) window.__SPA_Views = {};
   window.__SPA_Views.games = {
-    mount:        mount,
-    onActivate:   onActivate,
-    onDeactivate: onDeactivate,
-    onEnterGame:  onEnterGame
+    mount:          mount,
+    onActivate:     onActivate,
+    onDeactivate:   onDeactivate,
+    onEnterGame:    onEnterGame,
+    buildHeroProbe: buildHeroProbe
   };
 }());

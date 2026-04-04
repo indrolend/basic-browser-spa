@@ -325,11 +325,36 @@
     }
   }
 
+  // ── MOUNT ANIMATION CONSTANTS ────────────────────────────────────────────────
+
+  var ANIM_DOT_N    = 22;
+  var ANIM_DOT_R    = 4.5;   // CSS px — solid dot radius
+  var ANIM_GLOW_R   = 11;    // CSS px — outer glow radius
+  var ANIM_CYCLE_MS = 3500;
+  var ANIM_SEQ_MS   = 2200;  // time at which all dots are lit
+  var ANIM_HOLD_MS  = 2700;  // time at which fade-out begins
+  var ANIM_RANGE    = 3.5;   // curve units shown per axis
+  var ANIM_AR       = [94, 232, 125]; // accent colour #5ee87d
+
+  // Pre-compute Q2 curve: x ∈ [−3.2, −0.3], y = −1/x > 0.
+  // Log-spaced so dots are denser near the y-axis asymptote.
+  // i = 0  → leftmost  (x ≈ −3.2, y ≈ 0.31)  — lights up first
+  // i = N−1 → rightmost (x ≈ −0.3, y ≈ 3.33) — lights up last
+  var ANIM_DOTS = (function () {
+    var d = [];
+    for (var i = 0; i < ANIM_DOT_N; i++) {
+      var t   = i / (ANIM_DOT_N - 1);
+      var mag = Math.exp(Math.log(3.2) + (Math.log(0.3) - Math.log(3.2)) * t);
+      d.push({ cx: -mag, cy: 1 / mag });
+    }
+    return d;
+  }());
+
   // ── RENDER LOOP ──────────────────────────────────────────────────────────────
 
-  var renderFrameId   = null;
+  var renderFrameId    = null;
   var mountAnimFrameId = null;
-  var dirty           = false;
+  var dirty            = false;
 
   function startRender() {
     if (renderFrameId !== null) return;
@@ -597,33 +622,116 @@
     navigateTo(target.sectionIdx, target.itemIdx);
   }
 
-  // ── MOUNT ANIMATION ─ (entrance canvas: y=1/x graph with sequencing dots) ──
+  // ── MOUNT ANIMATION ─ (entrance canvas: Q2 y=−1/x graph, left-to-right dots) ─
+
+  // Draw one frame of the mount animation onto ctx (already in CSS-px transform).
+  // elapsed is the time within the current cycle in milliseconds.
+  function drawMountFrame(ctx, cssW, cssH, elapsed) {
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    // Layout: origin at bottom-right (x=0, y=0 corner)
+    // x-axis: goes from right (x=0 asymptote) leftward to x=−RANGE
+    // y-axis: goes from bottom (y=0 asymptote) upward to y=RANGE
+    var padL = 26, padR = 46, padT = 26, padB = 44;
+    var plotW = cssW - padL - padR;
+    var plotH = cssH - padT - padB;
+    var sx    = plotW / ANIM_RANGE;
+    var sy    = plotH / ANIM_RANGE;
+
+    // Map curve coords to canvas pixels.
+    // cx ∈ [−RANGE, 0] → [padL, cssW−padR]  (left=negative x, right=x=0 asymptote)
+    // cy ∈ [0, RANGE]  → [cssH−padB, padT]   (bottom=y=0 asymptote, top=large y)
+    function canX(cx) { return padL + (cx + ANIM_RANGE) * sx; }
+    function canY(cy) { return (cssH - padB) - cy * sy; }
+
+    var ox = cssW - padR;   // canX(0)  — y-axis (right asymptote)
+    var oy = cssH - padB;   // canY(0)  — x-axis (bottom asymptote)
+
+    // ── Axes ──
+    ctx.strokeStyle = 'rgba(72, 72, 72, 0.9)';
+    ctx.lineWidth   = 1.5;
+    ctx.lineCap     = 'round';
+
+    // Y-axis (x=0 asymptote): vertical line on the right
+    ctx.beginPath();
+    ctx.moveTo(ox, oy);
+    ctx.lineTo(ox, padT);
+    ctx.stroke();
+    // Y-axis arrowhead (pointing up)
+    ctx.beginPath();
+    ctx.moveTo(ox - 4, padT + 9);
+    ctx.lineTo(ox,     padT + 1);
+    ctx.lineTo(ox + 4, padT + 9);
+    ctx.stroke();
+
+    // X-axis (y=0 asymptote): horizontal line at bottom
+    ctx.beginPath();
+    ctx.moveTo(ox, oy);
+    ctx.lineTo(padL, oy);
+    ctx.stroke();
+    // X-axis arrowhead (pointing left, toward negative x)
+    ctx.beginPath();
+    ctx.moveTo(padL + 9, oy - 4);
+    ctx.lineTo(padL + 1, oy);
+    ctx.lineTo(padL + 9, oy + 4);
+    ctx.stroke();
+
+    // Axis labels
+    var labelSize = Math.max(10, Math.round(cssW * 0.03));
+    ctx.fillStyle = 'rgba(78, 78, 78, 0.9)';
+    ctx.font      = labelSize + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('x', padL - 4, oy + 13);
+    ctx.textAlign = 'right';
+    ctx.fillText('y', ox - 5, padT + 5);
+
+    // ── Sequencing dots ──
+    var eFrac    = (elapsed % ANIM_CYCLE_MS) / ANIM_CYCLE_MS;
+    var seqFrac  = ANIM_SEQ_MS  / ANIM_CYCLE_MS;
+    var holdFrac = ANIM_HOLD_MS / ANIM_CYCLE_MS;
+    var slotFrac = seqFrac / (ANIM_DOT_N - 1);
+
+    for (var i = 0; i < ANIM_DOT_N; i++) {
+      var activateAt = (i / (ANIM_DOT_N - 1)) * seqFrac;
+      var opacity;
+      if (eFrac < activateAt) {
+        opacity = 0;
+      } else if (eFrac < holdFrac) {
+        opacity = Math.min(1, (eFrac - activateAt) / Math.max(slotFrac * 0.55, 0.001));
+      } else {
+        opacity = Math.max(0, 1 - (eFrac - holdFrac) / (1 - holdFrac));
+      }
+      if (opacity <= 0.01) continue;
+
+      var px = canX(ANIM_DOTS[i].cx);
+      var py = canY(ANIM_DOTS[i].cy);
+      if (py < -ANIM_GLOW_R || py > cssH + ANIM_GLOW_R ||
+          px < -ANIM_GLOW_R || px > cssW + ANIM_GLOW_R) continue;
+
+      // Outer glow
+      var grd = ctx.createRadialGradient(px, py, 0, px, py, ANIM_GLOW_R);
+      grd.addColorStop(0, 'rgba(' + ANIM_AR[0] + ',' + ANIM_AR[1] + ',' + ANIM_AR[2] + ',' + (opacity * 0.7) + ')');
+      grd.addColorStop(1, 'rgba(' + ANIM_AR[0] + ',' + ANIM_AR[1] + ',' + ANIM_AR[2] + ',0)');
+      ctx.beginPath();
+      ctx.arc(px, py, ANIM_GLOW_R, 0, Math.PI * 2);
+      ctx.fillStyle = grd;
+      ctx.fill();
+
+      // Solid dot
+      ctx.beginPath();
+      ctx.arc(px, py, ANIM_DOT_R, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(' + ANIM_AR[0] + ',' + ANIM_AR[1] + ',' + ANIM_AR[2] + ',' + opacity + ')';
+      ctx.fill();
+    }
+  }
 
   function startMountAnimation(canvas) {
     var ctx       = canvas.getContext('2d');
-    var DOT_N     = 22;
-    var DOT_R     = 4.5;   // CSS px — solid dot radius
-    var GLOW_R    = 11;    // CSS px — outer glow radius
-    var CYCLE_MS  = 3500;
-    var SEQ_MS    = 2200;  // time until all dots have lit up
-    var HOLD_MS   = 2700;  // time at which fade-out begins
-    var AR        = [94, 232, 125]; // accent #5ee87d components
-
-    // Pre-compute dot curve positions: log-spaced x from 3.2 → 0.3 so dots
-    // are denser near the y-axis asymptote (matching y=1/x curvature).
-    var dots = [];
-    for (var i = 0; i < DOT_N; i++) {
-      var t  = i / (DOT_N - 1);
-      var cx = Math.exp(Math.log(3.2) + (Math.log(0.3) - Math.log(3.2)) * t);
-      dots.push({ cx: cx, cy: 1 / cx });
-    }
-
     var startTime = null;
 
     function frame(now) {
       mountAnimFrameId = requestAnimationFrame(frame);
       if (!startTime) startTime = now;
-      var elapsed = (now - startTime) % CYCLE_MS;
 
       var rect = canvas.getBoundingClientRect();
       var dpr  = window.devicePixelRatio || 1;
@@ -638,95 +746,7 @@
         canvas.height = physH;
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, cssW, cssH);
-
-      // Layout: plot area with padding
-      var padL  = 46, padR  = 26, padT  = 26, padB  = 44;
-      var plotW = cssW - padL - padR;
-      var plotH = cssH - padT - padB;
-      var RANGE = 3.5; // curve units shown on each axis
-      var sx    = plotW / RANGE;
-      var sy    = plotH / RANGE;
-
-      function canX(cx) { return padL + cx * sx; }
-      function canY(cy) { return (cssH - padB) - cy * sy; }
-
-      // ── Axes ──
-      ctx.strokeStyle = 'rgba(72, 72, 72, 0.9)';
-      ctx.lineWidth   = 1.5;
-      ctx.lineCap     = 'round';
-
-      // Y-axis  (x=0 asymptote)
-      ctx.beginPath();
-      ctx.moveTo(padL, cssH - padB);
-      ctx.lineTo(padL, padT);
-      ctx.stroke();
-      // Y-axis arrowhead
-      ctx.beginPath();
-      ctx.moveTo(padL - 4, padT + 9);
-      ctx.lineTo(padL, padT + 1);
-      ctx.lineTo(padL + 4, padT + 9);
-      ctx.stroke();
-
-      // X-axis  (y=0 asymptote)
-      ctx.beginPath();
-      ctx.moveTo(padL, cssH - padB);
-      ctx.lineTo(cssW - padR, cssH - padB);
-      ctx.stroke();
-      // X-axis arrowhead
-      ctx.beginPath();
-      ctx.moveTo(cssW - padR - 9, cssH - padB - 4);
-      ctx.lineTo(cssW - padR - 1, cssH - padB);
-      ctx.lineTo(cssW - padR - 9, cssH - padB + 4);
-      ctx.stroke();
-
-      // Axis labels
-      var labelSize = Math.max(10, Math.round(cssW * 0.03));
-      ctx.fillStyle  = 'rgba(78, 78, 78, 0.9)';
-      ctx.font       = labelSize + 'px sans-serif';
-      ctx.textAlign  = 'center';
-      ctx.fillText('x', cssW - padR + 3, cssH - padB + 13);
-      ctx.textAlign  = 'left';
-      ctx.fillText('y', padL + 5, padT + 5);
-
-      // ── Sequencing dots ──
-      var eFrac    = elapsed / CYCLE_MS;
-      var seqFrac  = SEQ_MS  / CYCLE_MS;
-      var holdFrac = HOLD_MS / CYCLE_MS;
-      var slotFrac = seqFrac / (DOT_N - 1);
-
-      for (var i = 0; i < DOT_N; i++) {
-        var activateAt = (i / (DOT_N - 1)) * seqFrac;
-        var opacity;
-        if (eFrac < activateAt) {
-          opacity = 0;
-        } else if (eFrac < holdFrac) {
-          var progress = (eFrac - activateAt) / Math.max(slotFrac * 0.55, 0.001);
-          opacity = Math.min(1, progress);
-        } else {
-          opacity = Math.max(0, 1 - (eFrac - holdFrac) / (1 - holdFrac));
-        }
-        if (opacity <= 0.01) continue;
-
-        var px = canX(dots[i].cx);
-        var py = canY(dots[i].cy);
-        if (py < -GLOW_R || py > cssH + GLOW_R || px < -GLOW_R || px > cssW + GLOW_R) continue;
-
-        // Outer glow
-        var grd = ctx.createRadialGradient(px, py, 0, px, py, GLOW_R);
-        grd.addColorStop(0, 'rgba(' + AR[0] + ',' + AR[1] + ',' + AR[2] + ',' + (opacity * 0.7) + ')');
-        grd.addColorStop(1, 'rgba(' + AR[0] + ',' + AR[1] + ',' + AR[2] + ',0)');
-        ctx.beginPath();
-        ctx.arc(px, py, GLOW_R, 0, Math.PI * 2);
-        ctx.fillStyle = grd;
-        ctx.fill();
-
-        // Solid dot
-        ctx.beginPath();
-        ctx.arc(px, py, DOT_R, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(' + AR[0] + ',' + AR[1] + ',' + AR[2] + ',' + opacity + ')';
-        ctx.fill();
-      }
+      drawMountFrame(ctx, cssW, cssH, now - startTime);
     }
 
     mountAnimFrameId = requestAnimationFrame(frame);
@@ -737,6 +757,70 @@
       cancelAnimationFrame(mountAnimFrameId);
       mountAnimFrameId = null;
     }
+  }
+
+  // buildMountHeroProbe: creates an off-screen probe element that mirrors the
+  // mount() hero structure (canvas + text), with the canvas pre-drawn at the
+  // "all dots lit" state. Used by the particle transition engine to build a
+  // to-surface that includes the animation, not just the label text.
+  function buildMountHeroProbe(containerEl) {
+    var heroContainer = containerEl || document.getElementById('spa-hero-container');
+    if (!heroContainer) return null;
+
+    var probeHero = document.createElement('div');
+    probeHero.className = 'spa-hero';
+    probeHero.setAttribute('data-probe', '1');
+    probeHero.style.position    = 'absolute';
+    probeHero.style.pointerEvents = 'none';
+    probeHero.style.margin      = '0';
+    probeHero.style.left        = '-9999px';
+    probeHero.style.top         = '-9999px';
+
+    // Match width of the live hero so font wrapping is identical.
+    var liveHeroEl = heroContainer.querySelector('.spa-hero:not([data-probe])');
+    if (liveHeroEl instanceof window.HTMLElement) {
+      var liveRect = liveHeroEl.getBoundingClientRect();
+      if (liveRect.width > 0) probeHero.style.width = liveRect.width + 'px';
+    } else {
+      probeHero.style.width = Math.max(220, Math.min(heroContainer.clientWidth || 320, 608)) + 'px';
+    }
+
+    // Canvas behind text (same structure as mount())
+    var canvas = document.createElement('canvas');
+    canvas.style.position    = 'absolute';
+    canvas.style.top         = '0';
+    canvas.style.left        = '0';
+    canvas.style.right       = '0';
+    canvas.style.bottom      = '0';
+    canvas.style.width       = '100%';
+    canvas.style.height      = '100%';
+    canvas.style.zIndex      = '0';
+    canvas.style.pointerEvents = 'none';
+    probeHero.appendChild(canvas);
+
+    var heroText = document.createElement('div');
+    heroText.className       = 'spa-hero-text';
+    heroText.style.position  = 'relative';
+    heroText.style.zIndex    = '1';
+    heroText.textContent     = 'Asymptote Engine';
+    probeHero.appendChild(heroText);
+
+    heroContainer.appendChild(probeHero);
+
+    // Draw animation at the "all dots fully lit, just before fade-out" state.
+    var rect = probeHero.getBoundingClientRect();
+    var cssW = Math.round(rect.width);
+    var cssH = Math.round(rect.height);
+    if (cssW > 0 && cssH > 0) {
+      var dpr = window.devicePixelRatio || 1;
+      canvas.width  = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+      var ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawMountFrame(ctx, cssW, cssH, ANIM_SEQ_MS + 100);
+    }
+
+    return { element: probeHero, cleanup: function () { probeHero.remove(); } };
   }
 
   // ── PUBLIC API ───────────────────────────────────────────────────────────────
@@ -841,10 +925,11 @@
   }
 
   window.AsymptoteApp = {
-    mount:      mount,
-    enterGame:  enterGame,
-    stopGame:   stopGame,
-    deactivate: deactivate
+    mount:               mount,
+    enterGame:           enterGame,
+    stopGame:            stopGame,
+    deactivate:          deactivate,
+    buildMountHeroProbe: buildMountHeroProbe
   };
 
 }());
