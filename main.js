@@ -355,6 +355,9 @@ function prepareToGifCanvas(sectionIdx, itemIdx, src, width = 320, height = 320)
   const existing = getPreparedToGifCanvas(sectionIdx, itemIdx);
   if (existing) return existing;
 
+  // Stop any currently-running gif playback before starting a new prepared animator.
+  stopActiveGifHeroPlayback();
+
   const canvas = document.createElement('canvas');
   canvas.className = 'spa-hero-gif spa-hero-gif-canvas';
   canvas.width = width;
@@ -370,13 +373,21 @@ async function refreshCurrentHeroSurface(sectionIdx, itemIdx) {
 
   try {
     const input = buildHeroRenderInput(sectionIdx, itemIdx, 'from');
+    const trackingKeyAtStart = currentHeroSurfaceTrackingKey;
+
     if (!input) {
-      currentHeroSurface = null;
-      currentHeroSurfaceKey = null;
+      if (currentHeroSurfaceTrackingKey === trackingKeyAtStart) {
+        currentHeroSurface = null;
+        currentHeroSurfaceKey = null;
+      }
       return null;
     }
 
     const surface = await rasterizeHero(input);
+
+    // Ignore late results if tracking moved on while rasterization was in flight.
+    if (currentHeroSurfaceTrackingKey !== trackingKeyAtStart) return null;
+
     currentHeroSurface = surface;
     currentHeroSurfaceKey = surfaceKey;
     return surface;
@@ -1390,6 +1401,10 @@ async function onSlingshotRelease({ pullNormalized }) {
       cancelSlingshot();
       return;
     }
+    if (!isPulling) {
+      cancelSlingshot();
+      return;
+    }
     if (!fromSurface || !toSurface) {
       cancelSlingshot();
       return;
@@ -1467,6 +1482,10 @@ async function onSlingshotRelease({ pullNormalized }) {
   try {
     [fromSurface, toSurface] = await Promise.all([pullFromSurfacePromise, pullToSurfacePromise]);
   } catch (_) {
+    cancelSlingshot();
+    return;
+  }
+  if (!isPulling) {
     cancelSlingshot();
     return;
   }
