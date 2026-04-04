@@ -215,7 +215,7 @@ export function transitionFromPull(pulledParticles, toRegion, ctx, options, onCo
     if (nBreakoff > 0) {
       const byDisp = particles
         .map((pt, i) => {
-          // vx/vy: vector from rest (xm) toward pulled position (x0) — the outward direction.
+          // vx/vy: outward vector (rest → pulled). Negated for breakoff to give snap-back direction.
           const vx = pt.x0 - pt.xm, vy = pt.y0 - pt.ym;
           return { i, d: vx * vx + vy * vy, vx, vy };
         })
@@ -223,11 +223,12 @@ export function transitionFromPull(pulledParticles, toRegion, ctx, options, onCo
       for (let k = 0; k < nBreakoff; k++) {
         const pt = particles[byDisp[k].i];
         pt.breakoff = true;
-        // Velocity scaled so the particle travels one displacement unit in SNAP_DURATION ms:
-        //   position at time t = x0 + (vx / SNAP_DURATION) * t
-        //   at t = SNAP_DURATION → x0 + vx  (one full displacement outward).
-        pt.bvx = byDisp[k].vx / SNAP_DURATION;
-        pt.bvy = byDisp[k].vy / SNAP_DURATION;
+        // Velocity in the snap-back direction (opposite to the pull vector), scaled 1.5×
+        // so the particle overshoots past the rest position — like liquid lapping back.
+        //   position at time t = x0 - (vx / SNAP_DURATION) * 1.5 * t
+        //   at t = SNAP_DURATION → x0 - 1.5*vx  (past xm by half a displacement).
+        pt.bvx = -byDisp[k].vx * 1.5 / SNAP_DURATION;
+        pt.bvy = -byDisp[k].vy * 1.5 / SNAP_DURATION;
       }
     }
   }
