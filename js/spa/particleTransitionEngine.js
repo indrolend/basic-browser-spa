@@ -208,6 +208,30 @@ export function transitionFromPull(pulledParticles, toRegion, ctx, options, onCo
     });
   }
 
+  // Tag the most-displaced particles as breakoff: they fly outward and fade during
+  // Phase 1 instead of snapping back, creating a "shatter edge" effect on release.
+  if (hasSnap) {
+    const nBreakoff = Math.floor(N * 0.12);
+    if (nBreakoff > 0) {
+      const byDisp = particles
+        .map((pt, i) => {
+          // vx/vy: vector from rest (xm) toward pulled position (x0) — the outward direction.
+          const vx = pt.x0 - pt.xm, vy = pt.y0 - pt.ym;
+          return { i, d: vx * vx + vy * vy, vx, vy };
+        })
+        .sort((a, b) => b.d - a.d);
+      for (let k = 0; k < nBreakoff; k++) {
+        const pt = particles[byDisp[k].i];
+        pt.breakoff = true;
+        // Velocity scaled so the particle travels one displacement unit in SNAP_DURATION ms:
+        //   position at time t = x0 + (vx / SNAP_DURATION) * t
+        //   at t = SNAP_DURATION → x0 + vx  (one full displacement outward).
+        pt.bvx = byDisp[k].vx / SNAP_DURATION;
+        pt.bvy = byDisp[k].vy / SNAP_DURATION;
+      }
+    }
+  }
+
   let startTime = null;
   function animate(ts) {
     if (!ctx.canvas.isConnected) return; // canvas removed from DOM — stop loop
@@ -220,14 +244,25 @@ export function transitionFromPull(pulledParticles, toRegion, ctx, options, onCo
       const raw  = elapsed / SNAP_DURATION;
       const ease = 1 - (1 - raw) * (1 - raw); // ease-out quad
       for (const pt of particles) {
-        ctx.fillStyle = `rgba(${pt.c0[0]},${pt.c0[1]},${pt.c0[2]},${pt.c0[3]})`;
-        ctx.beginPath();
-        ctx.arc(
-          pt.x0 + (pt.xm - pt.x0) * ease,
-          pt.y0 + (pt.ym - pt.y0) * ease,
-          PARTICLE_SIZE / 2, 0, Math.PI * 2
-        );
-        ctx.fill();
+        if (pt.breakoff) {
+          // Fly outward from the pulled position and fade out — does not snap back.
+          const alpha = pt.c0[3] * (1 - raw);
+          if (alpha > 0.01) {
+            ctx.fillStyle = `rgba(${pt.c0[0]},${pt.c0[1]},${pt.c0[2]},${alpha})`;
+            ctx.beginPath();
+            ctx.arc(pt.x0 + pt.bvx * elapsed, pt.y0 + pt.bvy * elapsed, PARTICLE_SIZE / 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        } else {
+          ctx.fillStyle = `rgba(${pt.c0[0]},${pt.c0[1]},${pt.c0[2]},${pt.c0[3]})`;
+          ctx.beginPath();
+          ctx.arc(
+            pt.x0 + (pt.xm - pt.x0) * ease,
+            pt.y0 + (pt.ym - pt.y0) * ease,
+            PARTICLE_SIZE / 2, 0, Math.PI * 2
+          );
+          ctx.fill();
+        }
       }
       requestAnimationFrame(animate);
     } else {
@@ -236,6 +271,7 @@ export function transitionFromPull(pulledParticles, toRegion, ctx, options, onCo
       const p     = Math.min(reformElapsed / REFORM_DURATION, 1);
       const moveP = easeOutBack(p);
       for (const pt of particles) {
+        if (pt.breakoff) continue; // faded out during Phase 1
         ctx.fillStyle = lerpColor(pt.c0, pt.c1, p);
         ctx.beginPath();
         ctx.arc(
