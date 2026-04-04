@@ -206,13 +206,30 @@ function isGifHeroSpec(hero) {
 }
 
 // Returns true when the hero for the given section/item is rendered by a view
-// that provides a buildHeroProbe (i.e. it contains a live animated canvas).
+// that provides a buildHeroProbe AND the live hero element currently contains
+// a <canvas> (i.e. an animated canvas is on screen right now).
 // Like GIF heroes, these must never use a stale cached surface for transitions.
+// The canvas check prevents false-positives during game play, when the same
+// section's hero is plain text (no animated canvas).
 function isProceduralCanvasHero(sectionIdx, itemIdx) {
   const section = SPA_SECTIONS[sectionIdx];
   const item    = section?.items[itemIdx];
   if (!section || !item) return false;
-  return typeof window.__SPA_Views?.[section.id]?.buildHeroProbe === 'function';
+  if (typeof window.__SPA_Views?.[section.id]?.buildHeroProbe !== 'function') return false;
+  const container = document.getElementById('spa-hero-container');
+  const liveHero  = container?.querySelector('.spa-hero:not([data-probe])');
+  return !!(liveHero?.querySelector('canvas'));
+}
+
+// Returns the first live canvas inside the hero container to use as a seed frame
+// when transitioning from a GIF or animated-canvas hero. Prefers the GIF canvas
+// (.spa-hero-gif-canvas) then any <canvas> inside .spa-hero.
+function findHeroSeedCanvas(heroContainer) {
+  const gifCanvas = heroContainer?.querySelector('.spa-hero-gif-canvas');
+  if (gifCanvas instanceof window.HTMLCanvasElement) return gifCanvas;
+  const animCanvas = heroContainer?.querySelector('.spa-hero canvas');
+  if (animCanvas instanceof window.HTMLCanvasElement) return animCanvas;
+  return null;
 }
 
 function stopActiveGifHeroPlayback() {
@@ -1189,6 +1206,24 @@ function onSlingshotLock({ direction, pullVector, pullNormalized }) {
     const transitionCanvas = document.getElementById('transition-canvas');
     const fallbackSize     = { width: 320, height: 320 };
     alignTransitionCanvas(transitionCanvas, pullFromSurface || fallbackSize, fallbackSize);
+
+    // Seed transition canvas with any live canvas frame to avoid a blank flash.
+    if (!pullFromSurface) {
+      const seedCanvas = findHeroSeedCanvas(heroContainer);
+      if (seedCanvas && seedCanvas.width > 0 && seedCanvas.height > 0) {
+        const seedCtx = transitionCanvas.getContext('2d');
+        const cssR  = seedCanvas.getBoundingClientRect();
+        const drawW = Math.round(cssR.width)  || seedCanvas.width;
+        const drawH = Math.round(cssR.height) || seedCanvas.height;
+        seedCtx.drawImage(
+          seedCanvas, 0, 0, seedCanvas.width, seedCanvas.height,
+          (transitionCanvas.width  - drawW) / 2,
+          (transitionCanvas.height - drawH) / 2,
+          drawW, drawH
+        );
+      }
+    }
+
     heroContainer.style.visibility = 'hidden';
     heroContainer.style.opacity    = '0';
     heroContainer.style.transition = '';
@@ -1256,6 +1291,27 @@ function onSlingshotLock({ direction, pullVector, pullNormalized }) {
   const transitionCanvas = document.getElementById('transition-canvas');
   const fallbackSize     = { width: 320, height: 320 };
   alignTransitionCanvas(transitionCanvas, pullFromSurface || fallbackSize, fallbackSize);
+
+  // When pullFromSurface isn't available synchronously (GIF / animated canvas hero),
+  // seed the transition canvas with the current live canvas frame before hiding the
+  // hero DOM. renderPullPreview returns without clearing when pullFromSurface is null,
+  // so this seed persists as a seamless placeholder until async rasterization completes.
+  if (!pullFromSurface) {
+    const seedCanvas = findHeroSeedCanvas(heroContainer);
+    if (seedCanvas && seedCanvas.width > 0 && seedCanvas.height > 0) {
+      const seedCtx = transitionCanvas.getContext('2d');
+      const cssR  = seedCanvas.getBoundingClientRect();
+      const drawW = Math.round(cssR.width)  || seedCanvas.width;
+      const drawH = Math.round(cssR.height) || seedCanvas.height;
+      seedCtx.drawImage(
+        seedCanvas, 0, 0, seedCanvas.width, seedCanvas.height,
+        (transitionCanvas.width  - drawW) / 2,
+        (transitionCanvas.height - drawH) / 2,
+        drawW, drawH
+      );
+    }
+  }
+
   heroContainer.style.visibility = 'hidden';
   heroContainer.style.opacity    = '0';
   heroContainer.style.transition = '';
