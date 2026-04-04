@@ -178,6 +178,7 @@ function createTextProbe(text) {
 
   const probeText = document.createElement('div');
   probeText.className = 'spa-hero-text';
+  probeText.style.margin = '0';
   probeText.textContent = text;
 
   probeHero.appendChild(probeText);
@@ -202,6 +203,16 @@ function getHeroSurfaceKey(sectionIdx, itemIdx) {
 
 function isGifHeroSpec(hero) {
   return hero?.kind === 'image' && /\.gif(?:[?#]|$)/i.test(hero.src || '');
+}
+
+// Returns true when the hero for the given section/item is rendered by a view
+// that provides a buildHeroProbe (i.e. it contains a live animated canvas).
+// Like GIF heroes, these must never use a stale cached surface for transitions.
+function isProceduralCanvasHero(sectionIdx, itemIdx) {
+  const section = SPA_SECTIONS[sectionIdx];
+  const item    = section?.items[itemIdx];
+  if (!section || !item) return false;
+  return typeof window.__SPA_Views?.[section.id]?.buildHeroProbe === 'function';
 }
 
 function stopActiveGifHeroPlayback() {
@@ -374,6 +385,15 @@ function startCurrentHeroSurfaceTracking(sectionIdx, itemIdx) {
   currentHeroSurfaceTrackingKey = surfaceKey;
 
   if (hero.kind === 'text') {
+    // Procedural canvas heroes (e.g. asymptote) contain a live animated canvas
+    // whose pixel state changes every frame. Treat them like GIF heroes: skip
+    // the cache entirely so transitions always capture the current live frame.
+    if (isProceduralCanvasHero(sectionIdx, itemIdx)) {
+      currentHeroSurface = null;
+      currentHeroSurfaceKey = null;
+      console.debug('[heroCapture] skipping cached surface tracking for procedural canvas hero');
+      return;
+    }
     void refreshCurrentHeroSurface(sectionIdx, itemIdx);
     return;
   }
@@ -479,12 +499,14 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
 async function buildHeroSurface(sectionIdx, itemIdx, phase) {
   const hero = getHeroSpec(sectionIdx, itemIdx);
   const shouldForceLiveGifFromCapture = phase === 'from' && isGifHeroSpec(hero);
+  const shouldForceLiveCanvasCapture  = phase === 'from' && isProceduralCanvasHero(sectionIdx, itemIdx);
 
   if (phase === 'from') {
     const requestedSurfaceKey = getHeroSurfaceKey(sectionIdx, itemIdx);
     const committedSurfaceKey = getHeroSurfaceKey(currentSectionIdx, currentItemIdx);
     if (
       !shouldForceLiveGifFromCapture &&
+      !shouldForceLiveCanvasCapture &&
       requestedSurfaceKey === committedSurfaceKey &&
       currentHeroSurface &&
       currentHeroSurfaceKey === requestedSurfaceKey
@@ -495,6 +517,9 @@ async function buildHeroSurface(sectionIdx, itemIdx, phase) {
 
     if (shouldForceLiveGifFromCapture) {
       console.debug('[heroCapture] forcing live GIF from-surface capture at transition start');
+    }
+    if (shouldForceLiveCanvasCapture) {
+      console.debug('[heroCapture] forcing live canvas from-surface capture at transition start');
     }
   }
 
@@ -1200,11 +1225,12 @@ function onSlingshotLock({ direction, pullVector, pullNormalized }) {
     }
   }
 
-  // Use the already-cached surface immediately for non-GIF heroes so the first
-  // pull frame is visible with no async delay.
+  // Use the already-cached surface immediately for non-GIF, non-canvas heroes so
+  // the first pull frame is visible with no async delay.
   const fromHeroSpec = getHeroSpec(from.sectionIdx, from.itemIdx);
   if (
     !isGifHeroSpec(fromHeroSpec) &&
+    !isProceduralCanvasHero(from.sectionIdx, from.itemIdx) &&
     currentHeroSurface &&
     currentHeroSurfaceKey === getHeroSurfaceKey(from.sectionIdx, from.itemIdx)
   ) {

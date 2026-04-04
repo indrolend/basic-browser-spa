@@ -327,14 +327,17 @@
 
   // ── MOUNT ANIMATION CONSTANTS ────────────────────────────────────────────────
 
-  var ANIM_DOT_N    = 22;
-  var ANIM_DOT_R    = 4.5;   // CSS px — solid dot radius
-  var ANIM_GLOW_R   = 11;    // CSS px — outer glow radius
-  var ANIM_CYCLE_MS = 3500;
-  var ANIM_SEQ_MS   = 2200;  // time at which all dots are lit
-  var ANIM_HOLD_MS  = 2700;  // time at which fade-out begins
-  var ANIM_RANGE    = 3.5;   // curve units shown per axis
-  var ANIM_AR       = [94, 232, 125]; // accent colour #5ee87d
+  var ANIM_DOT_N         = 22;
+  var ANIM_DOT_R         = 4.5;   // CSS px — solid dot radius
+  var ANIM_GLOW_R        = 11;    // CSS px — outer glow radius
+  var ANIM_CYCLE_MS      = 3500;
+  var ANIM_SEQ_MS        = 2200;  // time at which all dots are lit
+  var ANIM_HOLD_MS       = 2700;  // time at which fade-out begins
+  var ANIM_RANGE         = 3.5;   // curve units shown per axis
+  var ANIM_AR            = [94, 232, 125]; // accent colour #5ee87d
+  // Offset used for both buildMountHeroProbe and mount() startup so the first
+  // live animation frame exactly matches the particle-transition probe snapshot.
+  var ANIM_PROBE_OFFSET_MS = ANIM_SEQ_MS + 100;
 
   // Pre-compute Q2 curve: x ∈ [−3.2, −0.3], y = −1/x > 0.
   // Log-spaced so dots are denser near the y-axis asymptote.
@@ -725,8 +728,12 @@
     }
   }
 
-  function startMountAnimation(canvas) {
+  // initialElapsed: optional ms offset into the cycle at which to start the
+  // animation. Pass ANIM_PROBE_OFFSET_MS after a particle "to" transition so
+  // the first live frame (all dots lit, entering fade) matches the probe snapshot.
+  function startMountAnimation(canvas, initialElapsed) {
     var ctx       = canvas.getContext('2d');
+    var offsetMs  = (typeof initialElapsed === 'number') ? initialElapsed : 0;
     var startTime = null;
 
     function frame(now) {
@@ -746,7 +753,7 @@
         canvas.height = physH;
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      drawMountFrame(ctx, cssW, cssH, now - startTime);
+      drawMountFrame(ctx, cssW, cssH, (now - startTime) + offsetMs);
     }
 
     mountAnimFrameId = requestAnimationFrame(frame);
@@ -817,7 +824,7 @@
       canvas.height = Math.round(cssH * dpr);
       var ctx = canvas.getContext('2d');
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      drawMountFrame(ctx, cssW, cssH, ANIM_SEQ_MS + 100);
+      drawMountFrame(ctx, cssW, cssH, ANIM_PROBE_OFFSET_MS);
     }
 
     return { element: probeHero, cleanup: function () { probeHero.remove(); } };
@@ -869,7 +876,9 @@
     hero.appendChild(heroText);
 
     containerEl.appendChild(hero);
-    startMountAnimation(canvas);
+    // Start offset so the first live frame (all dots lit, entering fade) matches
+    // the buildMountHeroProbe snapshot that particle transitions reform into.
+    startMountAnimation(canvas, ANIM_PROBE_OFFSET_MS);
   }
 
   // enterGame: called when the user taps the "Asymptote Engine" hero.
