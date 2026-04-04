@@ -82,6 +82,14 @@ let gameModePullItemIdx = null;
 const DESKTOP_CHAIN_WINDOW_MS = 260;
 const REVEAL_HANDOFF_FADE_MS = 70;
 
+/** Opt-in verbose logging: add ?spa_debug=1 to the URL (zero overhead when off). */
+const SPA_DEBUG =
+  typeof location !== 'undefined' &&
+  new URLSearchParams(location.search).get('spa_debug') === '1';
+function spaDebug(...args) {
+  if (SPA_DEBUG) console.debug(...args);
+}
+
 // ─── Game mode flag ───────────────────────────────────────────────────────────
 // Set to true while the Asymptote game is active.
 // Blocks slingshot navigation and keyboard arrow nav so the player can't
@@ -300,7 +308,7 @@ function startGifHeroPlayback({ canvas, src, width = 320, height = 320, playback
         playbackState.hasPaintedFrame = true;
       });
       playbackState.animator = animator;
-      console.debug(`[gifPlayback] started key=${playbackKey} src=${src} via gifler`);
+      spaDebug(`[gifPlayback] started key=${playbackKey} src=${src} via gifler`);
     })
     .catch((err) => {
       console.warn(`[gifPlayback] failed key=${playbackKey} src=${src}: ${err?.message || err}`);
@@ -408,7 +416,7 @@ function startCurrentHeroSurfaceTracking(sectionIdx, itemIdx) {
     if (isProceduralCanvasHero(sectionIdx, itemIdx)) {
       currentHeroSurface = null;
       currentHeroSurfaceKey = null;
-      console.debug('[heroCapture] skipping cached surface tracking for procedural canvas hero');
+      spaDebug('[heroCapture] skipping cached surface tracking for procedural canvas hero');
       return;
     }
     void refreshCurrentHeroSurface(sectionIdx, itemIdx);
@@ -418,7 +426,7 @@ function startCurrentHeroSurfaceTracking(sectionIdx, itemIdx) {
   if (isGifHeroSpec(hero)) {
     currentHeroSurface = null;
     currentHeroSurfaceKey = null;
-    console.debug('[heroCapture] skipping cached surface tracking for live GIF canvas hero');
+    spaDebug('[heroCapture] skipping cached surface tracking for live GIF canvas hero');
     return;
   }
 
@@ -460,7 +468,7 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
   const hero = getHeroSpec(sectionIdx, itemIdx);
   if (!hero) return null;
 
-  console.debug(`[heroCapture] build input phase=${phase} kind=${hero.kind}`);
+  spaDebug(`[heroCapture] build input phase=${phase} kind=${hero.kind}`);
 
   if (hero.kind === 'text') {
     const container = document.getElementById('spa-hero-container');
@@ -492,19 +500,19 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
     const container = document.getElementById('spa-hero-container');
     const liveGifCanvasEl = container?.querySelector('.spa-hero-gif-canvas');
     if (liveGifCanvasEl instanceof window.HTMLCanvasElement) {
-      console.debug('[heroCapture] from GIF uses live canvas surface');
+      spaDebug('[heroCapture] from GIF uses live canvas surface');
       return { type: 'element', element: liveGifCanvasEl };
     }
     const liveImgEl = container?.querySelector('.spa-hero-image');
     if (liveImgEl instanceof window.HTMLImageElement) {
-      console.debug(
+      spaDebug(
         `[heroCapture] from image uses live element src=${liveImgEl.currentSrc || liveImgEl.src} complete=${liveImgEl.complete}`
       );
       return { type: 'element', element: liveImgEl };
     }
   }
 
-  console.debug(`[heroCapture] image fallback uses src rasterization src=${hero.src} phase=${phase}`);
+  spaDebug(`[heroCapture] image fallback uses src rasterization src=${hero.src} phase=${phase}`);
   return { type: 'gif', src: hero.src };
 }
 
@@ -528,15 +536,15 @@ async function buildHeroSurface(sectionIdx, itemIdx, phase) {
       currentHeroSurface &&
       currentHeroSurfaceKey === requestedSurfaceKey
     ) {
-      console.debug(`[heroCapture] reusing cached from-surface key=${requestedSurfaceKey}`);
+      spaDebug(`[heroCapture] reusing cached from-surface key=${requestedSurfaceKey}`);
       return currentHeroSurface;
     }
 
     if (shouldForceLiveGifFromCapture) {
-      console.debug('[heroCapture] forcing live GIF from-surface capture at transition start');
+      spaDebug('[heroCapture] forcing live GIF from-surface capture at transition start');
     }
     if (shouldForceLiveCanvasCapture) {
-      console.debug('[heroCapture] forcing live canvas from-surface capture at transition start');
+      spaDebug('[heroCapture] forcing live canvas from-surface capture at transition start');
     }
   }
 
@@ -547,7 +555,7 @@ async function buildHeroSurface(sectionIdx, itemIdx, phase) {
     const fallbackInput = buildHeroRenderInput(sectionIdx, itemIdx, 'to');
     if (fallbackInput?.type === 'gif') {
       return rasterizeWithCleanup(input).catch((err) => {
-        console.debug(`[heroCapture] live element capture failed; falling back to src rasterization: ${err?.message || err}`);
+        spaDebug(`[heroCapture] live element capture failed; falling back to src rasterization: ${err?.message || err}`);
         return rasterizeWithCleanup(fallbackInput);
       });
     }
@@ -653,7 +661,7 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
         if (warmCtx) {
           warmCtx.clearRect(0, 0, gifCanvas.width, gifCanvas.height);
           warmCtx.drawImage(options.gifWarmupSurface, 0, 0, gifCanvas.width, gifCanvas.height);
-          console.debug('[gifPlayback] seeded visible canvas with prewarmed first frame');
+          spaDebug('[gifPlayback] seeded visible canvas with prewarmed first frame');
         }
       }
       hero.appendChild(gifCanvas);
@@ -765,12 +773,6 @@ async function runHeroTransition(fromSurface, toSurface, transitionOptions = {})
   transitionCanvas.style.transition = '';
   ctx.clearRect(0, 0, transitionCanvas.width, transitionCanvas.height);
 
-  function centerDraw(context, src, region) {
-    const dx = (transitionCanvas.width - region.width) / 2;
-    const dy = (transitionCanvas.height - region.height) / 2;
-    context.drawImage(region.canvas, 0, 0, region.width, region.height, dx, dy, region.width, region.height);
-  }
-
   try {
     await new Promise((resolve) => {
       transition(
@@ -780,7 +782,6 @@ async function runHeroTransition(fromSurface, toSurface, transitionOptions = {})
           ctx,
           fromRegion: fromSurface,
           toRegion: toSurface,
-          centerDraw,
           ...engineOptions
         },
         resolve
@@ -844,7 +845,7 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
     let didRenderDuringReveal = false;
 
     try {
-      console.debug(
+      spaDebug(
         `[heroCapture] transition start from=${fromSectionIdx}:${fromItemIdx} to=${nextSectionIdx}:${nextItemIdx} at=${performance.now().toFixed(1)}ms`
       );
       const [fromSurface, toSurface] = await Promise.all([
@@ -994,12 +995,17 @@ async function gameNavigateWithTransition(direction, navOptions = {}) {
 }
 
 window.addEventListener('keydown', (e) => {
-  // Don't navigate the SPA while the Asymptote game is active
-  if (isAsymptoteGameActive) return;
-
   const isPrev = e.key === 'ArrowLeft' || e.key === 'ArrowUp';
   const isNext = e.key === 'ArrowRight' || e.key === 'ArrowDown';
   if (!isPrev && !isNext) return;
+
+  if (isAsymptoteGameActive) {
+    e.preventDefault();
+    const navOptions = getDesktopNavOptions();
+    if (isPrev) void gameNavigateWithTransition('prev', navOptions);
+    if (isNext) void gameNavigateWithTransition('next', navOptions);
+    return;
+  }
 
   const navOptions = getDesktopNavOptions();
   if (isPrev) prevItem(navOptions);

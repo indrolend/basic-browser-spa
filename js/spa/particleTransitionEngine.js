@@ -6,10 +6,16 @@ const PARTICLE_SIZE = 4;
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
+/** Reused for sampling; sequential sampleParticles calls are safe (each finishes before the next). */
+let sampleScratchCanvas = null;
+
 function sampleParticles(region, canvasWidth, canvasHeight) {
-  const c = document.createElement('canvas');
-  c.width = canvasWidth;
-  c.height = canvasHeight;
+  if (!sampleScratchCanvas) sampleScratchCanvas = document.createElement('canvas');
+  const c = sampleScratchCanvas;
+  if (c.width !== canvasWidth || c.height !== canvasHeight) {
+    c.width = canvasWidth;
+    c.height = canvasHeight;
+  }
   const cctx = c.getContext('2d');
   const dx = (canvasWidth - region.width) / 2;
   const dy = (canvasHeight - region.height) / 2;
@@ -76,7 +82,7 @@ function sampleByCoverage(list, count) {
  * Animate a particle transition from one canvas to another.
  * @param {HTMLCanvasElement} fromCanvas
  * @param {HTMLCanvasElement} toCanvas
- * @param {Object} options - { ctx, fromRegion, toRegion, timingProfile, ... }
+ * @param {Object} options - { ctx, fromRegion?, toRegion?, timingProfile? }
  * @param {Function} onComplete
  */
 export function transition(fromCanvas, toCanvas, options, onComplete) {

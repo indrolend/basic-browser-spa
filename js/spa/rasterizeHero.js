@@ -1,6 +1,13 @@
 // Rasterize a hero (GIF/image element or text) to a canvas for transition engine use
 // Usage: rasterizeHero({type: 'gif', src: 'assets/section/item.gif'}) or rasterizeHero({type: 'element', element: imgEl}) or rasterizeHero({type: 'textElement', element: textEl})
 
+const SPA_DEBUG =
+  typeof location !== 'undefined' &&
+  new URLSearchParams(location.search).get('spa_debug') === '1';
+function spaDebug(...args) {
+  if (SPA_DEBUG) console.debug(...args);
+}
+
 const HERO_CANVAS_WIDTH = 320;
 const HERO_CANVAS_HEIGHT = 320;
 const TEXT_RASTER_CANVAS_PADDING = 32;
@@ -257,7 +264,7 @@ export function rasterizeHero(hero) {
     function finish({ padding = 0, debugLabel = '' } = {}) {
       const cropped = cropToContent(canvas, padding);
       if (debugLabel) {
-        console.debug(
+        spaDebug(
           `[rasterizeHero] ${debugLabel} visible=${cropped.hasVisibleContent} ` +
           `size=${cropped.width}x${cropped.height} offset=(${cropped.offsetX},${cropped.offsetY})`
         );
@@ -276,7 +283,7 @@ export function rasterizeHero(hero) {
     }
 
     if (hero.type === 'gif') {
-      console.debug(`[rasterizeHero] branch=gif src=${hero.src}`);
+      spaDebug(`[rasterizeHero] branch=gif src=${hero.src}`);
       const img = new window.Image();
       img.onload = function() {
         drawCenteredImage(img);
@@ -294,7 +301,7 @@ export function rasterizeHero(hero) {
           reject(new Error('Canvas element not ready'));
           return;
         }
-        console.debug(`[rasterizeHero] branch=element live=true canvas=${srcW}x${srcH}`);
+        spaDebug(`[rasterizeHero] branch=element live=true canvas=${srcW}x${srcH}`);
         drawCenteredImage(sourceEl, srcW, srcH);
         return;
       }
@@ -306,7 +313,7 @@ export function rasterizeHero(hero) {
       }
       const src = imgEl.currentSrc || imgEl.src || '';
       const isGifSource = /\.gif(?:[?#]|$)/i.test(src);
-      console.debug(
+      spaDebug(
         `[rasterizeHero] branch=element live=true gif=${isGifSource} complete=${imgEl.complete} natural=${imgEl.naturalWidth}x${imgEl.naturalHeight}`
       );
       if (!imgEl.complete || !imgEl.naturalWidth || !imgEl.naturalHeight) {
@@ -314,7 +321,7 @@ export function rasterizeHero(hero) {
         return;
       }
       drawCenteredImage(imgEl);
-      console.debug(`[rasterizeHero] element capture drawn src=${src}`);
+      spaDebug(`[rasterizeHero] element capture drawn src=${src}`);
     } else if (hero.type === 'textElement') {
       const textEl = hero.element;
       if (!(textEl instanceof window.HTMLElement)) {
@@ -327,11 +334,11 @@ export function rasterizeHero(hero) {
         canvas,
         textEl,
         () => {
-          console.debug('[rasterizeHero] textElement SVG rasterization succeeded');
+          spaDebug('[rasterizeHero] textElement SVG rasterization succeeded');
           finish({ padding: 14, debugLabel: 'textElement(svg)' });
         },
         () => {
-          console.debug('[rasterizeHero] textElement SVG rasterization failed; using canvas fallback');
+          spaDebug('[rasterizeHero] textElement SVG rasterization failed; using canvas fallback');
           drawTextElement(ctx, canvas, textEl);
           // Composite any live canvas children behind the text (same as SVG path).
           ctx.save();
