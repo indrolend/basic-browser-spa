@@ -245,19 +245,26 @@
 
   var tickInterval = null;
   var lastTickTime = null;
+  var tickPaused = false;
 
   function startTick() {
     if (tickInterval !== null) return;
     lastTickTime = performance.now();
+    tickPaused = false;
     tickInterval = setInterval(function () {
+      if (tickPaused) return;
       var now = performance.now();
-      // Cap dt at 1 second to prevent runaway accumulation if tab is backgrounded
+      // Cap dt at 1 second to prevent runaway accumulation
       var dt = Math.min((now - lastTickTime) / 1000, 1);
       lastTickTime = now;
       state.resources.understanding += getProductionPerSecond() * dt;
       state.resources.ticks += TICKS_PER_SEC * dt;
       dirty = true;
     }, TICK_INTERVAL_MS);
+
+    // Pause tick while the tab is hidden so returning to the tab
+    // doesn't burst multiple seconds of accumulated time.
+    document.addEventListener('visibilitychange', onVisibilityChange);
   }
 
   function stopTick() {
@@ -265,6 +272,17 @@
       clearInterval(tickInterval);
       tickInterval = null;
       lastTickTime = null;
+    }
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+  }
+
+  function onVisibilityChange() {
+    if (document.hidden) {
+      tickPaused = true;
+    } else {
+      // Resume: reset lastTickTime so we don't charge for hidden time
+      lastTickTime = performance.now();
+      tickPaused = false;
     }
   }
 
@@ -321,8 +339,9 @@
     el.onclick = handler;
   }
 
-  var overlayEl = null;  // the full-page game overlay (<div class="asy-overlay">)
-  var rootEl    = null;  // .asymptote-app inside the overlay
+  var overlayEl    = null;  // the full-page game overlay (<div class="asy-overlay">)
+  var rootEl       = null;  // .asymptote-app inside the overlay
+  var lastDotsKey  = null;  // tracks last rendered dots to avoid churn
 
   function q(sel)  { return rootEl ? rootEl.querySelector(sel)    : null; }
   function qa(sel) { return rootEl ? rootEl.querySelectorAll(sel) : []; }
@@ -361,9 +380,11 @@
       setText('.asy-item-desc', item.description);
     }
 
-    // Item dots
+    // Item dots — only rebuild when section or active index changes
+    var dotsKey = section + ':' + activeIdx + ':' + items.length;
     var dotsEl = q('.asy-item-dots');
-    if (dotsEl) {
+    if (dotsEl && dotsKey !== lastDotsKey) {
+      lastDotsKey = dotsKey;
       dotsEl.innerHTML = items.map(function (_, i) {
         return '<span class="asy-dot' + (i === activeIdx ? ' active' : '') + '"></span>';
       }).join('');
@@ -479,8 +500,9 @@
     stopRender();
     if (overlayEl) {
       overlayEl.remove();
-      overlayEl = null;
-      rootEl    = null;
+      overlayEl  = null;
+      rootEl     = null;
+      lastDotsKey = null;
     }
   }
 
