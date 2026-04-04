@@ -536,6 +536,15 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
     stopActiveGifHeroPlayback();
   }
   heroContainer.innerHTML = '';
+
+  // Delegate to registered view module if available
+  const sectionId = SPA_SECTIONS[sectionIdx]?.id;
+  const itemId = item?.id;
+  if (sectionId && itemId && window.__SPA_Views?.[sectionId]?.mount) {
+    window.__SPA_Views[sectionId].mount(itemId, heroContainer);
+    return;
+  }
+
   const hero = document.createElement('div');
   hero.className = 'spa-hero';
 
@@ -740,6 +749,13 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
   stopActiveGifHeroPlayback();
   stopCurrentHeroSurfaceTracking();
 
+  // Deactivate outgoing view
+  {
+    const fromSectionId = SPA_SECTIONS[currentSectionIdx]?.id;
+    const fromItemId = SPA_SECTIONS[currentSectionIdx]?.items[currentItemIdx]?.id;
+    if (fromSectionId && fromItemId) window.__SPA_Views?.[fromSectionId]?.onDeactivate?.(fromItemId);
+  }
+
   try {
     const fromSectionIdx = currentSectionIdx;
     const fromItemIdx = currentItemIdx;
@@ -788,6 +804,14 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
     currentItemIdx = nextItemIdx;
     preparedToGifCanvas = null;
     preparedToGifKey = null;
+
+    // Activate incoming view
+    {
+      const toSectionId = SPA_SECTIONS[currentSectionIdx]?.id;
+      const toItemId = SPA_SECTIONS[currentSectionIdx]?.items[currentItemIdx]?.id;
+      if (toSectionId && toItemId) window.__SPA_Views?.[toSectionId]?.onActivate?.(toItemId);
+    }
+
     if (didTransition && !didRenderDuringReveal) {
       renderHeroDOM(currentSectionIdx, currentItemIdx);
       updateSectionNav(currentSectionIdx);
@@ -1001,6 +1025,13 @@ function onSlingshotLock({ direction, pullVector, pullNormalized }) {
   stopActiveGifHeroPlayback();
   stopCurrentHeroSurfaceTracking();
 
+  // Deactivate outgoing view
+  {
+    const fromSectionId = SPA_SECTIONS[from.sectionIdx]?.id;
+    const fromItemId = SPA_SECTIONS[from.sectionIdx]?.items[from.itemIdx]?.id;
+    if (fromSectionId && fromItemId) window.__SPA_Views?.[fromSectionId]?.onDeactivate?.(fromItemId);
+  }
+
   // Use the already-cached surface immediately for non-GIF heroes so the first
   // pull frame is visible with no async delay.
   const fromHeroSpec = getHeroSpec(from.sectionIdx, from.itemIdx);
@@ -1153,6 +1184,13 @@ async function onSlingshotRelease({ pullNormalized }) {
     preparedToGifCanvas = null;
     preparedToGifKey    = null;
 
+    // Activate incoming view
+    {
+      const toSectionId = SPA_SECTIONS[currentSectionIdx]?.id;
+      const toItemId = SPA_SECTIONS[currentSectionIdx]?.items[currentItemIdx]?.id;
+      if (toSectionId && toItemId) window.__SPA_Views?.[toSectionId]?.onActivate?.(toItemId);
+    }
+
     cleanupSlingshotPull();
     startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
 
@@ -1185,6 +1223,13 @@ function cancelSlingshot() {
   heroContainer.style.transition = '';
   cleanupSlingshotPull();
   startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
+
+  // Re-activate current view (slingshot cancelled)
+  {
+    const sectionId = SPA_SECTIONS[currentSectionIdx]?.id;
+    const itemId = SPA_SECTIONS[currentSectionIdx]?.items[currentItemIdx]?.id;
+    if (sectionId && itemId) window.__SPA_Views?.[sectionId]?.onActivate?.(itemId);
+  }
 }
 
 function cleanupSlingshotPull() {

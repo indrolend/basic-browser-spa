@@ -1,23 +1,30 @@
-// SPA Games View — Asymptote Engine placeholder
+// SPA Games View — Asymptote engine adapter
+// Delegates to window.AsymptoteApp for mount/lifecycle.
 
 (function () {
-  function mount(itemId, container) {
+  function mount(itemId, containerEl) {
     if (itemId !== 'asymptote') return;
+    if (window.AsymptoteApp) {
+      window.AsymptoteApp.mount(containerEl);
+    } else {
+      containerEl.innerHTML = '<div class="asy-load-msg">loading asymptote…</div>';
+    }
+  }
 
-    container.innerHTML =
-      '<div class="spa-poster-view spa-text-poster">' +
-        '<div class="spa-text-poster-content">' +
-          '<div class="spa-poster-label">' +
-            '<a class="spa-poster-link" href="asymptote/index.html">' +
-              '<span class="important-word">Asymptote engine</span>' +
-            '</a>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
+  function onActivate(itemId) {
+    if (itemId !== 'asymptote') return;
+    if (window.AsymptoteApp) window.AsymptoteApp.activate();
+  }
+
+  function onDeactivate(itemId) {
+    if (itemId !== 'asymptote') return;
+    if (window.AsymptoteApp) window.AsymptoteApp.deactivate();
   }
 
   if (!window.__SPA_Views) window.__SPA_Views = {};
   window.__SPA_Views.games = {
-    mount: mount
+    mount: mount,
+    onActivate: onActivate,
+    onDeactivate: onDeactivate
   };
 }());

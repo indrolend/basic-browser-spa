@@ -72,7 +72,7 @@ window.__INDROLEND_ROUTES__ = {
       label: 'asymptote engine',
       transitionSource: 'textPoster',
       scroll: { mode: 'none', edgeGatedSwipe: false },
-      clickAction: 'asymptote/index.html'
+      clickAction: 'none'
     },
 
     'about/spotifyAnalytics': {
