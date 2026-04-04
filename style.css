@@ -138,6 +138,8 @@ body {
   min-height: unset;
   box-shadow: 0 2px 20px #0005;
   transition: background 0.15s, border-color 0.15s;
+  user-select: none;
+  touch-action: manipulation;
 }
 
 .spa-hero--text:hover {
