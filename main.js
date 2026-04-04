@@ -77,6 +77,15 @@ let pullPreviewCanvasH = 0;
 const DESKTOP_CHAIN_WINDOW_MS = 260;
 const REVEAL_HANDOFF_FADE_MS = 70;
 
+// ─── Game mode flag ───────────────────────────────────────────────────────────
+// Set to true while the Asymptote overlay is active.
+// Blocks slingshot navigation and keyboard arrow nav so the player can't
+// accidentally swipe out of the game.
+let isAsymptoteGameActive = false;
+window.__SPA_SetGameMode = (active) => { isAsymptoteGameActive = !!active; };
+// Navigate to home/swarm — used by the game's exit (✕) button.
+window.__SPA_GoHome = () => goTo(0, 0);
+
 // Unified fast-click helper: fires handler on touchend (immediately, no 300ms delay)
 // and on click (mouse fallback). The touchend listener calls preventDefault() so the
 // synthetic click generated after touch is suppressed, avoiding a double-fire.
@@ -869,6 +878,9 @@ function nextItem(navOptions = {}) {
 }
 
 window.addEventListener('keydown', (e) => {
+  // Don't navigate the SPA while the Asymptote game overlay is open
+  if (isAsymptoteGameActive) return;
+
   const isPrev = e.key === 'ArrowLeft' || e.key === 'ArrowUp';
   const isNext = e.key === 'ArrowRight' || e.key === 'ArrowDown';
   if (!isPrev && !isNext) return;
@@ -1016,7 +1028,7 @@ function onSlingshotArm() {
 }
 
 function onSlingshotLock({ direction, pullVector, pullNormalized }) {
-  if (isTransitioning || isPulling) return;
+  if (isTransitioning || isPulling || isAsymptoteGameActive) return;
 
   const from   = { sectionIdx: currentSectionIdx, itemIdx: currentItemIdx };
   const target = direction === 'next'

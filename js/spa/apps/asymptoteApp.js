@@ -1,6 +1,10 @@
 // Asymptote — SPA-mounted idle game engine
+//
 // Exposes window.AsymptoteApp = { mount, activate, deactivate }
-// State is module-scoped so it survives mount/deactivate cycles.
+//
+// When activated the game renders as a full-page overlay (z-index > SPA nav)
+// so it fully owns the screen and pointer events — no slingshot bleed-through.
+// State is module-scoped and persists across deactivate/activate cycles.
 
 (function () {
 
@@ -152,8 +156,8 @@
   // ── GAME LOGIC ───────────────────────────────────────────────────────────────
 
   function getItemsForSection(section) {
-    if (section === 'generators')     return GENERATORS;
-    if (section === 'upgrades')       return UPGRADES;
+    if (section === 'generators')       return GENERATORS;
+    if (section === 'upgrades')         return UPGRADES;
     if (section === 'sacrificeActions') return SACRIFICE_ACTIONS;
     return [];
   }
@@ -229,12 +233,6 @@
     dirty = true;
   }
 
-  function navigateSection(dir) {
-    var idx = SECTIONS.indexOf(state.nav.activeSection);
-    state.nav.activeSection = SECTIONS[(idx + dir + SECTIONS.length) % SECTIONS.length];
-    dirty = true;
-  }
-
   function navigateItem(dir) {
     var section = state.nav.activeSection;
     var items = getItemsForSection(section);
@@ -253,7 +251,7 @@
     lastTickTime = performance.now();
     tickInterval = setInterval(function () {
       var now = performance.now();
-      // Cap dt at 1 second to prevent runaway accumulation if tab was backgrounded
+      // Cap dt at 1 second to prevent runaway accumulation if tab is backgrounded
       var dt = Math.min((now - lastTickTime) / 1000, 1);
       lastTickTime = now;
       state.resources.understanding += getProductionPerSecond() * dt;
@@ -313,12 +311,26 @@
     return item.name;
   }
 
-  // ── DOM REFS ─────────────────────────────────────────────────────────────────
+  // ── DOM HELPERS ──────────────────────────────────────────────────────────────
 
-  var rootEl = null;
+  // Same touchend+onclick pattern used by the rest of the SPA (addActivationHandler).
+  // touchend fires immediately on mobile (no 300ms delay); preventDefault blocks the
+  // synthetic click so the handler never double-fires.
+  function wire(el, handler) {
+    el.addEventListener('touchend', function (e) { e.preventDefault(); handler(); });
+    el.onclick = handler;
+  }
 
-  function q(sel) { return rootEl ? rootEl.querySelector(sel) : null; }
+  var overlayEl = null;  // the full-page game overlay (<div class="asy-overlay">)
+  var rootEl    = null;  // .asymptote-app inside the overlay
+
+  function q(sel)  { return rootEl ? rootEl.querySelector(sel)    : null; }
   function qa(sel) { return rootEl ? rootEl.querySelectorAll(sel) : []; }
+
+  function setText(sel, text) {
+    var el = q(sel);
+    if (el && el.textContent !== text) el.textContent = text;
+  }
 
   // ── VIEW RENDER ──────────────────────────────────────────────────────────────
 
@@ -326,17 +338,17 @@
     if (!rootEl || !state || !dirty) return;
     dirty = false;
 
-    var section = state.nav.activeSection;
-    var item = getActiveItem();
-    var items = getItemsForSection(section);
+    var section  = state.nav.activeSection;
+    var item     = getActiveItem();
+    var items    = getItemsForSection(section);
     var activeIdx = state.nav.activeItemIndex[section];
-    var canDo = canDoActiveItem();
-    var pps = getProductionPerSecond();
+    var canDo    = canDoActiveItem();
+    var pps      = getProductionPerSecond();
 
-    // Top bar
-    setText('.asy-stat-u', fmt(state.resources.understanding));
+    // Stats row
+    setText('.asy-stat-u',  fmt(state.resources.understanding));
     setText('.asy-stat-ps', fmt(pps) + '/s');
-    setText('.asy-stat-t', fmt(state.resources.ticks) + ' t');
+    setText('.asy-stat-t',  fmt(state.resources.ticks));
 
     // Section tabs
     qa('.asy-sec-tab').forEach(function (el) {
@@ -365,91 +377,111 @@
     }
   }
 
-  function setText(sel, text) {
-    var el = q(sel);
-    if (el && el.textContent !== text) el.textContent = text;
-  }
+  // ── OVERLAY BUILD ────────────────────────────────────────────────────────────
 
-  // ── DOM BUILD ────────────────────────────────────────────────────────────────
+  function buildOverlay(onExit) {
+    if (overlayEl) { overlayEl.remove(); overlayEl = null; }
 
-  function buildDOM(containerEl) {
-    containerEl.innerHTML = [
+    overlayEl = document.createElement('div');
+    overlayEl.className = 'asy-overlay';
+
+    overlayEl.innerHTML = [
       '<div class="asymptote-app">',
 
-      // Top bar
+      // ── Top bar: stats + exit ──────────────────────────────────────────────
       '<div class="asy-top-bar">',
-        '<span class="asy-stat"><span class="asy-label">⊙</span><span class="asy-stat-u">0</span></span>',
-        '<span class="asy-stat"><span class="asy-label">rate</span><span class="asy-stat-ps">0/s</span></span>',
-        '<span class="asy-stat"><span class="asy-label">t</span><span class="asy-stat-t">0 t</span></span>',
+        '<div class="asy-stats">',
+          '<span class="asy-stat"><span class="asy-label">⊙</span>',
+            '<span class="asy-stat-u">0.0</span></span>',
+          '<span class="asy-stat"><span class="asy-label">rate</span>',
+            '<span class="asy-stat-ps">0.0/s</span></span>',
+          '<span class="asy-stat"><span class="asy-label">t</span>',
+            '<span class="asy-stat-t">0.0</span></span>',
+        '</div>',
+        '<button class="asy-exit-btn" type="button" aria-label="exit game">✕</button>',
       '</div>',
 
-      // Section nav
+      // ── Section tabs ───────────────────────────────────────────────────────
       '<div class="asy-section-bar">',
-        '<button class="asy-sec-nav asy-prev-sec" aria-label="previous section">◀</button>',
-        '<div class="asy-sec-tabs">',
-          SECTIONS.map(function (s) {
-            return '<button class="asy-sec-tab" data-section="' + s + '">' + SECTION_LABELS[s] + '</button>';
-          }).join(''),
-        '</div>',
-        '<button class="asy-sec-nav asy-next-sec" aria-label="next section">▶</button>',
+        SECTIONS.map(function (s) {
+          return '<button class="asy-sec-tab" type="button" data-section="' +
+            s + '">' + SECTION_LABELS[s] + '</button>';
+        }).join(''),
       '</div>',
 
-      // Middle: item browser
-      '<div class="asy-middle">',
-        '<button class="asy-item-nav asy-prev-item" aria-label="previous item">▲</button>',
-        '<div class="asy-item-content">',
-          '<div class="asy-item-name"></div>',
-          '<div class="asy-item-desc"></div>',
-          '<div class="asy-item-dots"></div>',
-          '<button class="asy-item-action">act</button>',
-        '</div>',
-        '<button class="asy-item-nav asy-next-item" aria-label="next item">▼</button>',
+      // ── Hero: +1 understanding button ──────────────────────────────────────
+      '<div class="asy-hero-area">',
+        '<button class="asy-click-btn" type="button">+1 UNDERSTANDING</button>',
       '</div>',
 
-      // Bottom bar
-      '<div class="asy-bottom-bar">',
-        '<button class="asy-click-btn">+1 UNDERSTANDING</button>',
+      // ── Item browser ───────────────────────────────────────────────────────
+      '<div class="asy-item-browser">',
+        '<div class="asy-item-row">',
+          '<button class="asy-prev-item" type="button" aria-label="previous item">◀</button>',
+          '<div class="asy-item-content">',
+            '<div class="asy-item-name"></div>',
+            '<div class="asy-item-desc"></div>',
+          '</div>',
+          '<button class="asy-next-item" type="button" aria-label="next item">▶</button>',
+        '</div>',
+        '<button class="asy-item-action" type="button">act</button>',
+        '<div class="asy-item-dots"></div>',
       '</div>',
 
       '</div>'
     ].join('');
 
-    rootEl = containerEl.querySelector('.asymptote-app');
+    rootEl = overlayEl.querySelector('.asymptote-app');
 
-    // Event wiring
-    q('.asy-click-btn').addEventListener('click', clickUnderstanding);
-    q('.asy-prev-sec').addEventListener('click', function () { navigateSection(-1); });
-    q('.asy-next-sec').addEventListener('click', function () { navigateSection(1); });
-    q('.asy-prev-item').addEventListener('click', function () { navigateItem(-1); });
-    q('.asy-next-item').addEventListener('click', function () { navigateItem(1); });
-    q('.asy-item-action').addEventListener('click', doActiveItemAction);
+    // Wire all interactive elements with touchend+onclick for instant response
+    wire(q('.asy-exit-btn'),   function () { onExit(); });
+    wire(q('.asy-click-btn'),  clickUnderstanding);
+    wire(q('.asy-prev-item'),  function () { navigateItem(-1); });
+    wire(q('.asy-next-item'),  function () { navigateItem(1); });
+    wire(q('.asy-item-action'), doActiveItemAction);
 
     qa('.asy-sec-tab').forEach(function (tab) {
-      tab.addEventListener('click', function () {
+      wire(tab, function () {
         state.nav.activeSection = tab.dataset.section;
         dirty = true;
       });
     });
+
+    document.body.appendChild(overlayEl);
   }
 
   // ── PUBLIC API ───────────────────────────────────────────────────────────────
 
+  // mount: render a minimal placeholder in the SPA hero container so the
+  // particle transition has something to animate to/from.
   function mount(containerEl) {
-    if (!state) state = createState();
-    buildDOM(containerEl);
-    dirty = true;
-    renderView();
+    containerEl.innerHTML =
+      '<div class="asy-placeholder">' +
+        '<span class="asy-placeholder-text">ASYMPTOTE ENGINE</span>' +
+      '</div>';
   }
 
-  function activate() {
+  // activate: build the full-page overlay, start tick + render loops.
+  // onExit() is called when the user taps the ✕ button.
+  function activate(onExit) {
+    if (!state) state = createState();
+    buildOverlay(onExit);
     dirty = true;
+    renderView();
     startTick();
     startRender();
   }
 
+  // deactivate: remove the overlay, stop loops.
+  // Called by gamesView when the SPA navigates away from games/asymptote.
   function deactivate() {
     stopTick();
     stopRender();
+    if (overlayEl) {
+      overlayEl.remove();
+      overlayEl = null;
+      rootEl    = null;
+    }
   }
 
   window.AsymptoteApp = { mount: mount, activate: activate, deactivate: deactivate };

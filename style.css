@@ -218,23 +218,42 @@ body {
 
 /* ─── Asymptote Game ─────────────────────────────────────────────────────────── */
 
+/* Full-page overlay — sits above everything including the fixed SPA section nav */
+.asy-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Inner app — fills the overlay */
 .asymptote-app {
   display: flex;
   flex-direction: column;
-  width: min(100%, 38rem);
-  min-height: 340px;
-  gap: 0;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   user-select: none;
 }
 
+/* ── Top bar: stats + exit button ─────────────────────────────── */
 .asy-top-bar {
   display: flex;
-  gap: 1.25rem;
-  justify-content: center;
-  padding: 0.45rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 1rem;
   border-bottom: 1px solid #252525;
   font-size: 0.8rem;
   letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.asy-stats {
+  display: flex;
+  gap: 1rem;
   flex-wrap: wrap;
 }
 
@@ -249,35 +268,36 @@ body {
   font-size: 0.75rem;
 }
 
+.asy-exit-btn {
+  background: none;
+  color: #666;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 0.3rem 0.65rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  min-width: 36px;
+  min-height: 36px;
+  touch-action: manipulation;
+  transition: color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.asy-exit-btn:hover,
+.asy-exit-btn:active {
+  color: #fff;
+  border-color: #888;
+}
+
+/* ── Section tabs ─────────────────────────────────────────────── */
 .asy-section-bar {
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 0.25rem;
-  padding: 0.4rem 0.75rem;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
   border-bottom: 1px solid #1e1e1e;
-}
-
-.asy-sec-tabs {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.asy-sec-nav {
-  background: none;
-  color: #444;
-  border: none;
-  padding: 0.35rem 0.5rem;
-  font-size: 0.75rem;
-  cursor: pointer;
-  min-width: 28px;
-  min-height: 32px;
-  touch-action: manipulation;
-  transition: color 0.15s;
-}
-
-.asy-sec-nav:hover {
-  color: var(--accent);
+  flex-shrink: 0;
 }
 
 .asy-sec-tab {
@@ -285,12 +305,12 @@ body {
   color: #555;
   border: 1px solid transparent;
   border-radius: 6px;
-  padding: 0.3rem 0.6rem;
+  padding: 0.35rem 0.85rem;
   font-family: inherit;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   letter-spacing: 0.06em;
   cursor: pointer;
-  min-height: 32px;
+  min-height: 36px;
   touch-action: manipulation;
   transition: color 0.15s, border-color 0.15s;
 }
@@ -305,77 +325,102 @@ body {
   border-color: var(--accent);
 }
 
-.asy-middle {
+/* ── Hero area: the big +1 understanding button ───────────────── */
+.asy-hero-area {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  min-height: 160px;
+  justify-content: center;
+  padding: 1rem;
+  min-height: 0;
 }
 
-.asy-item-nav {
+.asy-click-btn {
+  background: #0d1a0d;
+  color: var(--accent);
+  border: 2px solid var(--accent);
+  border-radius: 16px;
+  padding: 1.5rem 2rem;
+  font-family: inherit;
+  font-size: clamp(1rem, 3vw, 1.25rem);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  min-height: 80px;
+  width: min(100%, 24rem);
+  touch-action: manipulation;
+  transition: background 0.1s, box-shadow 0.1s, transform 0.05s;
+  text-transform: uppercase;
+}
+
+.asy-click-btn:hover {
+  background: #1a2a1a;
+  box-shadow: 0 0 28px rgba(94, 232, 125, 0.3);
+}
+
+.asy-click-btn:active {
+  background: var(--accent);
+  color: #000;
+  transform: scale(0.96);
+}
+
+/* ── Item browser ─────────────────────────────────────────────── */
+.asy-item-browser {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid #1e1e1e;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.asy-item-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 32rem;
+}
+
+.asy-prev-item,
+.asy-next-item {
   background: none;
   color: #444;
   border: none;
-  padding: 0.5rem;
-  font-size: 1rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
   cursor: pointer;
-  min-width: 32px;
-  min-height: 44px;
-  align-self: center;
+  min-width: 40px;
+  min-height: 40px;
   touch-action: manipulation;
   transition: color 0.15s;
   flex-shrink: 0;
 }
 
-.asy-item-nav:hover {
+.asy-prev-item:hover,
+.asy-next-item:hover {
   color: var(--accent);
 }
 
 .asy-item-content {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
   text-align: center;
   min-width: 0;
 }
 
 .asy-item-name {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: var(--accent);
   letter-spacing: 0.03em;
   line-height: 1.3;
-  min-height: 1.4em;
 }
 
 .asy-item-desc {
-  font-size: 0.8rem;
-  color: #777;
-  line-height: 1.5;
-  max-width: 26rem;
-}
-
-.asy-item-dots {
-  display: flex;
-  gap: 0.35rem;
-  justify-content: center;
-  min-height: 8px;
-}
-
-.asy-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #333;
-  display: inline-block;
-  transition: background 0.15s;
-}
-
-.asy-dot.active {
-  background: var(--accent);
+  font-size: 0.75rem;
+  color: #666;
+  line-height: 1.4;
+  margin-top: 0.2rem;
 }
 
 .asy-item-action {
@@ -383,7 +428,7 @@ body {
   color: #888;
   border: 1px solid #2a2a2a;
   border-radius: 8px;
-  padding: 0.5rem 1.25rem;
+  padding: 0.5rem 1.5rem;
   font-family: inherit;
   font-size: 0.8rem;
   letter-spacing: 0.06em;
@@ -409,63 +454,64 @@ body {
   cursor: not-allowed;
 }
 
-.asy-bottom-bar {
-  padding: 0.6rem 0.75rem;
-  border-top: 1px solid #1e1e1e;
+.asy-item-dots {
   display: flex;
+  gap: 0.4rem;
   justify-content: center;
+  min-height: 8px;
 }
 
-.asy-click-btn {
-  background: #111;
-  color: var(--accent);
-  border: 2px solid var(--accent);
-  border-radius: 10px;
-  padding: 0.75rem 2.5rem;
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  cursor: pointer;
-  min-height: 48px;
-  touch-action: manipulation;
-  transition: background 0.15s, box-shadow 0.15s;
+.asy-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #333;
+  display: inline-block;
+  transition: background 0.15s;
 }
 
-.asy-click-btn:hover {
-  background: #1a2a1a;
-  box-shadow: 0 0 16px rgba(94, 232, 125, 0.25);
-}
-
-.asy-click-btn:active {
+.asy-dot.active {
   background: var(--accent);
-  color: #000;
 }
 
-.asy-load-msg {
-  color: #555;
-  font-size: 0.85rem;
-  padding: 2rem;
-  text-align: center;
+/* ── Placeholder shown in hero container before overlay activates */
+.asy-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 200px;
+}
+
+.asy-placeholder-text {
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 @media (max-width: 480px) {
   .asy-top-bar {
-    gap: 0.75rem;
+    padding: 0.45rem 0.75rem;
     font-size: 0.75rem;
   }
 
-  .asy-sec-tab {
-    padding: 0.3rem 0.45rem;
-    font-size: 0.7rem;
+  .asy-stats {
+    gap: 0.65rem;
   }
 
-  .asy-middle {
-    padding: 0.5rem;
+  .asy-sec-tab {
+    padding: 0.3rem 0.55rem;
+    font-size: 0.75rem;
   }
 
   .asy-click-btn {
-    padding: 0.75rem 1.5rem;
-    font-size: 0.85rem;
+    padding: 1.25rem 1.25rem;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+  }
+
+  .asy-item-browser {
+    padding: 0.6rem 0.5rem;
   }
 }
