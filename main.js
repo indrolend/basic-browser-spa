@@ -78,9 +78,9 @@ const DESKTOP_CHAIN_WINDOW_MS = 260;
 const REVEAL_HANDOFF_FADE_MS = 70;
 
 // ─── Game mode flag ───────────────────────────────────────────────────────────
-// Set to true while the Asymptote overlay is active.
+// Set to true while the Asymptote game is active.
 // Blocks slingshot navigation and keyboard arrow nav so the player can't
-// accidentally swipe out of the game.
+// accidentally swipe or key out of the game.
 let isAsymptoteGameActive = false;
 window.__SPA_SetGameMode = (active) => { isAsymptoteGameActive = !!active; };
 // Navigate to home — used by the game's exit (✕) button.
@@ -883,7 +883,7 @@ function nextItem(navOptions = {}) {
 }
 
 window.addEventListener('keydown', (e) => {
-  // Don't navigate the SPA while the Asymptote game overlay is open
+  // Don't navigate the SPA while the Asymptote game is active
   if (isAsymptoteGameActive) return;
 
   const isPrev = e.key === 'ArrowLeft' || e.key === 'ArrowUp';
