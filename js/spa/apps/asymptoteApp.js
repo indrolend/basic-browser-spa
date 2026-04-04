@@ -494,7 +494,7 @@
     var dimClass = (sec.id !== 'understanding' && !canDo) ? ' asy-hero--dim' : '';
 
     var hero = document.createElement('div');
-    hero.className = 'spa-hero spa-hero--linkable' + dimClass;
+    hero.className = 'spa-hero spa-hero--text spa-hero--linkable' + dimClass;
     hero.setAttribute('role', 'button');
     hero.setAttribute('tabindex', '0');
     hero.setAttribute('aria-label', item.name);
@@ -561,7 +561,8 @@
     if (!heroContainer) return null;
 
     var probeHero = document.createElement('div');
-    probeHero.className = 'spa-hero';
+    probeHero.className = 'spa-hero spa-hero--text';
+    probeHero.setAttribute('data-probe', '1');
     probeHero.style.position = 'absolute';
     probeHero.style.pointerEvents = 'none';
     probeHero.style.margin = '0';
@@ -569,7 +570,7 @@
     probeHero.style.top  = '-9999px';
 
     // Match width of the live hero so font wrapping is identical
-    var liveHeroEl = heroContainer.querySelector('.spa-hero:not([style*="-9999px"])');
+    var liveHeroEl = heroContainer.querySelector('.spa-hero:not([data-probe])');
     if (liveHeroEl) {
       var liveRect = liveHeroEl.getBoundingClientRect();
       if (liveRect.width > 0) probeHero.style.width = liveRect.width + 'px';
@@ -580,12 +581,11 @@
     var probeText = document.createElement('div');
     probeText.className = 'spa-hero-text';
     probeText.textContent = getItemHeroText(sec, item);
-    probeText.style.margin = '0';
 
     probeHero.appendChild(probeText);
     heroContainer.appendChild(probeHero);
 
-    return { element: probeText, cleanup: function () { probeHero.remove(); } };
+    return { element: probeHero, cleanup: function () { probeHero.remove(); } };
   }
 
   // ── NAVIGATION ─ (instant, no particle effect — used by dot/tab clicks) ──────
@@ -605,7 +605,7 @@
     containerEl.innerHTML = '';
 
     var hero = document.createElement('div');
-    hero.className = 'spa-hero spa-hero--linkable';
+    hero.className = 'spa-hero spa-hero--text spa-hero--linkable';
     hero.setAttribute('role', 'button');
     hero.setAttribute('tabindex', '0');
     hero.setAttribute('aria-label', 'Enter Asymptote Engine');

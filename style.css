@@ -129,6 +129,26 @@ body {
   border-radius: 16px;
 }
 
+/* Text-type hero rendered as an obvious button box */
+.spa-hero--text {
+  background: var(--panel);
+  border: 2px solid #2f2f2f;
+  border-radius: 12px;
+  padding: 2rem 2.5rem;
+  min-height: unset;
+  box-shadow: 0 2px 20px #0005;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.spa-hero--text:hover {
+  background: var(--panel-active);
+  border-color: var(--accent);
+}
+
+.spa-hero--text.spa-hero--linkable:focus-visible {
+  border-radius: 12px;
+}
+
 .spa-hero-image,
 .spa-hero-gif {
   width: min(80vw, 320px);
@@ -207,6 +227,11 @@ body {
 
   .spa-hero {
     min-height: 240px;
+  }
+
+  .spa-hero--text {
+    padding: 1.5rem 1.75rem;
+    border-radius: 10px;
   }
 
   .spa-hero-image,

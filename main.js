@@ -159,7 +159,8 @@ function createTextProbe(text) {
   if (!container) return null;
 
   const probeHero = document.createElement('div');
-  probeHero.className = 'spa-hero';
+  probeHero.className = 'spa-hero spa-hero--text';
+  probeHero.setAttribute('data-probe', '1');
   probeHero.style.position = 'absolute';
   probeHero.style.pointerEvents = 'none';
   probeHero.style.margin = '0';
@@ -178,12 +179,11 @@ function createTextProbe(text) {
   const probeText = document.createElement('div');
   probeText.className = 'spa-hero-text';
   probeText.textContent = text;
-  probeText.style.margin = '0';
 
   probeHero.appendChild(probeText);
   container.appendChild(probeHero);
 
-  return { element: probeText, cleanup: () => probeHero.remove() };
+  return { element: probeHero, cleanup: () => probeHero.remove() };
 }
 
 async function rasterizeWithCleanup(input) {
@@ -427,10 +427,10 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
 
   if (hero.kind === 'text') {
     const container = document.getElementById('spa-hero-container');
-    const liveTextEl = container?.querySelector('.spa-hero-text');
+    const liveHeroEl = container?.querySelector('.spa-hero--text:not([data-probe])');
 
-    if (phase === 'from' && liveTextEl instanceof window.HTMLElement) {
-      return { type: 'textElement', element: liveTextEl };
+    if (phase === 'from' && liveHeroEl instanceof window.HTMLElement) {
+      return { type: 'textElement', element: liveHeroEl };
     }
 
     const probe = createTextProbe(hero.text);
@@ -624,6 +624,7 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
       hero.appendChild(img);
     }
   } else {
+    hero.classList.add('spa-hero--text');
     const textDiv = document.createElement('div');
     textDiv.className = 'spa-hero-text';
     textDiv.textContent = heroSpec?.text || item.label;
@@ -1131,13 +1132,13 @@ function onSlingshotLock({ direction, pullVector, pullNormalized }) {
     }
 
     // Kick off async rasterization for both surfaces in parallel.
-    // From: live .spa-hero-text element or cached surface.
+    // From: live .spa-hero element (the current game hero box) or cached surface.
     pullFromSurfacePromise = (function () {
       if (pullFromSurface) return Promise.resolve(pullFromSurface);
       const heroContainer = document.getElementById('spa-hero-container');
-      const liveTextEl = heroContainer?.querySelector('.spa-hero-text');
-      if (liveTextEl) {
-        return rasterizeHero({ type: 'textElement', element: liveTextEl });
+      const liveHeroEl = heroContainer?.querySelector('.spa-hero:not([data-probe])');
+      if (liveHeroEl) {
+        return rasterizeHero({ type: 'textElement', element: liveHeroEl });
       }
       return Promise.reject(new Error('no game from surface'));
     }()).then(s => { pullFromSurface = s; return s; }).catch(() => null);
