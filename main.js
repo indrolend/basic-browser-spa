@@ -541,8 +541,13 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
   const sectionId = SPA_SECTIONS[sectionIdx]?.id;
   const itemId = item?.id;
   if (sectionId && itemId && window.__SPA_Views?.[sectionId]?.mount) {
-    window.__SPA_Views[sectionId].mount(itemId, heroContainer);
-    return;
+    try {
+      window.__SPA_Views[sectionId].mount(itemId, heroContainer);
+      return;
+    } catch (err) {
+      console.warn('[SPA_Views] mount failed for', sectionId + '/' + itemId, err);
+      // Fall through to default hero rendering
+    }
   }
 
   const hero = document.createElement('div');
@@ -753,7 +758,9 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
   {
     const fromSectionId = SPA_SECTIONS[currentSectionIdx]?.id;
     const fromItemId = SPA_SECTIONS[currentSectionIdx]?.items[currentItemIdx]?.id;
-    if (fromSectionId && fromItemId) window.__SPA_Views?.[fromSectionId]?.onDeactivate?.(fromItemId);
+    if (fromSectionId && fromItemId) {
+      try { window.__SPA_Views?.[fromSectionId]?.onDeactivate?.(fromItemId); } catch (_) {}
+    }
   }
 
   try {
@@ -809,7 +816,9 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
     {
       const toSectionId = SPA_SECTIONS[currentSectionIdx]?.id;
       const toItemId = SPA_SECTIONS[currentSectionIdx]?.items[currentItemIdx]?.id;
-      if (toSectionId && toItemId) window.__SPA_Views?.[toSectionId]?.onActivate?.(toItemId);
+      if (toSectionId && toItemId) {
+        try { window.__SPA_Views?.[toSectionId]?.onActivate?.(toItemId); } catch (_) {}
+      }
     }
 
     if (didTransition && !didRenderDuringReveal) {
@@ -1029,7 +1038,9 @@ function onSlingshotLock({ direction, pullVector, pullNormalized }) {
   {
     const fromSectionId = SPA_SECTIONS[from.sectionIdx]?.id;
     const fromItemId = SPA_SECTIONS[from.sectionIdx]?.items[from.itemIdx]?.id;
-    if (fromSectionId && fromItemId) window.__SPA_Views?.[fromSectionId]?.onDeactivate?.(fromItemId);
+    if (fromSectionId && fromItemId) {
+      try { window.__SPA_Views?.[fromSectionId]?.onDeactivate?.(fromItemId); } catch (_) {}
+    }
   }
 
   // Use the already-cached surface immediately for non-GIF heroes so the first
@@ -1188,7 +1199,9 @@ async function onSlingshotRelease({ pullNormalized }) {
     {
       const toSectionId = SPA_SECTIONS[currentSectionIdx]?.id;
       const toItemId = SPA_SECTIONS[currentSectionIdx]?.items[currentItemIdx]?.id;
-      if (toSectionId && toItemId) window.__SPA_Views?.[toSectionId]?.onActivate?.(toItemId);
+      if (toSectionId && toItemId) {
+        try { window.__SPA_Views?.[toSectionId]?.onActivate?.(toItemId); } catch (_) {}
+      }
     }
 
     cleanupSlingshotPull();
@@ -1228,7 +1241,9 @@ function cancelSlingshot() {
   {
     const sectionId = SPA_SECTIONS[currentSectionIdx]?.id;
     const itemId = SPA_SECTIONS[currentSectionIdx]?.items[currentItemIdx]?.id;
-    if (sectionId && itemId) window.__SPA_Views?.[sectionId]?.onActivate?.(itemId);
+    if (sectionId && itemId) {
+      try { window.__SPA_Views?.[sectionId]?.onActivate?.(itemId); } catch (_) {}
+    }
   }
 }
 

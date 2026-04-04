@@ -253,7 +253,8 @@
     lastTickTime = performance.now();
     tickInterval = setInterval(function () {
       var now = performance.now();
-      var dt = (now - lastTickTime) / 1000;
+      // Cap dt at 1 second to prevent runaway accumulation if tab was backgrounded
+      var dt = Math.min((now - lastTickTime) / 1000, 1);
       lastTickTime = now;
       state.resources.understanding += getProductionPerSecond() * dt;
       state.resources.ticks += TICKS_PER_SEC * dt;
@@ -292,6 +293,7 @@
   // ── FORMATTING ───────────────────────────────────────────────────────────────
 
   function fmt(n) {
+    if (!isFinite(n) || isNaN(n)) return '—';
     if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
     if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
     if (n >= 1e3) return (n / 1e3).toFixed(2) + 'K';
