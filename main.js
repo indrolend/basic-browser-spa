@@ -824,6 +824,12 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
   stopActiveGifHeroPlayback();
   stopCurrentHeroSurfaceTracking();
 
+  // Invalidate slingshot raster work so late resolves cannot paint the wrong "from" hero.
+  pullFromSurfacePromise = null;
+  pullToSurfacePromise = null;
+  pullFromSurface = null;
+  pullToSurface = null;
+
   // Deactivate outgoing view
   {
     const fromSectionId = SPA_SECTIONS[currentSectionIdx]?.id;
@@ -1164,13 +1170,41 @@ function onSlingshotArm() {
   // onLock guards the expensive work.
 }
 
+/**
+ * Binds a hero-surface promise to the current pull: if cleanup superseded this
+ * pull, the handler no-ops so stale rasters never overwrite pullFromSurface.
+ */
+function assignPullFromPromise(surfacePromise) {
+  let p;
+  p = surfacePromise
+    .then((s) => {
+      if (pullFromSurfacePromise !== p) return null;
+      pullFromSurface = s;
+      return s;
+    })
+    .catch(() => null);
+  pullFromSurfacePromise = p;
+}
+
+function assignPullToPromise(surfacePromise) {
+  let p;
+  p = surfacePromise
+    .then((s) => {
+      if (pullToSurfacePromise !== p) return null;
+      pullToSurface = s;
+      return s;
+    })
+    .catch(() => null);
+  pullToSurfacePromise = p;
+}
+
 function onSlingshotLock({ direction, pullVector, pullNormalized }) {
-  if (isTransitioning || isPulling) return;
+  if (isTransitioning || isPulling) return false;
 
   // ── Game mode: full pull-preview setup (identical pipeline to SPA path) ──────
   if (isAsymptoteGameActive) {
     const gameNav = window.__SPA_GameNav;
-    if (!gameNav) return;
+    if (!gameNav) return false;
 
     const target = gameNav.getToTarget(direction);
 
@@ -1182,6 +1216,11 @@ function onSlingshotLock({ direction, pullVector, pullNormalized }) {
 
     stopCurrentHeroSurfaceTracking();
 
+    pullFromSurfacePromise = null;
+    pullToSurfacePromise = null;
+    pullFromSurface = null;
+    pullToSurface = null;
+
     // From-surface: use already-cached surface (tracking has been running since entry)
     const fromSurfaceKey = getHeroSurfaceKey(currentSectionIdx, currentItemIdx);
     if (currentHeroSurface && currentHeroSurfaceKey === fromSurfaceKey) {
@@ -1190,7 +1229,7 @@ function onSlingshotLock({ direction, pullVector, pullNormalized }) {
 
     // Kick off async rasterization for both surfaces in parallel.
     // From: live .spa-hero element (the current game hero box) or cached surface.
-    pullFromSurfacePromise = (function () {
+    assignPullFromPromise((function () {
       if (pullFromSurface) return Promise.resolve(pullFromSurface);
       const heroContainer = document.getElementById('spa-hero-container');
       const liveHeroEl = heroContainer?.querySelector('.spa-hero:not([data-probe])');
@@ -1198,14 +1237,14 @@ function onSlingshotLock({ direction, pullVector, pullNormalized }) {
         return rasterizeHero({ type: 'textElement', element: liveHeroEl });
       }
       return Promise.reject(new Error('no game from surface'));
-    }()).then(s => { pullFromSurface = s; return s; }).catch(() => null);
+    }()));
 
     // To: build an off-screen probe for the target game item.
-    pullToSurfacePromise = (function () {
+    assignPullToPromise((function () {
       const probe = gameNav.buildHeroProbe(target.sectionIdx, target.itemIdx);
       if (!probe) return Promise.reject(new Error('no game to probe'));
       return rasterizeWithCleanup({ type: 'textElement', element: probe.element, cleanup: probe.cleanup });
-    }()).then(s => { pullToSurface = s; return s; }).catch(() => null);
+    }()));
 
     // Show transition canvas, hide hero DOM — identical to SPA path.
     const heroContainer    = document.getElementById('spa-hero-container');
@@ -1246,7 +1285,12 @@ function onSlingshotLock({ direction, pullVector, pullNormalized }) {
     ? getNextTarget(from.sectionIdx, from.itemIdx)
     : getPrevTarget(from.sectionIdx, from.itemIdx);
 
-  if (isSameTarget(target, from)) return;
+  if (isSameTarget(target, from)) return false;
+
+  pullFromSurfacePromise = null;
+  pullToSurfacePromise = null;
+  pullFromSurface = null;
+  pullToSurface = null;
 
   isPulling       = true;
   isTransitioning = true;
@@ -1285,12 +1329,8 @@ function onSlingshotLock({ direction, pullVector, pullNormalized }) {
     prepareToGifCanvas(target.sectionIdx, target.itemIdx, nextHeroSpec.src);
   }
 
-  pullFromSurfacePromise = buildHeroSurface(from.sectionIdx, from.itemIdx, 'from')
-    .then(s => { pullFromSurface = s; return s; })
-    .catch(() => null);
-  pullToSurfacePromise = buildHeroSurface(target.sectionIdx, target.itemIdx, 'to')
-    .then(s => { pullToSurface = s; return s; })
-    .catch(() => null);
+  assignPullFromPromise(buildHeroSurface(from.sectionIdx, from.itemIdx, 'from'));
+  assignPullToPromise(buildHeroSurface(target.sectionIdx, target.itemIdx, 'to'));
 
   // Show transition canvas and hide hero DOM immediately
   const heroContainer    = document.getElementById('spa-hero-container');

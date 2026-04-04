@@ -22,6 +22,7 @@
     {
       id: 'brainSquisher',
       name: 'Brain Squisher',
+      motif: 'squish',
       baseCost: 10,
       baseProduction: 0.1,
       costMultiplier: 1.15,
@@ -29,7 +30,8 @@
     },
     {
       id: 'copyMachine',
-      name: 'The Copy Machine',
+      name: 'Copy Machine',
+      motif: 'copy',
       baseCost: 50,
       baseProduction: 1.0,
       costMultiplier: 1.15,
@@ -38,6 +40,7 @@
     {
       id: 'layerCake',
       name: 'Layer Cake',
+      motif: 'layers',
       baseCost: 250,
       baseProduction: 5.0,
       costMultiplier: 1.15,
@@ -45,7 +48,8 @@
     },
     {
       id: 'lastStep',
-      name: 'The Last Step',
+      name: 'Last Step',
+      motif: 'edge',
       baseCost: 1000,
       baseProduction: 25.0,
       costMultiplier: 1.15,
@@ -54,6 +58,7 @@
     {
       id: 'infiniteLoop',
       name: 'Infinite Loop',
+      motif: 'loop',
       baseCost: 5000,
       baseProduction: 100.0,
       costMultiplier: 1.15,
@@ -65,20 +70,23 @@
     {
       id: 'chunking',
       name: 'Chunking',
+      motif: 'chunks',
       cost: 100,
       description: '2× clicks. Stop the flow. Make it chunks. Patterns are objects now.',
       apply: function (s) { s.clickPower *= 2; }
     },
     {
       id: 'networkEffect',
-      name: 'Network Effect',
+      name: 'Network',
+      motif: 'net',
       cost: 500,
       description: '2× production. Everyone copies reality differently. Squad up for scale.',
       apply: function (s) { s.productionMultiplier *= 2; }
     },
     {
       id: 'focusMode',
-      name: 'Focus Mode',
+      name: 'Focus',
+      motif: 'focus',
       cost: 1000,
       description: '2.5× clicks. Limited attention. Pick what matters. Ignore the rest.',
       requires: 'chunking',
@@ -86,7 +94,8 @@
     },
     {
       id: 'moveFast',
-      name: 'Move Fast',
+      name: 'Velocity',
+      motif: 'fast',
       cost: 5000,
       description: '2× production. Speed beats perfect. Errors are fine upstream.',
       requires: 'networkEffect',
@@ -97,7 +106,8 @@
   var SACRIFICE_ACTIONS = [
     {
       id: 'ticksToUnderstanding',
-      name: 'Sacrifice Ticks',
+      name: 't→⊙',
+      motif: 'tickUp',
       description: 'Convert 10 ticks into 1 understanding.',
       canDo: function (s) { return s.resources.ticks >= 10; },
       execute: function (s) {
@@ -107,7 +117,8 @@
     },
     {
       id: 'understandingToTicks',
-      name: 'Convert Understanding',
+      name: '⊙→t',
+      motif: 'uDown',
       description: 'Convert 1 understanding into 5 ticks.',
       canDo: function (s) { return s.resources.understanding >= 1; },
       execute: function (s) {
@@ -117,7 +128,8 @@
     },
     {
       id: 'temporalCollapse',
-      name: 'Temporal Collapse',
+      name: 'Collapse',
+      motif: 'collapse',
       description: 'Reset understanding + ticks. Gain permanent click power from the loss.',
       canDo: function (s) {
         return s.resources.understanding >= 50 || s.resources.ticks >= 100;
@@ -143,12 +155,12 @@
       id: 'understanding',
       label: '⊙',
       items: [
-        { id: 'click', name: '+1 UNDERSTANDING', description: 'Click to gain understanding. This is the work.' }
+        { id: 'click', name: '⊙', description: '' }
       ]
     },
-    { id: 'generators',  label: 'gen',      items: GENERATORS        },
-    { id: 'upgrades',    label: 'upg',      items: UPGRADES          },
-    { id: 'sacrifice',   label: 'sacrifice', items: SACRIFICE_ACTIONS }
+    { id: 'generators',  label: '⚙', items: GENERATORS        },
+    { id: 'upgrades',    label: '✦', items: UPGRADES          },
+    { id: 'sacrifice',   label: '†', items: SACRIFICE_ACTIONS }
   ];
 
   var TICKS_PER_SEC    = 10;
@@ -232,6 +244,7 @@
 
     if (sec.id === 'understanding') {
       state.resources.understanding += state.clickPower;
+      corePulseAt = performance.now();
       dirty = true;
       return;
     }
@@ -358,10 +371,18 @@
   var renderFrameId    = null;
   var mountAnimFrameId = null;
   var dirty            = false;
+  var entryIntroActive = false;
+  var entryIntroStartMs = 0;
+  var corePulseAt      = 0;
+
+  var ENTRY_INTRO_MS   = 3200;
 
   function startRender() {
     if (renderFrameId !== null) return;
     (function loop() {
+      if (document.querySelector('.asy-engine-bg') || document.querySelector('.asy-motif')) {
+        dirty = true;
+      }
       updateLiveDisplay();
       renderFrameId = requestAnimationFrame(loop);
     }());
@@ -391,12 +412,13 @@
     if (sec.id === 'generators') {
       var count = state.generators[item.id].count;
       var cost  = getGeneratorCost(item.id);
-      return item.name + ' [' + count + '] — ' + fmt(cost) + ' ⊙';
+      return count + '  ·  ' + fmt(cost);
     }
     if (sec.id === 'upgrades') {
-      if (state.upgrades[item.id].purchased) return item.name + ' ✓';
-      return item.name + ' — ' + fmt(item.cost) + ' ⊙';
+      if (state.upgrades[item.id].purchased) return '✓';
+      return fmt(item.cost);
     }
+    if (sec.id === 'sacrifice') return item.name;
     return item.name;
   }
 
@@ -431,9 +453,8 @@
       setElText(sectionNav.querySelector('.asy-stat-t'),  fmt(state.resources.ticks));
     }
 
-    // Hero text (generators/upgrades update as count/cost change)
     var heroContainer = document.getElementById('spa-hero-container');
-    var heroTextEl    = heroContainer && heroContainer.querySelector('.spa-hero-text');
+    var heroTextEl    = heroContainer && heroContainer.querySelector('.asy-hero-stat');
     if (heroTextEl) {
       var sec  = getCurrentSection();
       var item = getCurrentItem();
@@ -448,6 +469,17 @@
       var canDo   = canDoCurrentItem();
       var secId   = getCurrentSection().id;
       heroEl.classList.toggle('asy-hero--dim', secId !== 'understanding' && !canDo);
+    }
+
+    var engBg = heroContainer && heroContainer.querySelector('.asy-engine-bg');
+    if (engBg) {
+      drawEngineBgCanvas(engBg, performance.now());
+    }
+    var motifEl = heroContainer && heroContainer.querySelector('.asy-motif');
+    if (motifEl && state) {
+      var sec2 = getCurrentSection();
+      var item2 = getCurrentItem();
+      if (item2) drawItemMotifCanvas(motifEl, sec2.id, item2, performance.now());
     }
   }
 
@@ -474,7 +506,7 @@
     statsBar.innerHTML =
       '<span class="asy-stat"><span class="asy-label">⊙</span>' +
         '<span class="asy-stat-u">—</span></span>' +
-      '<span class="asy-stat"><span class="asy-label">rate</span>' +
+      '<span class="asy-stat"><span class="asy-label">→</span>' +
         '<span class="asy-stat-ps">—</span></span>' +
       '<span class="asy-stat"><span class="asy-label">t</span>' +
         '<span class="asy-stat-t">—</span></span>';
@@ -523,29 +555,59 @@
     var dimClass = (sec.id !== 'understanding' && !canDo) ? ' asy-hero--dim' : '';
 
     var hero = document.createElement('div');
-    hero.className = 'spa-hero spa-hero--text spa-hero--linkable' + dimClass;
-    hero.setAttribute('role', 'button');
+    hero.className = 'spa-hero spa-hero--linkable asy-hero-main' + dimClass;
+    if (sec.id === 'understanding') {
+      hero.classList.add('asy-engine-hero');
+    } else {
+      hero.classList.add('asy-item-hero');
+    }
+    hero.style.position = 'relative';
+    hero.setAttribute('role', 'group');
     hero.setAttribute('tabindex', '0');
-    hero.setAttribute('aria-label', item.name);
+    hero.setAttribute('aria-label', item.name || 'game action');
 
-    // Keyboard: Enter / Space activates the current item action
     hero.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        doCurrentItemAction();
+        if (sec.id !== 'understanding') doCurrentItemAction();
       }
     });
 
-    var heroText = document.createElement('div');
-    heroText.className = 'spa-hero-text';
-    heroText.textContent = getItemHeroText(sec, item);
-    hero.appendChild(heroText);
+    if (sec.id === 'understanding') {
+      var bg = document.createElement('canvas');
+      bg.className = 'asy-engine-bg';
+      bg.setAttribute('aria-hidden', 'true');
+      hero.appendChild(bg);
 
-    if (item.description) {
-      var desc = document.createElement('div');
-      desc.className = 'spa-hero-subtext';
-      desc.textContent = item.description;
-      hero.appendChild(desc);
+      var core = document.createElement('button');
+      core.type = 'button';
+      core.className = 'asy-core-dot';
+      core.setAttribute('aria-label', 'Pulse engine — add understanding');
+      wire(core, doCurrentItemAction);
+      hero.appendChild(core);
+
+      var hint = document.createElement('div');
+      hint.className = 'asy-engine-hint';
+      hint.textContent = '⊙';
+      hero.appendChild(hint);
+    } else {
+      var motif = document.createElement('canvas');
+      motif.className = 'asy-motif';
+      motif.setAttribute('aria-hidden', 'true');
+      hero.appendChild(motif);
+
+      var heroText = document.createElement('div');
+      heroText.className = 'spa-hero-text asy-hero-stat';
+      heroText.textContent = getItemHeroText(sec, item);
+      hero.appendChild(heroText);
+
+      var act = document.createElement('button');
+      act.type = 'button';
+      act.className = 'asy-hero-action';
+      act.textContent = sec.id === 'sacrifice' ? '▶' : '●';
+      act.setAttribute('aria-label', 'activate ' + (item.name || ''));
+      wire(act, doCurrentItemAction);
+      hero.appendChild(act);
     }
 
     heroContainer.appendChild(hero);
@@ -590,7 +652,6 @@
     if (!heroContainer) return null;
 
     var probeHero = document.createElement('div');
-    probeHero.className = 'spa-hero spa-hero--text';
     probeHero.setAttribute('data-probe', '1');
     probeHero.style.position = 'absolute';
     probeHero.style.pointerEvents = 'none';
@@ -598,7 +659,6 @@
     probeHero.style.left = '-9999px';
     probeHero.style.top  = '-9999px';
 
-    // Match width of the live hero so font wrapping is identical
     var liveHeroEl = heroContainer.querySelector('.spa-hero:not([data-probe])');
     if (liveHeroEl) {
       var liveRect = liveHeroEl.getBoundingClientRect();
@@ -607,10 +667,46 @@
       probeHero.style.width = Math.max(220, Math.min(heroContainer.clientWidth || 320, 608)) + 'px';
     }
 
-    var probeText = document.createElement('div');
-    probeText.className = 'spa-hero-text';
-    probeText.textContent = getItemHeroText(sec, item);
+    if (sec.id === 'understanding') {
+      probeHero.className = 'spa-hero asy-engine-hero';
+      var bg = document.createElement('canvas');
+      bg.className = 'asy-engine-bg';
+      bg.style.position = 'absolute';
+      bg.style.top = '0';
+      bg.style.left = '0';
+      bg.style.width = '100%';
+      bg.style.height = '100%';
+      probeHero.style.minHeight = '280px';
+      probeHero.appendChild(bg);
+      var core = document.createElement('div');
+      core.className = 'asy-core-dot';
+      probeHero.appendChild(core);
+      var hint = document.createElement('div');
+      hint.className = 'asy-engine-hint';
+      hint.textContent = '⊙';
+      probeHero.appendChild(hint);
+      heroContainer.appendChild(probeHero);
+      var pr = probeHero.getBoundingClientRect();
+      var cssW = Math.round(pr.width);
+      var cssH = Math.round(Math.max(pr.height, 280));
+      var dpr = window.devicePixelRatio || 1;
+      bg.width  = Math.round(cssW * dpr);
+      bg.height = Math.round(cssH * dpr);
+      var ctx = bg.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawIdleEngine(ctx, cssW, cssH, performance.now(), 0);
+      return { element: probeHero, cleanup: function () { probeHero.remove(); } };
+    }
 
+    probeHero.className = 'spa-hero asy-item-hero';
+    probeHero.style.minHeight = '200px';
+    var probeMotif = document.createElement('canvas');
+    probeMotif.className = 'asy-motif';
+    probeHero.appendChild(probeMotif);
+    drawItemMotifCanvas(probeMotif, sec.id, item, performance.now());
+    var probeText = document.createElement('div');
+    probeText.className = 'spa-hero-text asy-hero-stat';
+    probeText.textContent = getItemHeroText(sec, item);
     probeHero.appendChild(probeText);
     heroContainer.appendChild(probeHero);
 
@@ -627,59 +723,74 @@
 
   // ── MOUNT ANIMATION ─ (entrance canvas: Q2 y=−1/x graph, left-to-right dots) ─
 
-  // Draw one frame of the mount animation onto ctx (already in CSS-px transform).
-  // elapsed is the time within the current cycle in milliseconds.
-  function drawMountFrame(ctx, cssW, cssH, elapsed) {
-    ctx.clearRect(0, 0, cssW, cssH);
-
-    // Layout: origin at bottom-right (x=0, y=0 corner)
-    // x-axis: goes from right (x=0 asymptote) leftward to x=−RANGE
-    // y-axis: goes from bottom (y=0 asymptote) upward to y=RANGE
+  function createPlotMapper(cssW, cssH) {
     var padL = 26, padR = 46, padT = 26, padB = 44;
     var plotW = cssW - padL - padR;
     var plotH = cssH - padT - padB;
     var sx    = plotW / ANIM_RANGE;
     var sy    = plotH / ANIM_RANGE;
-
-    // Map curve coords to canvas pixels.
-    // cx ∈ [−RANGE, 0] → [padL, cssW−padR]  (left=negative x, right=x=0 asymptote)
-    // cy ∈ [0, RANGE]  → [cssH−padB, padT]   (bottom=y=0 asymptote, top=large y)
     function canX(cx) { return padL + (cx + ANIM_RANGE) * sx; }
     function canY(cy) { return (cssH - padB) - cy * sy; }
+    return {
+      cssW: cssW, cssH: cssH, padL: padL, padR: padR, padT: padT, padB: padB,
+      ox: cssW - padR, oy: cssH - padB, canX: canX, canY: canY
+    };
+  }
 
-    var ox = cssW - padR;   // canX(0)  — y-axis (right asymptote)
-    var oy = cssH - padB;   // canY(0)  — x-axis (bottom asymptote)
+  function computeLeadDotIndex(elapsed) {
+    var eFrac = (elapsed % ANIM_CYCLE_MS) / ANIM_CYCLE_MS;
+    var seqFrac = ANIM_SEQ_MS / ANIM_CYCLE_MS;
+    var holdFrac = ANIM_HOLD_MS / ANIM_CYCLE_MS;
+    var lead = 0;
+    var i;
+    for (i = 0; i < ANIM_DOT_N; i++) {
+      var activateAt = (i / (ANIM_DOT_N - 1)) * seqFrac;
+      if (eFrac >= activateAt) lead = i;
+    }
+    return { lead: lead, eFrac: eFrac, seqFrac: seqFrac, holdFrac: holdFrac };
+  }
 
-    // ── Axes ──
+  function computeMountCameraScale(info) {
+    var holdFrac = info.holdFrac;
+    if (info.eFrac < info.seqFrac) {
+      return 1 + 0.5 * (info.eFrac / info.seqFrac);
+    }
+    if (info.eFrac < holdFrac) return 1.5;
+    var fade = Math.min(1, (info.eFrac - holdFrac) / Math.max(0.001, 1 - holdFrac));
+    return 1.5 - 0.35 * fade;
+  }
+
+  function drawMountSceneCore(ctx, M, elapsed) {
+    var cssW = M.cssW;
+    var cssH = M.cssH;
+    var padL = M.padL, padT = M.padT, padR = M.padR, padB = M.padB;
+    var ox = M.ox, oy = M.oy;
+    var canX = M.canX, canY = M.canY;
+
     ctx.strokeStyle = 'rgba(72, 72, 72, 0.9)';
     ctx.lineWidth   = 1.5;
     ctx.lineCap     = 'round';
 
-    // Y-axis (x=0 asymptote): vertical line on the right
     ctx.beginPath();
     ctx.moveTo(ox, oy);
     ctx.lineTo(ox, padT);
     ctx.stroke();
-    // Y-axis arrowhead (pointing up)
     ctx.beginPath();
     ctx.moveTo(ox - 4, padT + 9);
     ctx.lineTo(ox,     padT + 1);
     ctx.lineTo(ox + 4, padT + 9);
     ctx.stroke();
 
-    // X-axis (y=0 asymptote): horizontal line at bottom
     ctx.beginPath();
     ctx.moveTo(ox, oy);
     ctx.lineTo(padL, oy);
     ctx.stroke();
-    // X-axis arrowhead (pointing left, toward negative x)
     ctx.beginPath();
     ctx.moveTo(padL + 9, oy - 4);
     ctx.lineTo(padL + 1, oy);
     ctx.lineTo(padL + 9, oy + 4);
     ctx.stroke();
 
-    // Axis labels
     var labelSize = Math.max(10, Math.round(cssW * 0.03));
     ctx.fillStyle = 'rgba(78, 78, 78, 0.9)';
     ctx.font      = labelSize + 'px sans-serif';
@@ -688,13 +799,13 @@
     ctx.textAlign = 'right';
     ctx.fillText('y', ox - 5, padT + 5);
 
-    // ── Sequencing dots ──
     var eFrac    = (elapsed % ANIM_CYCLE_MS) / ANIM_CYCLE_MS;
     var seqFrac  = ANIM_SEQ_MS  / ANIM_CYCLE_MS;
     var holdFrac = ANIM_HOLD_MS / ANIM_CYCLE_MS;
     var slotFrac = seqFrac / (ANIM_DOT_N - 1);
 
-    for (var i = 0; i < ANIM_DOT_N; i++) {
+    var i;
+    for (i = 0; i < ANIM_DOT_N; i++) {
       var activateAt = (i / (ANIM_DOT_N - 1)) * seqFrac;
       var opacity;
       if (eFrac < activateAt) {
@@ -711,7 +822,6 @@
       if (py < -ANIM_GLOW_R || py > cssH + ANIM_GLOW_R ||
           px < -ANIM_GLOW_R || px > cssW + ANIM_GLOW_R) continue;
 
-      // Outer glow
       var grd = ctx.createRadialGradient(px, py, 0, px, py, ANIM_GLOW_R);
       grd.addColorStop(0, 'rgba(' + ANIM_AR[0] + ',' + ANIM_AR[1] + ',' + ANIM_AR[2] + ',' + (opacity * 0.7) + ')');
       grd.addColorStop(1, 'rgba(' + ANIM_AR[0] + ',' + ANIM_AR[1] + ',' + ANIM_AR[2] + ',0)');
@@ -720,11 +830,234 @@
       ctx.fillStyle = grd;
       ctx.fill();
 
-      // Solid dot
       ctx.beginPath();
       ctx.arc(px, py, ANIM_DOT_R, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(' + ANIM_AR[0] + ',' + ANIM_AR[1] + ',' + ANIM_AR[2] + ',' + opacity + ')';
       ctx.fill();
+    }
+  }
+
+  // Draw mount graph; useCamera = gimbal follow on the latest lit dot (menu + intro).
+  function drawMountFrame(ctx, cssW, cssH, elapsed, useCamera) {
+    if (useCamera === undefined) useCamera = true;
+    ctx.clearRect(0, 0, cssW, cssH);
+    var M = createPlotMapper(cssW, cssH);
+    var canX = M.canX, canY = M.canY;
+    var info = computeLeadDotIndex(elapsed);
+    var focusX = canX(ANIM_DOTS[info.lead].cx);
+    var focusY = canY(ANIM_DOTS[info.lead].cy);
+    var scale  = useCamera ? computeMountCameraScale(info) : 1;
+
+    ctx.save();
+    if (useCamera && scale > 1.001) {
+      ctx.translate(cssW / 2, cssH / 2);
+      ctx.scale(scale, scale);
+      ctx.translate(-focusX, -focusY);
+    }
+    drawMountSceneCore(ctx, M, elapsed);
+    ctx.restore();
+  }
+
+  // Idle “engine” after intro: orbit + flow into center (same motif as core dot).
+  function drawIdleEngine(ctx, cssW, cssH, wallMs, pulseMs) {
+    ctx.clearRect(0, 0, cssW, cssH);
+    var cx = cssW * 0.5;
+    var cy = cssH * 0.48;
+    var t = wallMs * 0.001;
+    var pulse = pulseMs > 0 ? Math.min(1, (wallMs - pulseMs) / 220) : 0;
+    var ringR = Math.min(cssW, cssH) * 0.22;
+    var i;
+    ctx.strokeStyle = 'rgba(94, 232, 125, 0.25)';
+    ctx.lineWidth = 1.2;
+    for (i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, ringR + i * 14 + (pulse * 8), 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    var n = 18;
+    for (i = 0; i < n; i++) {
+      var ang = (i / n) * Math.PI * 2 + t * 0.7;
+      var rad = ringR + 36 + Math.sin(t * 2 + i) * 6;
+      var px = cx + Math.cos(ang) * rad;
+      var py = cy + Math.sin(ang) * rad;
+      var a = 0.15 + 0.35 * (0.5 + 0.5 * Math.sin(t * 3 + i));
+      ctx.fillStyle = 'rgba(' + ANIM_AR[0] + ',' + ANIM_AR[1] + ',' + ANIM_AR[2] + ',' + a + ')';
+      ctx.beginPath();
+      ctx.arc(px, py, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(94, 232, 125, 0.12)';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(t) * (ringR + 50), cy + Math.sin(t) * (ringR + 50));
+    ctx.stroke();
+  }
+
+  function drawEngineBgCanvas(canvas, wallMs) {
+    if (!canvas || !canvas.getContext) return;
+    var rect = canvas.getBoundingClientRect();
+    var dpr  = window.devicePixelRatio || 1;
+    var cssW = Math.round(rect.width);
+    var cssH = Math.round(rect.height);
+    if (cssW < 10 || cssH < 10) return;
+    var physW = Math.round(cssW * dpr);
+    var physH = Math.round(cssH * dpr);
+    if (canvas.width !== physW || canvas.height !== physH) {
+      canvas.width  = physW;
+      canvas.height = physH;
+    }
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (entryIntroActive) {
+      var introElapsed = wallMs - entryIntroStartMs;
+      if (introElapsed >= ENTRY_INTRO_MS) {
+        entryIntroActive = false;
+      } else {
+        drawMountFrame(ctx, cssW, cssH, introElapsed, true);
+        return;
+      }
+    }
+    drawIdleEngine(ctx, cssW, cssH, wallMs, corePulseAt);
+  }
+
+  function drawItemMotifCanvas(canvas, secId, item, wallMs) {
+    if (!canvas || !canvas.getContext || !item) return;
+    var w = 112;
+    var h = 112;
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    var cx = w / 2;
+    var cy = h / 2;
+    if (secId === 'upgrades' && state.upgrades[item.id] && state.upgrades[item.id].purchased) {
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = 'rgba(94,232,125,0.35)';
+      ctx.font = 'bold 28px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✓', cx, cy);
+      return;
+    }
+    var t = wallMs * 0.001;
+    var motif = item.motif || item.id;
+    var g;
+    var i;
+    var j;
+
+    function dot(x, y, r, al) {
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(' + ANIM_AR[0] + ',' + ANIM_AR[1] + ',' + ANIM_AR[2] + ',' + al + ')';
+      ctx.fill();
+    }
+
+    if (secId === 'generators') {
+      if (motif === 'squish') {
+        for (i = 0; i < 12; i++) {
+          var ang = (i / 12) * Math.PI * 2 + t;
+          var pull = 0.35 + 0.25 * Math.sin(t * 2);
+          dot(cx + Math.cos(ang) * (28 + pull * 20), cy + Math.sin(ang) * (28 + pull * 20), 3, 0.5);
+        }
+        dot(cx, cy, 8 + 3 * Math.sin(t * 3), 0.95);
+      } else if (motif === 'copy') {
+        dot(cx - 14, cy, 5, 0.7);
+        dot(cx + 14 + Math.sin(t * 4) * 4, cy, 5, 0.9);
+        dot(cx - 14, cy + 16, 4, 0.35);
+        dot(cx + 14, cy + 16, 4, 0.55);
+      } else if (motif === 'layers') {
+        for (j = 0; j < 4; j++) {
+          ctx.strokeStyle = 'rgba(94, 232, 125, ' + (0.15 + j * 0.12) + ')';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(cx - 30 + j * 5, cy - 22 + j * 6, 60 - j * 10, 44 - j * 8);
+        }
+      } else if (motif === 'edge') {
+        ctx.strokeStyle = 'rgba(94, 232, 125, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx + 36, cy + 28);
+        ctx.lineTo(cx - 8, cy - 8);
+        ctx.stroke();
+        dot(cx + 36, cy + 28, 5, 0.9);
+        dot(cx - 8, cy - 8, 4, 0.5);
+      } else if (motif === 'loop') {
+        ctx.strokeStyle = 'rgba(94, 232, 125, 0.45)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 22, t * 2, t * 2 + Math.PI * 1.7);
+        ctx.stroke();
+        dot(cx + 22, cy, 4, 0.85);
+      } else {
+        dot(cx, cy, 6, 0.8);
+      }
+    } else if (secId === 'upgrades') {
+      if (motif === 'chunks') {
+        for (i = 0; i < 3; i++) {
+          for (j = 0; j < 3; j++) {
+            var on = ((i + j + Math.floor(t * 2)) % 3) === 1;
+            ctx.fillStyle = on ? 'rgba(94,232,125,0.65)' : 'rgba(60,60,60,0.5)';
+            ctx.fillRect(cx - 22 + i * 15, cy - 22 + j * 15, 12, 12);
+          }
+        }
+      } else if (motif === 'net') {
+        for (i = 0; i < 5; i++) {
+          dot(cx + Math.cos(i * 1.2 + t) * 24, cy + Math.sin(i * 1.7) * 18, 3.5, 0.7);
+        }
+        ctx.strokeStyle = 'rgba(94, 232, 125, 0.25)';
+        ctx.lineWidth = 1;
+        for (i = 0; i < 5; i++) {
+          for (j = i + 1; j < 5; j++) {
+            ctx.beginPath();
+            ctx.moveTo(cx + Math.cos(i * 1.2 + t) * 24, cy + Math.sin(i * 1.7) * 18);
+            ctx.lineTo(cx + Math.cos(j * 1.2 + t) * 24, cy + Math.sin(j * 1.7) * 18);
+            ctx.stroke();
+          }
+        }
+      } else if (motif === 'focus') {
+        g = ctx.createRadialGradient(cx, cy, 4, cx, cy, 40);
+        g.addColorStop(0, 'rgba(94,232,125,0.5)');
+        g.addColorStop(0.35, 'rgba(94,232,125,0.08)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, w, h);
+        dot(cx, cy, 6, 1);
+      } else if (motif === 'fast') {
+        for (i = 0; i < 6; i++) {
+          ctx.fillStyle = 'rgba(94,232,125,' + (0.6 - i * 0.08) + ')';
+          ctx.fillRect(cx - 40 + i * 10 - (t * 40 % 20), cy - 2, 8, 4);
+        }
+      } else {
+        dot(cx, cy, 6, 0.8);
+      }
+    } else if (secId === 'sacrifice') {
+      var u = Math.min(1, state.resources.understanding / 80);
+      var tk = Math.min(1, state.resources.ticks / 200);
+      if (motif === 'tickUp') {
+        ctx.fillStyle = 'rgba(120,120,140,0.5)';
+        ctx.fillRect(cx - 36, cy + 20, 72 * tk, 6);
+        ctx.fillStyle = 'rgba(94,232,125,0.85)';
+        ctx.fillRect(cx - 36, cy - 8, 72 * u, 6);
+        dot(cx, cy - 26, 4, 0.9);
+      } else if (motif === 'uDown') {
+        ctx.fillStyle = 'rgba(94,232,125,0.85)';
+        ctx.fillRect(cx - 36, cy - 8, 72 * u, 6);
+        ctx.fillStyle = 'rgba(120,120,140,0.5)';
+        ctx.fillRect(cx - 36, cy + 20, 72 * tk, 6);
+      } else if (motif === 'collapse') {
+        var shrink = 0.35 + 0.35 * Math.sin(t * 2);
+        ctx.strokeStyle = 'rgba(94,232,125,0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 32 * shrink, 0, Math.PI * 2);
+        ctx.stroke();
+        dot(cx, cy, 5 * shrink, 0.9);
+      } else {
+        dot(cx, cy, 6, 0.7);
+      }
     }
   }
 
@@ -753,7 +1086,7 @@
         canvas.height = physH;
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      drawMountFrame(ctx, cssW, cssH, (now - startTime) + offsetMs);
+      drawMountFrame(ctx, cssW, cssH, (now - startTime) + offsetMs, true);
     }
 
     mountAnimFrameId = requestAnimationFrame(frame);
@@ -824,7 +1157,7 @@
       canvas.height = Math.round(cssH * dpr);
       var ctx = canvas.getContext('2d');
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      drawMountFrame(ctx, cssW, cssH, ANIM_PROBE_OFFSET_MS);
+      drawMountFrame(ctx, cssW, cssH, ANIM_PROBE_OFFSET_MS, true);
     }
 
     return { element: probeHero, cleanup: function () { probeHero.remove(); } };
@@ -886,6 +1219,9 @@
   function enterGame() {
     stopMountAnimation();
     if (!state) state = createState();
+    entryIntroActive = true;
+    entryIntroStartMs = performance.now();
+    corePulseAt = 0;
     renderGameDOM();
     dirty = true;
     startTick();

@@ -111,6 +111,10 @@ function inlineComputedStyles(sourceEl, cloneEl) {
   }
 }
 
+function heroElementHasCanvas(heroRoot) {
+  return heroRoot instanceof window.HTMLElement && !!heroRoot.querySelector('canvas');
+}
+
 function compositeCanvasChildren(ctx, targetCanvas, textEl) {
   const canvasEls = textEl.querySelectorAll('canvas');
   if (!canvasEls.length) return;
@@ -261,7 +265,27 @@ export function rasterizeHero(hero) {
     if (canvas.height < HERO_CANVAS_HEIGHT) canvas.height = HERO_CANVAS_HEIGHT;
     const ctx = canvas.getContext('2d');
 
-    function finish({ padding = 0, debugLabel = '' } = {}) {
+    function finish({ padding = 0, debugLabel = '', skipCrop = false } = {}) {
+      // Procedural canvas heroes (Asymptote mount): opaque bbox is asymmetric, so
+      // cropToContent shifts the bitmap center vs the DOM hero box. Particles are
+      // centered on the surface rect — keep the full buffer to match on-screen layout.
+      if (skipCrop) {
+        const surface = {
+          canvas,
+          offsetX: 0,
+          offsetY: 0,
+          width: canvas.width,
+          height: canvas.height,
+          hasVisibleContent: true,
+        };
+        if (debugLabel) {
+          spaDebug(
+            `[rasterizeHero] ${debugLabel} skipCrop full=${surface.width}x${surface.height}`
+          );
+        }
+        resolve(surface);
+        return;
+      }
       const cropped = cropToContent(canvas, padding);
       if (debugLabel) {
         spaDebug(
@@ -329,13 +353,19 @@ export function rasterizeHero(hero) {
         return;
       }
 
+      const skipCropForCanvasHero = heroElementHasCanvas(textEl);
+
       drawTextElementViaSvg(
         ctx,
         canvas,
         textEl,
         () => {
           spaDebug('[rasterizeHero] textElement SVG rasterization succeeded');
-          finish({ padding: 14, debugLabel: 'textElement(svg)' });
+          finish({
+            padding: 14,
+            debugLabel: 'textElement(svg)',
+            skipCrop: skipCropForCanvasHero,
+          });
         },
         () => {
           spaDebug('[rasterizeHero] textElement SVG rasterization failed; using canvas fallback');
@@ -345,7 +375,11 @@ export function rasterizeHero(hero) {
           ctx.globalCompositeOperation = 'destination-over';
           compositeCanvasChildren(ctx, canvas, textEl);
           ctx.restore();
-          finish({ padding: 14, debugLabel: 'textElement(fallback)' });
+          finish({
+            padding: 14,
+            debugLabel: 'textElement(fallback)',
+            skipCrop: skipCropForCanvasHero,
+          });
         }
       );
     } else if (hero.type === 'text') {

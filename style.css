@@ -304,3 +304,140 @@ body {
     font-size: 0.68rem;
   }
 }
+
+/* Engine hero — main dot is the primary control; graph follows the motif intro */
+.asy-engine-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: min(52vh, 360px);
+  width: 100%;
+  max-width: 38rem;
+  margin: 0 auto;
+  border-radius: 16px;
+  border: 1px solid #2a3a2f;
+  background: radial-gradient(ellipse 80% 70% at 50% 45%, #1a241c 0%, #0f0f0f 100%);
+  box-shadow: inset 0 0 60px rgba(94, 232, 125, 0.04);
+  overflow: hidden;
+  cursor: default;
+}
+
+.asy-engine-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.asy-core-dot {
+  position: relative;
+  z-index: 2;
+  width: min(22vw, 88px);
+  height: min(22vw, 88px);
+  min-width: 64px;
+  min-height: 64px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+  background: radial-gradient(circle at 35% 30%, #8ef4a8 0%, #5ee87d 38%, #2d8f4a 100%);
+  box-shadow:
+    0 0 28px rgba(94, 232, 125, 0.55),
+    0 0 60px rgba(94, 232, 125, 0.2),
+    inset 0 2px 12px rgba(255, 255, 255, 0.35);
+  transition: transform 0.08s ease-out, box-shadow 0.15s ease;
+}
+
+.asy-core-dot:active {
+  transform: scale(0.94);
+  box-shadow:
+    0 0 40px rgba(94, 232, 125, 0.75),
+    inset 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.asy-engine-hint {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.85rem;
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  color: rgba(94, 232, 125, 0.45);
+  letter-spacing: 0.12em;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Item heroes — motif + compact stat + action */
+.asy-item-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 38rem;
+  margin: 0 auto;
+  min-height: 220px;
+  padding: 1rem 1.25rem 1.5rem;
+  border-radius: 14px;
+  border: 1px solid #2f2f2f;
+  background: linear-gradient(165deg, #1a1a1a 0%, #121212 100%);
+}
+
+.asy-motif {
+  display: block;
+  width: 112px;
+  height: 112px;
+  image-rendering: pixelated;
+  border-radius: 12px;
+  background: #0a0a0a;
+  box-shadow: inset 0 0 24px rgba(94, 232, 125, 0.06);
+}
+
+.asy-hero-stat {
+  margin: 0 !important;
+  font-size: clamp(1.1rem, 3.2vw, 1.35rem) !important;
+  letter-spacing: 0.06em !important;
+  color: var(--accent) !important;
+}
+
+.asy-hero-action {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid #3a5c42;
+  background: #1e2a22;
+  color: var(--accent);
+  font-size: 1.1rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+}
+
+.asy-hero-action:active {
+  transform: scale(0.94);
+  background: #253028;
+}
+
+.asy-hero-main.asy-hero--dim .asy-hero-stat,
+.asy-hero-main.asy-hero--dim .asy-hero-action {
+  opacity: 0.38;
+}
+
+.asy-hero-main.asy-hero--dim .asy-motif {
+  opacity: 0.45;
+  filter: grayscale(0.4);
+}
+
+.asy-hero-main.asy-hero--dim .asy-core-dot {
+  opacity: 0.45;
+  filter: grayscale(0.35);
+  box-shadow: 0 0 12px rgba(94, 232, 125, 0.15);
+}

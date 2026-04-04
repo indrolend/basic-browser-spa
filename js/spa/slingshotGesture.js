@@ -1,7 +1,9 @@
 // Slingshot gesture — unified pointer-event pull interaction
 // Works identically on touch and mouse: pointerdown → pointermove → pointerup.
 // API: initSlingshot(element, callbacks) → { destroy }
-// callbacks: { onArm, onLock, onPull, onRelease, onCancel }
+// callbacks: { onArm, onLock, onPull, onRelease, onCancel, onTap }
+// onLock may return false to reject the lock (e.g. SPA is mid-transition); the
+// gesture resets so a stale pull never starts.
 
 const LOCK_THRESHOLD_PX = 15;  // minimum drag before direction is committed
 const MAX_PULL_DISTANCE = 120; // px at which pullNormalized reaches 1.0
@@ -75,11 +77,27 @@ export function initSlingshot(element, callbacks = {}) {
       const adx = Math.abs(dx);
       const ady = Math.abs(dy);
       lockedDirection = adx >= ady ? (dx < 0 ? 'next' : 'prev') : (dy < 0 ? 'next' : 'prev');
-      phase = 'locked';
       lastPullVector = { x: dx, y: dy };
       lastPullNormalized = clamp(d / MAX_PULL_DISTANCE, 0, 1);
+      phase = 'locked';
+      let lockAccepted = true;
       if (typeof onLock === 'function') {
-        onLock({ direction: lockedDirection, pullVector: lastPullVector, pullNormalized: lastPullNormalized });
+        lockAccepted = onLock({
+          direction: lockedDirection,
+          pullVector: lastPullVector,
+          pullNormalized: lastPullNormalized
+        }) !== false;
+      }
+      if (!lockAccepted) {
+        phase = 'idle';
+        pointerId = null;
+        lockedDirection = null;
+        removeWindowListeners();
+        element.style.touchAction = '';
+        try {
+          if (e.pointerId != null) element.releasePointerCapture(e.pointerId);
+        } catch (_err) { /* ignore */ }
+        return;
       }
       return;
     }
