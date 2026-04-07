@@ -190,6 +190,20 @@ body {
   text-align: center;
 }
 
+.spa-home-intro {
+  position: relative;
+  width: min(100%, 46rem);
+  height: min(68vh, 36rem);
+  min-height: 320px;
+  margin: 0 auto;
+}
+
+.spa-home-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .spa-nav-btn {
   background: var(--panel);
   color: var(--accent);
@@ -262,6 +276,11 @@ body {
   .spa-hero-gif {
     width: min(86vw, 320px);
     max-height: 50vh;
+  }
+
+  .spa-home-intro {
+    height: min(58vh, 28rem);
+    min-height: 280px;
   }
 }
 

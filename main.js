@@ -5,7 +5,8 @@ const SPA_SECTIONS = [
     id: 'home',
     label: 'Home',
     items: [
-      { id: 'main', label: 'Home', hero: { kind: 'text', text: 'Home' } }
+      { id: 'entrance', label: 'Entrance', hero: { kind: 'image', src: 'Untitled_design.png' } },
+      { id: 'swipe', label: 'Swipe', hero: { kind: 'text', text: 'swipe' } }
     ]
   },
   {
@@ -81,6 +82,7 @@ let gameModePullItemIdx = null;
 
 const DESKTOP_CHAIN_WINDOW_MS = 260;
 const REVEAL_HANDOFF_FADE_MS = 70;
+const HOME_ENTRANCE_AUTOPLAY_KEY = 'spa.homeEntranceAutoplay.v1';
 
 /** Opt-in verbose logging: add ?spa_debug=1 to the URL (zero overhead when off). */
 const SPA_DEBUG =
@@ -241,8 +243,7 @@ function isProceduralCanvasHero(sectionIdx, itemIdx) {
   if (!section || !item) return false;
   if (typeof window.__SPA_Views?.[section.id]?.buildHeroProbe !== 'function') return false;
   const container = document.getElementById('spa-hero-container');
-  const liveHero  = container?.querySelector('.spa-hero:not([data-probe])');
-  return !!(liveHero?.querySelector('canvas'));
+  return !!(container?.querySelector('canvas'));
 }
 
 // Returns the first live canvas inside the hero container to use as a seed frame
@@ -1236,7 +1237,26 @@ function assignPullToPromise(surfacePromise) {
 }
 
 function onSlingshotLock({ direction, pullVector, pullNormalized }) {
-  if (isTransitioning || isPulling) return false;
+  if (isTransitioning || isPulling) {
+    // Queue the swipe direction so rapid back-to-back gestures stay responsive.
+    // Use activeTarget (the in-flight destination) as the "from" position so
+    // chained swipes correctly compute the next step in the sequence.
+    // Skip in game mode — game navigation uses a separate path.
+    if (!isAsymptoteGameActive) {
+      const from = activeTarget || { sectionIdx: currentSectionIdx, itemIdx: currentItemIdx };
+      const target = direction === 'next'
+        ? getNextTarget(from.sectionIdx, from.itemIdx)
+        : getPrevTarget(from.sectionIdx, from.itemIdx);
+      if (!isSameTarget(target, from)) {
+        queuedTarget = {
+          sectionIdx: target.sectionIdx,
+          itemIdx: target.itemIdx,
+          transitionOptions: { timingProfile: 'chained' }
+        };
+      }
+    }
+    return false;
+  }
 
   try {
 
@@ -1678,11 +1698,40 @@ function cleanupSlingshotPull() {
   gameModePullItemIdx = null;
 }
 
+function maybeAutoAdvanceHomeEntrance() {
+  let shouldAuto = true;
+  try {
+    shouldAuto = window.sessionStorage.getItem(HOME_ENTRANCE_AUTOPLAY_KEY) !== 'done';
+  } catch (_) {}
+  if (!shouldAuto) return;
+
+  window.setTimeout(() => {
+    if (isTransitioning || isPulling) return;
+    if (currentSectionIdx !== 0 || currentItemIdx !== 0) return;
+
+    try { window.sessionStorage.setItem(HOME_ENTRANCE_AUTOPLAY_KEY, 'done'); } catch (_) {}
+
+    void goTo(0, 1, {
+      transitionOptions: { timingProfile: 'chained' }
+    });
+  }, 260);
+}
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 
 setupItemNav();
 render();
+
+{
+  const sectionId = SPA_SECTIONS[currentSectionIdx]?.id;
+  const itemId = SPA_SECTIONS[currentSectionIdx]?.items[currentItemIdx]?.id;
+  if (sectionId && itemId) {
+    try { window.__SPA_Views?.[sectionId]?.onActivate?.(itemId); } catch (_) {}
+  }
+}
+
 startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
+maybeAutoAdvanceHomeEntrance();
 
 initSlingshot(document.getElementById('spa-hero-container'), {
   onArm:     onSlingshotArm,
