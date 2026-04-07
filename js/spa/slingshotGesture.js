@@ -82,11 +82,15 @@ export function initSlingshot(element, callbacks = {}) {
       phase = 'locked';
       let lockAccepted = true;
       if (typeof onLock === 'function') {
-        lockAccepted = onLock({
-          direction: lockedDirection,
-          pullVector: lastPullVector,
-          pullNormalized: lastPullNormalized
-        }) !== false;
+          try {
+            lockAccepted = onLock({
+              direction: lockedDirection,
+              pullVector: lastPullVector,
+              pullNormalized: lastPullNormalized
+            }) !== false;
+          } catch (_err) {
+            lockAccepted = false;
+          }
       }
       if (!lockAccepted) {
         phase = 'idle';
@@ -106,7 +110,11 @@ export function initSlingshot(element, callbacks = {}) {
     lastPullVector = { x: dx, y: dy };
     lastPullNormalized = clamp(d / MAX_PULL_DISTANCE, 0, 1);
     if (typeof onPull === 'function') {
-      onPull({ pullVector: lastPullVector, pullNormalized: lastPullNormalized });
+      try {
+        onPull({ pullVector: lastPullVector, pullNormalized: lastPullNormalized });
+      } catch (_err) {
+        finalize(e, true);
+      }
     }
   }
 
@@ -127,16 +135,26 @@ export function initSlingshot(element, callbacks = {}) {
 
     if (isCancelled || !wasLocked) {
       if (isCancelled) {
-        if (typeof onCancel === 'function') onCancel();
+        if (typeof onCancel === 'function') {
+          try { onCancel(); } catch (_err) { /* no-op */ }
+        }
       } else {
         // Pointer released without reaching the drag threshold — treat as a tap.
-        if (typeof onTap === 'function') onTap();
+        if (typeof onTap === 'function') {
+          try { onTap(); } catch (_err) { /* no-op */ }
+        }
       }
       return;
     }
 
     if (typeof onRelease === 'function') {
-      onRelease({ direction: savedDirection, pullVector: savedPullVector, pullNormalized: savedPullNormalized });
+      try {
+        onRelease({ direction: savedDirection, pullVector: savedPullVector, pullNormalized: savedPullNormalized });
+      } catch (_err) {
+        if (typeof onCancel === 'function') {
+          try { onCancel(); } catch (_err2) { /* no-op */ }
+        }
+      }
     }
   }
 

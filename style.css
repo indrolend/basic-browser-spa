@@ -131,24 +131,41 @@ body {
 
 /* Text-type hero rendered as an obvious button box */
 .spa-hero--text {
-  background: var(--panel);
-  border: 2px solid #2f2f2f;
+  background: transparent;
+  border: 2px solid transparent;
   border-radius: 12px;
   padding: 2rem 2.5rem;
   min-height: unset;
-  box-shadow: 0 2px 20px #0005;
+  box-shadow: none;
   transition: background 0.15s, border-color 0.15s;
   user-select: none;
   touch-action: manipulation;
 }
 
 .spa-hero--text:hover {
-  background: var(--panel-active);
-  border-color: var(--accent);
+  background: transparent;
+  border-color: transparent;
 }
 
 .spa-hero--text.spa-hero--linkable:focus-visible {
   border-radius: 12px;
+}
+
+
+/* GIF hero with a tap/link action — border ring shows the real extended hit area */
+.spa-hero--gif-linkable {
+  padding: 1.25rem;
+  border: 2px solid transparent;
+  border-radius: 20px;
+  background: transparent;
+  min-height: unset;
+  transition: border-color 0.18s, background 0.18s;
+}
+
+.spa-hero--gif-linkable:hover,
+.spa-hero--gif-linkable:active {
+  border-color: transparent;
+  background: transparent;
 }
 
 .spa-hero-image,
@@ -160,7 +177,7 @@ body {
 }
 
 .spa-hero-image {
-  background: var(--panel);
+  background: transparent;
   box-shadow: 0 4px 32px #000a;
 }
 
@@ -234,6 +251,11 @@ body {
   .spa-hero--text {
     padding: 1.5rem 1.75rem;
     border-radius: 10px;
+  }
+
+  .spa-hero--gif-linkable {
+    padding: 0.75rem;
+    border-radius: 16px;
   }
 
   .spa-hero-image,
@@ -440,4 +462,84 @@ body {
   opacity: 0.45;
   filter: grayscale(0.35);
   box-shadow: 0 0 12px rgba(94, 232, 125, 0.15);
+}
+
+/* SPA overlay modal (used by SoundCloud archive picker) */
+#spa-overlay-root {
+  position: fixed;
+  inset: 0;
+  display: none;
+  z-index: 120;
+  background: rgba(0, 0, 0, 0.68);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  padding: 1rem;
+}
+
+.spa-overlay {
+  width: min(92vw, 32rem);
+  margin: min(14vh, 8rem) auto 0;
+  background: linear-gradient(180deg, #1b1b1b 0%, #141414 100%);
+  border: 1px solid #2f2f2f;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  padding: 1rem;
+}
+
+.spa-overlay-title {
+  font-size: clamp(1.35rem, 4vw, 1.8rem);
+  text-transform: lowercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.35rem;
+}
+
+.spa-overlay-subtitle {
+  margin: 0;
+  color: #9aa19b;
+  font-size: 0.9rem;
+  letter-spacing: 0.03em;
+}
+
+.spa-overlay-links {
+  margin-top: 0.9rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.spa-overlay-link {
+  display: block;
+  color: var(--accent);
+  text-decoration: none;
+  background: #1f1f1f;
+  border: 1px solid #2f2f2f;
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+  letter-spacing: 0.03em;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.spa-overlay-link:hover,
+.spa-overlay-link:focus-visible {
+  background: #282828;
+  border-color: #3e6b49;
+  outline: none;
+}
+
+.spa-overlay-close {
+  margin-top: 0.85rem;
+  width: 100%;
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid #345a3d;
+  background: #1f2b22;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.spa-overlay-close:hover,
+.spa-overlay-close:focus-visible {
+  background: #27342a;
+  border-color: #3e6b49;
+  outline: none;
 }

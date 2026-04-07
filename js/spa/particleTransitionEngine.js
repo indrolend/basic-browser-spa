@@ -101,6 +101,13 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
   const TOTAL_DURATION   = EXPLODE_DURATION + REFORM_DURATION;
   const EXPLODE_RADIUS   = Math.min(width, height) * (timingProfile === 'chained' ? 0.34 : 0.4);
   const particles = [];
+  let completed = false;
+
+  function safeComplete() {
+    if (completed) return;
+    completed = true;
+    if (typeof onComplete === 'function') onComplete();
+  }
 
   const rawFromParticles = sampleParticles(fromRegion, width, height);
   const rawToParticles   = sampleParticles(toRegion,   width, height);
@@ -129,7 +136,11 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
 
   let startTime = null;
   function animate(ts) {
-    if (!ctx.canvas.isConnected) return; // canvas removed from DOM — stop loop
+    if (!ctx.canvas.isConnected) {
+      // Ensure callers waiting on completion do not stall if canvas is removed.
+      safeComplete();
+      return;
+    }
     if (!startTime) startTime = ts;
     const t = ts - startTime;
     ctx.clearRect(0, 0, width, height);
@@ -153,7 +164,7 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
       }
       requestAnimationFrame(animate);
     } else {
-      onComplete();
+      safeComplete();
     }
   }
   animate(performance.now());
@@ -177,15 +188,22 @@ export function transitionFromPull(pulledParticles, toRegion, ctx, options, onCo
   const height = ctx.canvas.height;
   const SNAP_DURATION   =  80; // ms — elastic snap-back from pulled to rest positions
   const REFORM_DURATION = 270; // ms — reform from rest positions to target shape (80+270=350ms, matching button-press total)
+  let completed = false;
+
+  function safeComplete() {
+    if (completed) return;
+    completed = true;
+    if (typeof onComplete === 'function') onComplete();
+  }
 
   if (!pulledParticles || !pulledParticles.length) {
-    if (typeof onComplete === 'function') onComplete();
+    safeComplete();
     return;
   }
 
   const rawToParticles = sampleParticles(toRegion, width, height);
   if (!rawToParticles.length) {
-    if (typeof onComplete === 'function') onComplete();
+    safeComplete();
     return;
   }
 
@@ -216,7 +234,11 @@ export function transitionFromPull(pulledParticles, toRegion, ctx, options, onCo
 
   let startTime = null;
   function animate(ts) {
-    if (!ctx.canvas.isConnected) return; // canvas removed from DOM — stop loop
+    if (!ctx.canvas.isConnected) {
+      // Ensure callers waiting on completion do not stall if canvas is removed.
+      safeComplete();
+      return;
+    }
     if (!startTime) startTime = ts;
     const elapsed = ts - startTime;
     ctx.clearRect(0, 0, width, height);
@@ -254,7 +276,7 @@ export function transitionFromPull(pulledParticles, toRegion, ctx, options, onCo
       if (p < 1) {
         requestAnimationFrame(animate);
       } else {
-        if (typeof onComplete === 'function') onComplete();
+        safeComplete();
       }
     }
   }

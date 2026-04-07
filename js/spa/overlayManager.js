@@ -9,25 +9,34 @@
 (function () {
   var overlayRoot = null;
   var _isOpen = false;
+  var _boundEscape = null;
+  var _openedAtMs = 0;
 
-  // SoundCloud archive links — year ranges match the discography page
-  var SOUNDCLOUD_YEARS = [
-    { label: '2024\u20132025', url: 'https://soundcloud.com/indrolend-783494030' },
-    { label: '2024',           url: 'https://soundcloud.com/indrolend1'           },
-    { label: '2023',           url: 'https://soundcloud.com/indrolend'            },
-    { label: '2022',           url: 'https://soundcloud.com/indrolendarchive2022' }
+  // Default SoundCloud archives; can be overridden per open() payload.
+  var SOUNDCLOUD_ACCOUNTS = [
+    { label: '2024 Archive (Latest)', url: 'https://soundcloud.com/indrolend-783494030' },
+    { label: '2024 Archive (Older)',  url: 'https://soundcloud.com/indrolend1'           },
+    { label: '2023 Archive',      url: 'https://soundcloud.com/indrolend'            },
+    { label: '2022 Archive',      url: 'https://soundcloud.com/indrolendarchive2022' }
   ];
 
   var overlayBuilders = {
-    soundcloudArchiveMenu: function () {
-      var linksHtml = SOUNDCLOUD_YEARS.map(function (entry) {
+    soundcloudArchiveMenu: function (payload) {
+      var data = payload || {};
+      var title = data.title || 'soundcloud';
+      var subtitle = data.subtitle || 'Select an archive year';
+      var entries = Array.isArray(data.links) && data.links.length ? data.links : SOUNDCLOUD_ACCOUNTS;
+
+      var linksHtml = entries.map(function (entry) {
+        if (!entry || !entry.url) return '';
+        var label = entry.label || entry.url;
         return '<a class="spa-overlay-link" href="' + entry.url + '" target="_blank" rel="noopener">' +
-               entry.label + ' Archive' +
+               label +
                '</a>';
       }).join('');
 
-      return '<div class="spa-overlay-title"><span class="important-word">soundcloud</span></div>' +
-             '<p class="spa-overlay-subtitle">Select an archive year</p>' +
+      return '<div class="spa-overlay-title"><span class="important-word">' + title + '</span></div>' +
+             '<p class="spa-overlay-subtitle">' + subtitle + '</p>' +
              '<div class="spa-overlay-links">' + linksHtml + '</div>' +
              '<button class="spa-overlay-close" id="spa-overlay-close-btn">\u2715 close</button>';
     }
@@ -36,6 +45,14 @@
   function getRoot() {
     if (!overlayRoot) {
       overlayRoot = document.getElementById('spa-overlay-root');
+      if (!overlayRoot) {
+        overlayRoot = document.createElement('div');
+        overlayRoot.id = 'spa-overlay-root';
+        overlayRoot.setAttribute('role', 'dialog');
+        overlayRoot.setAttribute('aria-modal', 'true');
+        overlayRoot.setAttribute('aria-label', 'Overlay');
+        document.body.appendChild(overlayRoot);
+      }
     }
     return overlayRoot;
   }
@@ -47,7 +64,9 @@
     var builder = overlayBuilders[id];
     if (!builder) return;
 
+    close();
     _isOpen = true;
+    _openedAtMs = Date.now();
 
     var overlay = document.createElement('div');
     overlay.className = 'spa-overlay';
@@ -68,6 +87,16 @@
       closeBtn.addEventListener('click', close);
     }
 
+    var linkEls = overlay.querySelectorAll('.spa-overlay-link');
+    for (var i = 0; i < linkEls.length; i++) {
+      linkEls[i].addEventListener('click', close);
+    }
+
+    _boundEscape = function (e) {
+      if (e.key === 'Escape') close();
+    };
+    document.addEventListener('keydown', _boundEscape);
+
     // Trap focus on close button for accessibility
     if (closeBtn) closeBtn.focus();
 
@@ -78,6 +107,9 @@
   }
 
   function onBackdropClick(e) {
+    // Ignore the synthetic click that can follow a tap/pointerup which opened
+    // the overlay, otherwise the menu appears to instantly close.
+    if (Date.now() - _openedAtMs < 220) return;
     if (e.target === getRoot()) {
       close();
     }
@@ -88,6 +120,10 @@
     if (!root) return;
     _isOpen = false;
     root.removeEventListener('click', onBackdropClick);
+    if (_boundEscape) {
+      document.removeEventListener('keydown', _boundEscape);
+      _boundEscape = null;
+    }
     root.style.display = 'none';
     root.innerHTML = '';
   }

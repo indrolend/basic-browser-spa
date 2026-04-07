@@ -10,6 +10,13 @@
     soundcloud: { label: 'soundcloud',  type: 'text',   overlay: 'soundcloudArchiveMenu' }
   };
 
+  var SOUNDCLOUD_LINKS = [
+    { label: '2024 Archive (Latest)', url: 'https://soundcloud.com/indrolend-783494030' },
+    { label: '2024 Archive (Older)',  url: 'https://soundcloud.com/indrolend1' },
+    { label: '2023 Archive',      url: 'https://soundcloud.com/indrolend' },
+    { label: '2022 Archive',      url: 'https://soundcloud.com/indrolendarchive2022' }
+  ];
+
   var mountedCanvases = {};
 
   function mount(itemId, container) {
@@ -50,9 +57,14 @@
 
       var btn = container.querySelector('.spa-soundcloud-btn');
       if (btn) {
+        btn.type = 'button';
         btn.addEventListener('click', function () {
           if (window.__SPA_Overlay) {
-            window.__SPA_Overlay.open(item.overlay, {});
+            window.__SPA_Overlay.open(item.overlay, {
+              title: 'soundcloud',
+              subtitle: 'Select an archive year',
+              links: SOUNDCLOUD_LINKS
+            });
           }
         });
       }

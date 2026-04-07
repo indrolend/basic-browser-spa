@@ -145,6 +145,22 @@ function isExternalLink(action) {
   return typeof action === 'string' && action.startsWith('http');
 }
 
+function isOverlayAction(action) {
+  return typeof action === 'string' && action.startsWith('overlay:');
+}
+
+function runItemClickAction(action) {
+  if (isExternalLink(action)) {
+    window.open(action, '_blank', 'noopener,noreferrer');
+    return;
+  }
+
+  if (isOverlayAction(action) && window.__SPA_Overlay) {
+    var overlayId = action.slice('overlay:'.length);
+    if (overlayId) window.__SPA_Overlay.open(overlayId, {});
+  }
+}
+
 function getNextTarget(sectionIdx, itemIdx) {
   const section = SPA_SECTIONS[sectionIdx];
   if (itemIdx < section.items.length - 1) {
@@ -631,16 +647,25 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
   hero.className = 'spa-hero';
 
   const clickAction = getItemClickAction(sectionIdx, itemIdx);
-  if (isExternalLink(clickAction)) {
+  if (isExternalLink(clickAction) || isOverlayAction(clickAction)) {
     hero.classList.add('spa-hero--linkable');
     hero.setAttribute('role', 'link');
-    hero.setAttribute('aria-label', `Open ${item.label}`);
+    hero.setAttribute('aria-label', isOverlayAction(clickAction)
+      ? `Open ${item.label} menu`
+      : `Open ${item.label}`);
     hero.setAttribute('tabindex', '0');
+
+    addActivationHandler(hero, () => {
+      if (!isTransitioning && !isPulling) {
+        runItemClickAction(clickAction);
+      }
+    });
+
     hero.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         if (!isTransitioning && !isPulling) {
-          window.open(clickAction, '_blank', 'noopener,noreferrer');
+          runItemClickAction(clickAction);
         }
       }
     });
@@ -652,6 +677,9 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
         ? options.preparedGifCanvas
         : document.createElement('canvas');
       gifCanvas.className = 'spa-hero-gif spa-hero-gif-canvas';
+      // Disable pointer-events on canvas so touches pass through to the parent
+      // hero div, which holds the activation handler and covers a larger area.
+      gifCanvas.style.pointerEvents = 'none';
       if (gifCanvas.width !== 320) gifCanvas.width = 320;
       if (gifCanvas.height !== 320) gifCanvas.height = 320;
       gifCanvas.setAttribute('role', 'img');
@@ -663,6 +691,9 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
           warmCtx.drawImage(options.gifWarmupSurface, 0, 0, gifCanvas.width, gifCanvas.height);
           spaDebug('[gifPlayback] seeded visible canvas with prewarmed first frame');
         }
+      }
+      if (isExternalLink(clickAction) || isOverlayAction(clickAction)) {
+        hero.classList.add('spa-hero--gif-linkable');
       }
       hero.appendChild(gifCanvas);
       if (!(options.preparedGifCanvas instanceof window.HTMLCanvasElement)) {
@@ -684,6 +715,7 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
       hero.appendChild(img);
     }
   } else {
+    hero.classList.add('spa-hero--text');
     const textDiv = document.createElement('div');
     textDiv.className = 'spa-hero-text';
     textDiv.textContent = heroSpec?.text || item.label;
@@ -1023,6 +1055,13 @@ window.addEventListener('keydown', (e) => {
 const SLINGSHOT_PARTICLE_SIZE = 4;
 const SLINGSHOT_MIN_RELEASE   = 0.15; // pullNormalized must exceed this to commit
 
+function runWeakPullTapFallbackIfNeeded() {
+  const action = getItemClickAction(currentSectionIdx, currentItemIdx);
+  if (isOverlayAction(action)) {
+    runItemClickAction(action);
+  }
+}
+
 function samplePullParticles(surface, canvasW, canvasH) {
   const offscreen = document.createElement('canvas');
   offscreen.width  = canvasW;
@@ -1160,9 +1199,7 @@ function onSlingshotTap() {
   }
 
   const action = getItemClickAction(currentSectionIdx, currentItemIdx);
-  if (isExternalLink(action)) {
-    window.open(action, '_blank', 'noopener,noreferrer');
-  }
+  runItemClickAction(action);
 }
 
 function onSlingshotArm() {
@@ -1200,6 +1237,8 @@ function assignPullToPromise(surfacePromise) {
 
 function onSlingshotLock({ direction, pullVector, pullNormalized }) {
   if (isTransitioning || isPulling) return false;
+
+  try {
 
   // ── Game mode: full pull-preview setup (identical pipeline to SPA path) ──────
   if (isAsymptoteGameActive) {
@@ -1366,6 +1405,11 @@ function onSlingshotLock({ direction, pullVector, pullNormalized }) {
   transitionCanvas.style.transition = '';
 
   renderPullPreview(pullVector, pullNormalized);
+  } catch (err) {
+    console.warn('[slingshot] lock setup failed:', err);
+    cancelSlingshot();
+    return false;
+  }
 }
 
 function onSlingshotPull({ pullVector, pullNormalized }) {
@@ -1459,6 +1503,7 @@ async function onSlingshotRelease({ pullNormalized }) {
 
   if (pullNormalized < SLINGSHOT_MIN_RELEASE) {
     cancelSlingshot();
+    runWeakPullTapFallbackIfNeeded();
     return;
   }
 
