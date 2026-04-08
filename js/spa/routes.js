@@ -101,3 +101,11 @@ window.__INDROLEND_ROUTES__ = {
     }
   }
 };
+
+(function deepFreeze(obj) {
+  if (!obj || typeof obj !== 'object' || Object.isFrozen(obj)) return obj;
+  Object.getOwnPropertyNames(obj).forEach(function (key) {
+    deepFreeze(obj[key]);
+  });
+  return Object.freeze(obj);
+}(window.__INDROLEND_ROUTES__));

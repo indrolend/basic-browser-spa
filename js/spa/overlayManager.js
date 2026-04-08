@@ -25,17 +25,38 @@
     { label: '2022 Archive',      url: 'https://soundcloud.com/indrolendarchive2022' }
   ];
 
+  function escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function normalizeExternalUrl(value) {
+    if (typeof value !== 'string') return null;
+
+    try {
+      var url = new URL(value, window.location.origin);
+      return url.protocol === 'https:' ? url.href : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   var overlayBuilders = {
     soundcloudArchiveMenu: function (payload) {
       var data = payload || {};
-      var title = data.title || 'soundcloud';
-      var subtitle = data.subtitle || 'Select an archive year';
+      var title = escapeHtml(data.title || 'soundcloud');
+      var subtitle = escapeHtml(data.subtitle || 'Select an archive year');
       var entries = Array.isArray(data.links) && data.links.length ? data.links : SOUNDCLOUD_ACCOUNTS;
 
       var linksHtml = entries.map(function (entry) {
-        if (!entry || !entry.url) return '';
-        var label = entry.label || entry.url;
-        return '<a class="spa-overlay-link" href="' + entry.url + '" target="_blank" rel="noopener">' +
+        var safeUrl = normalizeExternalUrl(entry && entry.url);
+        if (!safeUrl) return '';
+        var label = escapeHtml((entry && entry.label) || safeUrl);
+        return '<a class="spa-overlay-link" href="' + safeUrl + '" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">' +
                label +
                '</a>';
       }).join('');
