@@ -7,6 +7,7 @@
 
 const LOCK_THRESHOLD_PX = 15;  // minimum drag before direction is committed
 const MAX_PULL_DISTANCE = 120; // px at which pullNormalized reaches 1.0
+const TAP_SLOP_PX = 8;         // max movement still considered a tap
 
 export function initSlingshot(element, callbacks = {}) {
   const { onArm, onLock, onPull, onRelease, onCancel, onTap } = callbacks;
@@ -18,6 +19,7 @@ export function initSlingshot(element, callbacks = {}) {
   let lockedDirection = null;
   let lastPullVector = { x: 0, y: 0 };
   let lastPullNormalized = 0;
+  let armedDistance = 0;
 
   function clamp(v, lo, hi) {
     return Math.max(lo, Math.min(hi, v));
@@ -46,6 +48,16 @@ export function initSlingshot(element, callbacks = {}) {
     if (phase !== 'idle') return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
 
+    const targetEl = e.target;
+    if (
+      targetEl instanceof Element &&
+      targetEl.closest('button, a, input, textarea, select, [data-spa-no-sling="true"]')
+    ) {
+      return;
+    }
+
+    if (e.cancelable) e.preventDefault();
+
     phase = 'armed';
     pointerId = e.pointerId;
     startX = e.clientX;
@@ -53,6 +65,7 @@ export function initSlingshot(element, callbacks = {}) {
     lastPullVector = { x: 0, y: 0 };
     lastPullNormalized = 0;
     lockedDirection = null;
+    armedDistance = 0;
 
     // setPointerCapture routes captured events back to this element so they
     // continue to bubble up to our window listeners. If capture fails the
@@ -71,6 +84,7 @@ export function initSlingshot(element, callbacks = {}) {
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
     const d = dist(dx, dy);
+    armedDistance = d;
 
     if (phase === 'armed') {
       if (d < LOCK_THRESHOLD_PX) return;
@@ -125,6 +139,7 @@ export function initSlingshot(element, callbacks = {}) {
     removeWindowListeners();
     element.style.touchAction = '';
     const wasLocked = phase === 'locked';
+    const savedArmedDistance = armedDistance;
     const savedDirection = lockedDirection;
     const savedPullVector = { ...lastPullVector };
     const savedPullNormalized = lastPullNormalized;
@@ -132,6 +147,7 @@ export function initSlingshot(element, callbacks = {}) {
     phase = 'idle';
     pointerId = null;
     lockedDirection = null;
+    armedDistance = 0;
 
     if (isCancelled || !wasLocked) {
       if (isCancelled) {
@@ -139,8 +155,8 @@ export function initSlingshot(element, callbacks = {}) {
           try { onCancel(); } catch (_err) { /* no-op */ }
         }
       } else {
-        // Pointer released without reaching the drag threshold — treat as a tap.
-        if (typeof onTap === 'function') {
+        // Pointer released without lock: only very small movement is a tap.
+        if (savedArmedDistance <= TAP_SLOP_PX && typeof onTap === 'function') {
           try { onTap(); } catch (_err) { /* no-op */ }
         }
       }

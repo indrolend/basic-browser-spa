@@ -9,7 +9,7 @@
 //   1. User navigates to Games / Asymptote Engine (sees tappable text hero)
 //   2. User taps the hero → gamesView.onEnterGame() → AsymptoteApp.enterGame()
 //   3. SPA DOM is replaced in-place with game sections + hero + dots
-//   4. Only exit: the ✕ nav button → window.__SPA_GoHome()
+//   4. Exit: the ✕ nav button → restore the Games / Asymptote Engine item view
 //
 // Exposes window.AsymptoteApp = { mount, enterGame, stopGame, deactivate }
 // Exposes window.__SPA_GameNav when game is active
@@ -532,7 +532,11 @@
     exitBtn.textContent = '✕';
     exitBtn.setAttribute('aria-label', 'exit game');
     wire(exitBtn, function () {
-      if (window.__SPA_GoHome) window.__SPA_GoHome();
+      if (window.__SPA_ExitGameToCurrentItem) {
+        window.__SPA_ExitGameToCurrentItem();
+      } else if (window.__SPA_GoHome) {
+        window.__SPA_GoHome();
+      }
     });
     sectionNav.appendChild(exitBtn);
 
@@ -1182,7 +1186,9 @@
     hero.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        if (window.__SPA_Views && window.__SPA_Views.games) {
+        if (typeof window.__SPA_EnterCurrentGame === 'function') {
+          window.__SPA_EnterCurrentGame();
+        } else if (window.__SPA_Views && window.__SPA_Views.games) {
           window.__SPA_Views.games.onEnterGame();
         }
       }
@@ -1269,12 +1275,17 @@
     stopGame();
   }
 
+  function buildEntryGameHeroProbe(containerEl) {
+    return buildGameHeroProbe(0, 0, containerEl);
+  }
+
   window.AsymptoteApp = {
-    mount:               mount,
-    enterGame:           enterGame,
-    stopGame:            stopGame,
-    deactivate:          deactivate,
-    buildMountHeroProbe: buildMountHeroProbe
+    mount:                  mount,
+    enterGame:              enterGame,
+    stopGame:               stopGame,
+    deactivate:             deactivate,
+    buildMountHeroProbe:    buildMountHeroProbe,
+    buildEntryGameHeroProbe: buildEntryGameHeroProbe
   };
 
 }());

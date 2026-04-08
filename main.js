@@ -5,7 +5,7 @@ const SPA_SECTIONS = [
     id: 'home',
     label: 'Home',
     items: [
-      { id: 'main', label: 'Home', hero: { kind: 'text', text: 'Home' } }
+      { id: 'swipe', label: 'Swipe', hero: { kind: 'text', text: 'swipe' } }
     ]
   },
   {
@@ -51,6 +51,7 @@ let currentItemIdx = 0;
 let isTransitioning = false;
 let queuedTarget = null;
 let activeTarget = null;
+let homeSectionLocked = false;
 let currentHeroSurface = null;
 let currentHeroSurfaceKey = null;
 let currentHeroSurfaceFrameId = null;
@@ -82,6 +83,143 @@ let gameModePullItemIdx = null;
 const DESKTOP_CHAIN_WINDOW_MS = 260;
 const REVEAL_HANDOFF_FADE_MS = 70;
 
+async function exitGameToCurrentItem() {
+  if (isTransitioning || isPulling) return;
+
+  const sectionId = SPA_SECTIONS[currentSectionIdx]?.id;
+  const itemId = SPA_SECTIONS[currentSectionIdx]?.items[currentItemIdx]?.id;
+
+  if (!isAsymptoteGameActive) {
+    renderHeroDOM(currentSectionIdx, currentItemIdx);
+    updateSectionNav(currentSectionIdx);
+    updateItemDots(currentSectionIdx, currentItemIdx);
+    startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
+    return;
+  }
+
+  isTransitioning = true;
+  stopCurrentHeroSurfaceTracking();
+
+  try {
+    const [fromSurface, toSurface] = await Promise.all([
+      buildHeroSurface(currentSectionIdx, currentItemIdx, 'from'),
+      buildHeroSurface(currentSectionIdx, currentItemIdx, 'to')
+    ]);
+
+    const restoreEntryHero = () => {
+      try {
+        if (sectionId && itemId) {
+          window.__SPA_Views?.[sectionId]?.onDeactivate?.(itemId);
+        } else {
+          window.__SPA_SetGameMode(false);
+        }
+      } catch (_) {
+        window.__SPA_SetGameMode(false);
+      }
+
+      renderHeroDOM(currentSectionIdx, currentItemIdx);
+      updateSectionNav(currentSectionIdx);
+      updateItemDots(currentSectionIdx, currentItemIdx);
+    };
+
+    if (fromSurface && toSurface) {
+      await runHeroTransition(fromSurface, toSurface, {
+        timingProfile: 'releaseLike',
+        onBeforeReveal: async () => {
+          restoreEntryHero();
+        }
+      });
+    } else {
+      restoreEntryHero();
+    }
+  } catch (err) {
+    console.warn('[game exit transition] failed, restoring entry hero directly:', err);
+    try {
+      if (sectionId && itemId) {
+        window.__SPA_Views?.[sectionId]?.onDeactivate?.(itemId);
+      } else {
+        window.__SPA_SetGameMode(false);
+      }
+    } catch (_) {
+      window.__SPA_SetGameMode(false);
+    }
+    renderHeroDOM(currentSectionIdx, currentItemIdx);
+    updateSectionNav(currentSectionIdx);
+    updateItemDots(currentSectionIdx, currentItemIdx);
+  } finally {
+    isTransitioning = false;
+    startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
+  }
+}
+
+function closeOverlayForNavigation() {
+  if (window.__SPA_Overlay?.isOpen?.()) {
+    window.__SPA_Overlay.close({ restore: false });
+  }
+}
+
+async function closeOverlayWithTransition() {
+  if (!window.__SPA_Overlay?.isOpen?.()) return;
+
+  if (isTransitioning || isPulling) {
+    return;
+  }
+
+  isTransitioning = true;
+  stopCurrentHeroSurfaceTracking();
+
+  try {
+    const currentHeroSpec = getHeroSpec(currentSectionIdx, currentItemIdx);
+    const preparedTargetCanvas = isGifHeroSpec(currentHeroSpec)
+      ? prepareToGifCanvas(currentSectionIdx, currentItemIdx, currentHeroSpec.src)
+      : null;
+
+    const [fromSurface, toSurface] = await Promise.all([
+      buildHeroSurface(currentSectionIdx, currentItemIdx, 'from'),
+      buildHeroSurface(currentSectionIdx, currentItemIdx, 'to')
+    ]);
+
+    const preparedPlaybackKey = `prepared:${getHeroSurfaceKey(currentSectionIdx, currentItemIdx)}`;
+    const canReusePreparedGif =
+      preparedTargetCanvas instanceof window.HTMLCanvasElement &&
+      activeGifPlayback?.playbackKey === preparedPlaybackKey &&
+      activeGifPlayback?.hasPaintedFrame;
+
+    if (fromSurface && toSurface) {
+      await runHeroTransition(fromSurface, toSurface, {
+        timingProfile: 'releaseLike',
+        onBeforeReveal: async () => {
+          window.__SPA_Overlay.close({ restore: false });
+          renderHeroDOM(currentSectionIdx, currentItemIdx, {
+            preparedGifCanvas: canReusePreparedGif ? preparedTargetCanvas : null,
+            preserveActiveGifPlayback: canReusePreparedGif
+          });
+          updateSectionNav(currentSectionIdx);
+          updateItemDots(currentSectionIdx, currentItemIdx);
+          preparedToGifCanvas = null;
+          preparedToGifKey = null;
+        }
+      });
+    } else {
+      window.__SPA_Overlay.close({ restore: false });
+      renderHeroDOM(currentSectionIdx, currentItemIdx, {
+        preparedGifCanvas: canReusePreparedGif ? preparedTargetCanvas : null,
+        preserveActiveGifPlayback: canReusePreparedGif
+      });
+      updateSectionNav(currentSectionIdx);
+      updateItemDots(currentSectionIdx, currentItemIdx);
+      preparedToGifCanvas = null;
+      preparedToGifKey = null;
+    }
+  } catch (err) {
+    console.warn('[overlay close transition] failed, restoring hero directly:', err);
+    window.__SPA_Overlay.close();
+  } finally {
+    isTransitioning = false;
+    startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
+  }
+}
+
 /** Opt-in verbose logging: add ?spa_debug=1 to the URL (zero overhead when off). */
 const SPA_DEBUG =
   typeof location !== 'undefined' &&
@@ -96,8 +234,19 @@ function spaDebug(...args) {
 // accidentally swipe or key out of the game.
 let isAsymptoteGameActive = false;
 window.__SPA_SetGameMode = (active) => { isAsymptoteGameActive = !!active; };
-// Navigate to home — used by the game's exit (✕) button.
+// Navigate to home when explicitly requested.
 window.__SPA_GoHome = () => goTo(0, 0);
+// Exit the active game by transitioning back to the current item's entry hero.
+window.__SPA_ExitGameToCurrentItem = () => { void exitGameToCurrentItem(); };
+// Enter the active game by transitioning from the entry hero into the game view.
+window.__SPA_EnterCurrentGame = () => { void enterCurrentGameWithTransition(); };
+// Restore the currently selected SPA hero after an inline overlay closes.
+window.__SPA_RestoreCurrentItemHero = () => {
+  renderHeroDOM(currentSectionIdx, currentItemIdx);
+  startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
+};
+// Close the current inline overlay by transitioning back to the active hero.
+window.__SPA_CloseCurrentOverlayWithTransition = () => { void closeOverlayWithTransition(); };
 // Reset slingshot pull state — called by game commitSwipe / cancelSwipe so the
 // gesture system is cleanly unblocked after a game navigation.
 window.__SPA_CancelSlingshot = () => { cancelSlingshot(); };
@@ -149,6 +298,124 @@ function isOverlayAction(action) {
   return typeof action === 'string' && action.startsWith('overlay:');
 }
 
+async function enterCurrentGameWithTransition() {
+  if (isTransitioning || isPulling || isAsymptoteGameActive) return;
+
+  const section = SPA_SECTIONS[currentSectionIdx];
+  const item = section?.items[currentItemIdx];
+  if (section?.id !== 'games' || item?.id !== 'asymptote') {
+    window.__SPA_Views?.games?.onEnterGame?.();
+    return;
+  }
+
+  isTransitioning = true;
+  stopCurrentHeroSurfaceTracking();
+
+  try {
+    const heroContainer = document.getElementById('spa-hero-container');
+    const gameProbe = window.AsymptoteApp?.buildEntryGameHeroProbe?.(heroContainer);
+    if (!gameProbe) {
+      window.__SPA_Views?.games?.onEnterGame?.();
+      return;
+    }
+
+    const [fromSurface, toSurface] = await Promise.all([
+      buildHeroSurface(currentSectionIdx, currentItemIdx, 'from'),
+      rasterizeWithCleanup({
+        type: 'textElement',
+        element: gameProbe.element,
+        cleanup: gameProbe.cleanup
+      })
+    ]);
+
+    if (fromSurface && toSurface) {
+      await runHeroTransition(fromSurface, toSurface, {
+        timingProfile: 'releaseLike',
+        onBeforeReveal: async () => {
+          window.__SPA_Views?.games?.onEnterGame?.();
+        }
+      });
+    } else {
+      window.__SPA_Views?.games?.onEnterGame?.();
+    }
+  } catch (err) {
+    console.warn('[game entry transition] failed, entering game directly:', err);
+    window.__SPA_Views?.games?.onEnterGame?.();
+  } finally {
+    isTransitioning = false;
+    startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
+  }
+}
+
+async function openOverlayWithTransition(action) {
+  if (!isOverlayAction(action) || !window.__SPA_Overlay) return;
+
+  const overlayId = action.slice('overlay:'.length);
+  if (!overlayId) return;
+
+  if (window.__SPA_Overlay.isOpen?.()) return;
+
+  if (isTransitioning || isPulling) {
+    if (typeof window.__SPA_Overlay.openInline === 'function') {
+      window.__SPA_Overlay.openInline(overlayId, {}, document.getElementById('spa-hero-container'));
+    } else {
+      window.__SPA_Overlay.open(overlayId, {});
+    }
+    return;
+  }
+
+  isTransitioning = true;
+  stopCurrentHeroSurfaceTracking();
+
+  try {
+    const overlayProbe = window.__SPA_Overlay.buildProbe?.(overlayId, {}, { inline: true });
+    if (!overlayProbe) {
+      if (typeof window.__SPA_Overlay.openInline === 'function') {
+        window.__SPA_Overlay.openInline(overlayId, {}, document.getElementById('spa-hero-container'));
+      } else {
+        window.__SPA_Overlay.open(overlayId, {});
+      }
+      return;
+    }
+
+    const [fromSurface, toSurface] = await Promise.all([
+      buildHeroSurface(currentSectionIdx, currentItemIdx, 'from'),
+      rasterizeWithCleanup({
+        type: 'textElement',
+        element: overlayProbe.element,
+        cleanup: overlayProbe.cleanup
+      })
+    ]);
+
+    if (fromSurface && toSurface) {
+      await runHeroTransition(fromSurface, toSurface, {
+        timingProfile: 'releaseLike',
+        onBeforeReveal: async () => {
+          if (typeof window.__SPA_Overlay.openInline === 'function') {
+            window.__SPA_Overlay.openInline(overlayId, {}, document.getElementById('spa-hero-container'));
+          } else {
+            window.__SPA_Overlay.open(overlayId, {});
+          }
+        }
+      });
+    } else if (typeof window.__SPA_Overlay.openInline === 'function') {
+      window.__SPA_Overlay.openInline(overlayId, {}, document.getElementById('spa-hero-container'));
+    } else {
+      window.__SPA_Overlay.open(overlayId, {});
+    }
+  } catch (err) {
+    console.warn('[overlay transition] failed, opening overlay directly:', err);
+    if (typeof window.__SPA_Overlay.openInline === 'function') {
+      window.__SPA_Overlay.openInline(overlayId, {}, document.getElementById('spa-hero-container'));
+    } else {
+      window.__SPA_Overlay.open(overlayId, {});
+    }
+  } finally {
+    isTransitioning = false;
+    startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
+  }
+}
+
 function runItemClickAction(action) {
   if (isExternalLink(action)) {
     window.open(action, '_blank', 'noopener,noreferrer');
@@ -156,8 +423,7 @@ function runItemClickAction(action) {
   }
 
   if (isOverlayAction(action) && window.__SPA_Overlay) {
-    var overlayId = action.slice('overlay:'.length);
-    if (overlayId) window.__SPA_Overlay.open(overlayId, {});
+    void openOverlayWithTransition(action);
   }
 }
 
@@ -166,7 +432,12 @@ function getNextTarget(sectionIdx, itemIdx) {
   if (itemIdx < section.items.length - 1) {
     return { sectionIdx, itemIdx: itemIdx + 1 };
   }
-  const nextSectionIdx = (sectionIdx + 1) % SPA_SECTIONS.length;
+
+  const navSections = SPA_SECTIONS
+    .map((_, idx) => idx)
+    .filter((idx) => !homeSectionLocked || idx !== 0);
+  const navPos = Math.max(0, navSections.indexOf(sectionIdx));
+  const nextSectionIdx = navSections[(navPos + 1) % navSections.length];
   return { sectionIdx: nextSectionIdx, itemIdx: 0 };
 }
 
@@ -174,7 +445,12 @@ function getPrevTarget(sectionIdx, itemIdx) {
   if (itemIdx > 0) {
     return { sectionIdx, itemIdx: itemIdx - 1 };
   }
-  const prevSectionIdx = (sectionIdx - 1 + SPA_SECTIONS.length) % SPA_SECTIONS.length;
+
+  const navSections = SPA_SECTIONS
+    .map((_, idx) => idx)
+    .filter((idx) => !homeSectionLocked || idx !== 0);
+  const navPos = Math.max(0, navSections.indexOf(sectionIdx));
+  const prevSectionIdx = navSections[(navPos - 1 + navSections.length) % navSections.length];
   return { sectionIdx: prevSectionIdx, itemIdx: SPA_SECTIONS[prevSectionIdx].items.length - 1 };
 }
 
@@ -241,8 +517,7 @@ function isProceduralCanvasHero(sectionIdx, itemIdx) {
   if (!section || !item) return false;
   if (typeof window.__SPA_Views?.[section.id]?.buildHeroProbe !== 'function') return false;
   const container = document.getElementById('spa-hero-container');
-  const liveHero  = container?.querySelector('.spa-hero:not([data-probe])');
-  return !!(liveHero?.querySelector('canvas'));
+  return !!(container?.querySelector('canvas'));
 }
 
 // Returns the first live canvas inside the hero container to use as a seed frame
@@ -486,8 +761,13 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
 
   spaDebug(`[heroCapture] build input phase=${phase} kind=${hero.kind}`);
 
+  const container = document.getElementById('spa-hero-container');
+  const liveInlineOverlayEl = container?.querySelector('.spa-overlay--inline:not([data-probe])');
+  if (phase === 'from' && liveInlineOverlayEl instanceof window.HTMLElement) {
+    return { type: 'textElement', element: liveInlineOverlayEl };
+  }
+
   if (hero.kind === 'text') {
-    const container = document.getElementById('spa-hero-container');
     const liveHeroEl = container?.querySelector('.spa-hero:not([data-probe])');
 
     if (phase === 'from' && liveHeroEl instanceof window.HTMLElement) {
@@ -590,6 +870,8 @@ function updateSectionNav(sectionIdx) {
 
   sectionNav.innerHTML = '';
   SPA_SECTIONS.forEach((sec, idx) => {
+    if (homeSectionLocked && idx === 0) return;
+
     const btn = document.createElement('button');
     btn.textContent = sec.label;
     btn.type = 'button';
@@ -645,6 +927,8 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
 
   const hero = document.createElement('div');
   hero.className = 'spa-hero';
+  hero.setAttribute('draggable', 'false');
+  hero.addEventListener('dragstart', (e) => e.preventDefault());
 
   const clickAction = getItemClickAction(sectionIdx, itemIdx);
   if (isExternalLink(clickAction) || isOverlayAction(clickAction)) {
@@ -654,12 +938,6 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
       ? `Open ${item.label} menu`
       : `Open ${item.label}`);
     hero.setAttribute('tabindex', '0');
-
-    addActivationHandler(hero, () => {
-      if (!isTransitioning && !isPulling) {
-        runItemClickAction(clickAction);
-      }
-    });
 
     hero.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
@@ -712,6 +990,7 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
       img.alt = item.label;
       img.width = 320;
       img.height = 320;
+      img.draggable = false;
       hero.appendChild(img);
     }
   } else {
@@ -838,8 +1117,12 @@ async function runHeroTransition(fromSurface, toSurface, transitionOptions = {})
 }
 
 async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
+  if (homeSectionLocked && nextSectionIdx === 0 && currentSectionIdx !== 0) return;
+
   const requestedTarget = { sectionIdx: nextSectionIdx, itemIdx: nextItemIdx };
   const committedTarget = { sectionIdx: currentSectionIdx, itemIdx: currentItemIdx };
+  const shouldLockHomeOnCommit = !homeSectionLocked && currentSectionIdx === 0 && nextSectionIdx !== 0;
+  const transitionOptions = navOptions.transitionOptions || { timingProfile: 'releaseLike' };
 
   if (isSameTarget(requestedTarget, committedTarget)) return;
 
@@ -847,12 +1130,12 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
     if (isSameTarget(requestedTarget, activeTarget) || isSameTarget(requestedTarget, queuedTarget)) {
       return;
     }
-    queuedTarget = { ...requestedTarget, transitionOptions: navOptions.transitionOptions || null };
+    queuedTarget = { ...requestedTarget, transitionOptions };
     return;
   }
 
   isTransitioning = true;
-  activeTarget = { ...requestedTarget, transitionOptions: navOptions.transitionOptions || null };
+  activeTarget = { ...requestedTarget, transitionOptions };
   stopActiveGifHeroPlayback();
   stopCurrentHeroSurfaceTracking();
 
@@ -893,8 +1176,12 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
 
       if (fromSurface && toSurface) {
         await runHeroTransition(fromSurface, toSurface, {
-          ...(navOptions.transitionOptions || {}),
+          ...transitionOptions,
           onBeforeReveal: async () => {
+            closeOverlayForNavigation();
+            if (shouldLockHomeOnCommit) {
+              homeSectionLocked = true;
+            }
             const preparedPlaybackKey = `prepared:${getHeroSurfaceKey(nextSectionIdx, nextItemIdx)}`;
             const canReusePreparedGif =
               preparedTargetCanvas instanceof window.HTMLCanvasElement &&
@@ -934,6 +1221,10 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
       updateSectionNav(currentSectionIdx);
       updateItemDots(currentSectionIdx, currentItemIdx);
     } else if (!didTransition) {
+      closeOverlayForNavigation();
+      if (shouldLockHomeOnCommit) {
+        homeSectionLocked = true;
+      }
       render();
     }
 
@@ -957,11 +1248,17 @@ function getDesktopNavOptions() {
   const isChained = now - lastDesktopNavInputAt <= DESKTOP_CHAIN_WINDOW_MS;
   lastDesktopNavInputAt = now;
 
-  if (!isChained) return {};
+  if (!isChained) {
+    return {
+      transitionOptions: {
+        timingProfile: 'releaseLike'
+      }
+    };
+  }
 
   return {
     transitionOptions: {
-      timingProfile: 'chained'
+      timingProfile: 'releaseLikeChained'
     }
   };
 }
@@ -1183,6 +1480,7 @@ function renderPullPreview(pullVector, pullNormalized) {
 
 function onSlingshotTap() {
   if (isTransitioning || isPulling) return;
+  if (window.__SPA_Overlay?.shouldSuppressTap?.()) return;
 
   // When game is active, tap activates the current game item.
   if (isAsymptoteGameActive) {
@@ -1190,11 +1488,19 @@ function onSlingshotTap() {
     return;
   }
 
+  if (window.__SPA_Overlay?.isOpen?.()) {
+    return;
+  }
+
   // Tap on the Asymptote Engine hero — enter the game.
   const section = SPA_SECTIONS[currentSectionIdx];
   const item    = section?.items[currentItemIdx];
   if (section?.id === 'games' && item?.id === 'asymptote') {
-    window.__SPA_Views?.games?.onEnterGame?.();
+    if (typeof window.__SPA_EnterCurrentGame === 'function') {
+      window.__SPA_EnterCurrentGame();
+    } else {
+      window.__SPA_Views?.games?.onEnterGame?.();
+    }
     return;
   }
 
@@ -1236,7 +1542,26 @@ function assignPullToPromise(surfacePromise) {
 }
 
 function onSlingshotLock({ direction, pullVector, pullNormalized }) {
-  if (isTransitioning || isPulling) return false;
+  if (isTransitioning || isPulling) {
+    // Queue the swipe direction so rapid back-to-back gestures stay responsive.
+    // Use activeTarget (the in-flight destination) as the "from" position so
+    // chained swipes correctly compute the next step in the sequence.
+    // Skip in game mode — game navigation uses a separate path.
+    if (!isAsymptoteGameActive) {
+      const from = activeTarget || { sectionIdx: currentSectionIdx, itemIdx: currentItemIdx };
+      const target = direction === 'next'
+        ? getNextTarget(from.sectionIdx, from.itemIdx)
+        : getPrevTarget(from.sectionIdx, from.itemIdx);
+      if (!isSameTarget(target, from)) {
+        queuedTarget = {
+          sectionIdx: target.sectionIdx,
+          itemIdx: target.itemIdx,
+          transitionOptions: { timingProfile: 'chained' }
+        };
+      }
+    }
+    return false;
+  }
 
   try {
 
@@ -1522,6 +1847,7 @@ async function onSlingshotRelease({ pullNormalized }) {
 
   const targetSectionIdx = pullTargetSectionIdx;
   const targetItemIdx    = pullTargetItemIdx;
+  const shouldLockHomeOnCommit = !homeSectionLocked && currentSectionIdx === 0 && targetSectionIdx !== 0;
   const heroContainer    = document.getElementById('spa-hero-container');
   const transitionCanvas = document.getElementById('transition-canvas');
 
@@ -1580,6 +1906,12 @@ async function onSlingshotRelease({ pullNormalized }) {
       preparedTargetCanvas instanceof window.HTMLCanvasElement &&
       activeGifPlayback?.playbackKey === preparedPlaybackKey &&
       activeGifPlayback?.hasPaintedFrame;
+
+    closeOverlayForNavigation();
+
+    if (shouldLockHomeOnCommit) {
+      homeSectionLocked = true;
+    }
 
     renderHeroDOM(targetSectionIdx, targetItemIdx, {
       preparedGifCanvas:        canReusePreparedGif ? preparedTargetCanvas : null,
@@ -1664,6 +1996,7 @@ function cleanupSlingshotPull() {
   isPulling            = false;
   isTransitioning      = false;
   activeTarget         = null;
+  queuedTarget         = null;
   pullTargetSectionIdx = null;
   pullTargetItemIdx    = null;
   pullFromSurface      = null;
@@ -1682,6 +2015,15 @@ function cleanupSlingshotPull() {
 
 setupItemNav();
 render();
+
+{
+  const sectionId = SPA_SECTIONS[currentSectionIdx]?.id;
+  const itemId = SPA_SECTIONS[currentSectionIdx]?.items[currentItemIdx]?.id;
+  if (sectionId && itemId) {
+    try { window.__SPA_Views?.[sectionId]?.onActivate?.(itemId); } catch (_) {}
+  }
+}
+
 startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
 
 initSlingshot(document.getElementById('spa-hero-container'), {

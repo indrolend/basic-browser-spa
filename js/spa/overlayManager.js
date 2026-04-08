@@ -3,14 +3,19 @@
 //
 // Public API:
 //   window.__SPA_Overlay.open(id, payload)
+//   window.__SPA_Overlay.openInline(id, payload, host)
 //   window.__SPA_Overlay.close()
 //   window.__SPA_Overlay.isOpen()
+//   window.__SPA_Overlay.buildProbe(id, payload, options)
 
 (function () {
   var overlayRoot = null;
   var _isOpen = false;
   var _boundEscape = null;
   var _openedAtMs = 0;
+  var _tapSuppressUntilMs = 0;
+  var _activeMode = null;
+  var _inlineHost = null;
 
   // Default SoundCloud archives; can be overridden per open() payload.
   var SOUNDCLOUD_ACCOUNTS = [
@@ -57,38 +62,50 @@
     return overlayRoot;
   }
 
-  function open(id, payload) {
-    var root = getRoot();
-    if (!root) return;
-
+  function createOverlayElement(id, payload, options) {
     var builder = overlayBuilders[id];
-    if (!builder) return;
+    if (!builder) return null;
 
-    close();
-    _isOpen = true;
-    _openedAtMs = Date.now();
-
+    var opts = options || {};
     var overlay = document.createElement('div');
-    overlay.className = 'spa-overlay';
+    overlay.className = 'spa-overlay' + (opts.inline ? ' spa-overlay--inline' : '');
     overlay.setAttribute('role', 'dialog');
-    overlay.setAttribute('aria-modal', 'true');
-
+    overlay.setAttribute('aria-modal', opts.inline ? 'false' : 'true');
     overlay.innerHTML = builder(payload);
+    return overlay;
+  }
 
-    root.innerHTML = '';
-    root.appendChild(overlay);
-    root.style.display = 'block';
-
-    // Close when clicking the backdrop (root), not the overlay panel itself
-    root.addEventListener('click', onBackdropClick);
-
+  function bindOverlayControls(overlay) {
     var closeBtn = overlay.querySelector('#spa-overlay-close-btn');
     if (closeBtn) {
-      closeBtn.addEventListener('click', close);
+      closeBtn.addEventListener('pointerdown', function (e) {
+        e.stopPropagation();
+      });
+      closeBtn.addEventListener('touchend', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof window.__SPA_CloseCurrentOverlayWithTransition === 'function') {
+          window.__SPA_CloseCurrentOverlayWithTransition();
+        } else {
+          close();
+        }
+      }, { passive: false });
+      closeBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof window.__SPA_CloseCurrentOverlayWithTransition === 'function') {
+          window.__SPA_CloseCurrentOverlayWithTransition();
+        } else {
+          close();
+        }
+      });
     }
 
     var linkEls = overlay.querySelectorAll('.spa-overlay-link');
     for (var i = 0; i < linkEls.length; i++) {
+      linkEls[i].addEventListener('pointerdown', function (e) {
+        e.stopPropagation();
+      });
       linkEls[i].addEventListener('click', close);
     }
 
@@ -97,13 +114,73 @@
     };
     document.addEventListener('keydown', _boundEscape);
 
-    // Trap focus on close button for accessibility
     if (closeBtn) closeBtn.focus();
 
-    // Kick off important-word animation inside overlay
     if (window.__SPA_ImportantWords) {
       window.__SPA_ImportantWords.init(overlay);
     }
+  }
+
+  function buildProbe(id, payload, options) {
+    var overlay = createOverlayElement(id, payload, options);
+    if (!overlay) return null;
+
+    overlay.setAttribute('data-probe', '1');
+    overlay.style.position = 'absolute';
+    overlay.style.left = '-9999px';
+    overlay.style.top = '-9999px';
+    overlay.style.margin = '0';
+    overlay.style.pointerEvents = 'none';
+
+    document.body.appendChild(overlay);
+    return {
+      element: overlay,
+      cleanup: function () {
+        if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      }
+    };
+  }
+
+  function open(id, payload) {
+    var root = getRoot();
+    if (!root) return;
+
+    var overlay = createOverlayElement(id, payload);
+    if (!overlay) return;
+
+    close({ restore: false });
+    _isOpen = true;
+    _activeMode = 'modal';
+    _inlineHost = null;
+    _openedAtMs = Date.now();
+    _tapSuppressUntilMs = _openedAtMs + 220;
+
+    root.innerHTML = '';
+    root.appendChild(overlay);
+    root.style.display = 'block';
+
+    // Close when clicking the backdrop (root), not the overlay panel itself
+    root.addEventListener('click', onBackdropClick);
+    bindOverlayControls(overlay);
+  }
+
+  function openInline(id, payload, host) {
+    var hostEl = host || document.getElementById('spa-hero-container');
+    if (!hostEl) return;
+
+    var overlay = createOverlayElement(id, payload, { inline: true });
+    if (!overlay) return;
+
+    close({ restore: false });
+    _isOpen = true;
+    _activeMode = 'inline';
+    _inlineHost = hostEl;
+    _openedAtMs = Date.now();
+    _tapSuppressUntilMs = _openedAtMs + 220;
+
+    hostEl.innerHTML = '';
+    hostEl.appendChild(overlay);
+    bindOverlayControls(overlay);
   }
 
   function onBackdropClick(e) {
@@ -115,10 +192,15 @@
     }
   }
 
-  function close() {
+  function close(options) {
     var root = getRoot();
     if (!root) return;
+
+    var opts = options || {};
+    var shouldRestoreInlineHero = opts.restore !== false;
+
     _isOpen = false;
+    _tapSuppressUntilMs = Date.now() + 260;
     root.removeEventListener('click', onBackdropClick);
     if (_boundEscape) {
       document.removeEventListener('keydown', _boundEscape);
@@ -126,15 +208,33 @@
     }
     root.style.display = 'none';
     root.innerHTML = '';
+
+    if (_activeMode === 'inline') {
+      if (shouldRestoreInlineHero && typeof window.__SPA_RestoreCurrentItemHero === 'function') {
+        window.__SPA_RestoreCurrentItemHero();
+      } else if (_inlineHost) {
+        _inlineHost.innerHTML = '';
+      }
+    }
+
+    _activeMode = null;
+    _inlineHost = null;
   }
 
   function isOpen() {
     return _isOpen;
   }
 
+  function shouldSuppressTap() {
+    return Date.now() < _tapSuppressUntilMs;
+  }
+
   window.__SPA_Overlay = {
     open: open,
+    openInline: openInline,
     close: close,
-    isOpen: isOpen
+    isOpen: isOpen,
+    shouldSuppressTap: shouldSuppressTap,
+    buildProbe: buildProbe
   };
 }());
