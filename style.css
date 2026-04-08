@@ -181,6 +181,12 @@ body {
   box-shadow: 0 4px 32px #000a;
 }
 
+.spa-hero-gif {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
 .spa-hero-text {
   font-size: clamp(1.8rem, 5vw, 2.5rem);
   color: var(--accent);

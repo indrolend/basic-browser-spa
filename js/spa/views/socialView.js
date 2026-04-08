@@ -10,26 +10,65 @@
 
   var mountedCanvases = {};
 
+  function getSafeExternalUrl(url) {
+    if (typeof url !== 'string') return null;
+
+    try {
+      var parsed = new URL(url, window.location.origin);
+      return parsed.protocol === 'https:' ? parsed.href : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   function mount(itemId, container) {
     var item = META[itemId];
     if (!item) return;
 
-    container.innerHTML =
-      '<div class="spa-poster-view">' +
-        '<div class="spa-poster-canvas-wrap">' +
-          '<canvas data-particle-cluster="' + item.platform + '" class="spa-poster-canvas" aria-label="' + item.label + '"></canvas>' +
-        '</div>' +
-        '<div class="spa-poster-label">' +
-          '<a class="spa-poster-link" href="' + item.url + '" target="_blank" rel="noopener">' +
-            '<span class="important-word">' + item.label + '</span>' +
-          '</a>' +
-        '</div>' +
-      '</div>';
+    container.textContent = '';
+
+    var view = document.createElement('div');
+    view.className = 'spa-poster-view';
+
+    var canvasWrap = document.createElement('div');
+    canvasWrap.className = 'spa-poster-canvas-wrap';
+
+    var canvas = document.createElement('canvas');
+    canvas.className = 'spa-poster-canvas';
+    canvas.setAttribute('data-particle-cluster', item.platform);
+    canvas.setAttribute('aria-label', item.label);
+    canvasWrap.appendChild(canvas);
+
+    var labelWrap = document.createElement('div');
+    labelWrap.className = 'spa-poster-label';
+
+    var link = document.createElement('a');
+    link.className = 'spa-poster-link';
+    var safeUrl = getSafeExternalUrl(item.url);
+    link.href = safeUrl || '#';
+    if (safeUrl) {
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.referrerPolicy = 'no-referrer';
+    } else {
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+      });
+    }
+
+    var word = document.createElement('span');
+    word.className = 'important-word';
+    word.textContent = item.label;
+    link.appendChild(word);
+    labelWrap.appendChild(link);
+
+    view.appendChild(canvasWrap);
+    view.appendChild(labelWrap);
+    container.appendChild(view);
 
     // Store canvas reference; particle cluster is initialised in onActivate
     // so the canvas has correct dimensions when the view is actually visible.
-    var cv = container.querySelector('[data-particle-cluster]');
-    if (cv) mountedCanvases[itemId] = cv;
+    mountedCanvases[itemId] = canvas;
   }
 
   // Called after the view becomes visible — safe to read layout dimensions here.

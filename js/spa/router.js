@@ -61,7 +61,13 @@
     } else {
       var meta  = routes.items[key];
       var label = meta ? meta.label : key;
-      el.innerHTML = '<div class="spa-view-fallback"><span class="important-word">' + label + '</span></div>';
+      var fallback = document.createElement('div');
+      fallback.className = 'spa-view-fallback';
+      var word = document.createElement('span');
+      word.className = 'important-word';
+      word.textContent = label;
+      fallback.appendChild(word);
+      el.appendChild(fallback);
     }
 
     host.appendChild(el);

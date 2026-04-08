@@ -33,16 +33,8 @@ const SPA_SECTIONS = [
     items: [
       { id: 'asymptote', label: 'Asymptote Engine', hero: { kind: 'text', text: 'Asymptote Engine' } }
     ]
-  },
-  {
-    id: 'about',
-    label: 'About',
-    items: [
-      { id: 'discography', label: 'Discography', hero: { kind: 'text', text: 'Discography' } },
-      { id: 'devHistory', label: 'Development History', hero: { kind: 'text', text: 'Development History' } },
-      { id: 'journal', label: 'Journal', hero: { kind: 'text', text: 'Journal' } }
-    ]
   }
+  // About is temporarily hidden while it is being refactored from the legacy SPA.
 ];
 
 // State
@@ -290,8 +282,19 @@ function getItemClickAction(sectionIdx, itemIdx) {
   return routes.items?.[key]?.clickAction ?? null;
 }
 
+function getSafeExternalUrl(action) {
+  if (typeof action !== 'string') return null;
+
+  try {
+    const url = new URL(action, window.location.origin);
+    return url.protocol === 'https:' ? url.href : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 function isExternalLink(action) {
-  return typeof action === 'string' && action.startsWith('http');
+  return !!getSafeExternalUrl(action);
 }
 
 function isOverlayAction(action) {
@@ -417,8 +420,13 @@ async function openOverlayWithTransition(action) {
 }
 
 function runItemClickAction(action) {
-  if (isExternalLink(action)) {
-    window.open(action, '_blank', 'noopener,noreferrer');
+  const safeUrl = getSafeExternalUrl(action);
+
+  if (safeUrl) {
+    const newWindow = window.open(safeUrl, '_blank', 'noopener,noreferrer');
+    if (newWindow) {
+      newWindow.opener = null;
+    }
     return;
   }
 
@@ -545,13 +553,13 @@ function loadGifler() {
 
   giflerLoaderPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/gifler@0.1.0/gifler.min.js';
+    script.src = 'js/vendor/gifler.min.js';
     script.async = true;
     script.onload = () => {
       if (typeof window.gifler === 'function') resolve(window.gifler);
       else reject(new Error('gifler loaded but window.gifler is unavailable'));
     };
-    script.onerror = () => reject(new Error('Failed to load gifler'));
+    script.onerror = () => reject(new Error('Failed to load local gifler'));
     document.head.appendChild(script);
   });
 
@@ -599,7 +607,7 @@ function startGifHeroPlayback({ canvas, src, width = 320, height = 320, playback
         playbackState.hasPaintedFrame = true;
       });
       playbackState.animator = animator;
-      spaDebug(`[gifPlayback] started key=${playbackKey} src=${src} via gifler`);
+      spaDebug(`[gifPlayback] started key=${playbackKey} src=${src} via local gifler`);
     })
     .catch((err) => {
       console.warn(`[gifPlayback] failed key=${playbackKey} src=${src}: ${err?.message || err}`);

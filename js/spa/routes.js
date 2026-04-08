@@ -5,14 +5,14 @@
 window.__INDROLEND_ROUTES__ = {
 
   // Ordered list of top-level sections (horizontal swipe axis)
-  sectionOrder: ['home', 'social', 'music', 'games', 'about'],
+  sectionOrder: ['home', 'social', 'music', 'games'],
 
   sections: {
     home:   { label: 'Home',   items: ['swarm'] },
     social: { label: 'Social', items: ['tiktok', 'instagram', 'youtube'] },
     music:  { label: 'Music',  items: ['spotify', 'appleMusic', 'bandcamp', 'soundcloud'] },
-    games:  { label: 'Games',  items: ['asymptote'] },
-    about:  { label: 'About',  items: ['spotifyAnalytics', 'discography', 'devHistory', 'journal'] }
+    games:  { label: 'Games',  items: ['asymptote'] }
+    // About is intentionally hidden for now while it is being refactored.
   },
 
   // Per-item metadata keyed by "sectionId/itemId"
@@ -101,3 +101,11 @@ window.__INDROLEND_ROUTES__ = {
     }
   }
 };
+
+(function deepFreeze(obj) {
+  if (!obj || typeof obj !== 'object' || Object.isFrozen(obj)) return obj;
+  Object.getOwnPropertyNames(obj).forEach(function (key) {
+    deepFreeze(obj[key]);
+  });
+  return Object.freeze(obj);
+}(window.__INDROLEND_ROUTES__));
