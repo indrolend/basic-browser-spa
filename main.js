@@ -33,16 +33,8 @@ const SPA_SECTIONS = [
     items: [
       { id: 'asymptote', label: 'Asymptote Engine', hero: { kind: 'text', text: 'Asymptote Engine' } }
     ]
-  },
-  {
-    id: 'about',
-    label: 'About',
-    items: [
-      { id: 'discography', label: 'Discography', hero: { kind: 'text', text: 'Discography' } },
-      { id: 'devHistory', label: 'Development History', hero: { kind: 'text', text: 'Development History' } },
-      { id: 'journal', label: 'Journal', hero: { kind: 'text', text: 'Journal' } }
-    ]
   }
+  // About is temporarily hidden while it is being refactored from the legacy SPA.
 ];
 
 // State
