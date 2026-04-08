@@ -297,20 +297,24 @@ export function rasterizeHero(hero) {
     }
 
 
-    function drawCenteredImage(img, sourceWidth = img.width, sourceHeight = img.height) {
+    function drawCenteredImage(img, sourceWidth = img.width, sourceHeight = img.height, finishOptions = {}) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const scale = Math.min(canvas.width / sourceWidth, canvas.height / sourceHeight);
       const w = sourceWidth * scale;
       const h = sourceHeight * scale;
       ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
-      finish();
+      finish(finishOptions);
     }
 
     if (hero.type === 'gif') {
       spaDebug(`[rasterizeHero] branch=gif src=${hero.src}`);
       const img = new window.Image();
       img.onload = function() {
-        drawCenteredImage(img);
+        // Preserve the full GIF frame so slingshot preview handoff stays centered.
+        drawCenteredImage(img, img.width, img.height, {
+          debugLabel: 'gif(full-frame)',
+          skipCrop: true,
+        });
       };
       img.onerror = function() {
         reject(new Error('Failed to load GIF'));
@@ -325,8 +329,18 @@ export function rasterizeHero(hero) {
           reject(new Error('Canvas element not ready'));
           return;
         }
-        spaDebug(`[rasterizeHero] branch=element live=true canvas=${srcW}x${srcH}`);
-        drawCenteredImage(sourceEl, srcW, srcH);
+        const preserveFullCanvasFrame = true;
+        spaDebug(
+          `[rasterizeHero] branch=element live=true canvas=${srcW}x${srcH} fullFrame=${preserveFullCanvasFrame}`
+        );
+        // Live GIF / animated canvases must keep their full buffer. Cropping to
+        // opaque pixels recenters the bitmap slightly and causes the left-jump
+        // seen at the moment the slingshot preview swaps from the seeded frame
+        // to the resolved pullFromSurface.
+        drawCenteredImage(sourceEl, srcW, srcH, {
+          debugLabel: 'element(canvas-full-frame)',
+          skipCrop: preserveFullCanvasFrame,
+        });
         return;
       }
 
