@@ -74,6 +74,46 @@ let gameModePullItemIdx = null;
 
 const DESKTOP_CHAIN_WINDOW_MS = 260;
 const REVEAL_HANDOFF_FADE_MS = 70;
+const INTERACTION_SOUND_COOLDOWN_MS = 40;
+const INTERACTION_SOUND_CANDIDATES = ['byte.mp3', 'Byte.mp3'];
+let interactionAudio = null;
+let interactionAudioUnlocked = false;
+let lastInteractionSoundAt = 0;
+let interactionSoundRafId = null;
+
+function getInteractionAudio() {
+  if (interactionAudio) return interactionAudio;
+  const audio = new Audio();
+  audio.preload = 'auto';
+  audio.volume = 0.75;
+  audio.src = INTERACTION_SOUND_CANDIDATES[0];
+  audio.addEventListener('error', () => {
+    if (audio.dataset.fallbackTried === '1') return;
+    audio.dataset.fallbackTried = '1';
+    audio.src = INTERACTION_SOUND_CANDIDATES[1];
+    audio.load();
+  }, { once: true });
+  interactionAudio = audio;
+  return interactionAudio;
+}
+
+function queueInteractionSound() {
+  const now = performance.now();
+  if (now - lastInteractionSoundAt < INTERACTION_SOUND_COOLDOWN_MS) return;
+  lastInteractionSoundAt = now;
+  if (interactionSoundRafId != null) return;
+  interactionSoundRafId = requestAnimationFrame(() => {
+    interactionSoundRafId = null;
+    const audio = getInteractionAudio();
+    if (!audio) return;
+    try {
+      audio.currentTime = 0;
+      const p = audio.play();
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+      interactionAudioUnlocked = true;
+    } catch (_) {}
+  });
+}
 
 async function exitGameToCurrentItem() {
   if (isTransitioning || isPulling) return;
@@ -249,8 +289,15 @@ window.__SPA_CancelSlingshot = () => { cancelSlingshot(); };
 // Screen readers (VoiceOver, TalkBack) fire `click` directly via accessibility APIs
 // rather than through the touch event chain, so they use the onclick path unaffected.
 function addActivationHandler(element, handler) {
-  element.addEventListener('touchend', (e) => { e.preventDefault(); handler(); });
-  element.onclick = handler;
+  element.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    queueInteractionSound();
+    handler();
+  });
+  element.onclick = () => {
+    queueInteractionSound();
+    handler();
+  };
 }
 
 function isSameTarget(a, b) {
@@ -1341,6 +1388,7 @@ window.addEventListener('keydown', (e) => {
   const isPrev = e.key === 'ArrowLeft' || e.key === 'ArrowUp';
   const isNext = e.key === 'ArrowRight' || e.key === 'ArrowDown';
   if (!isPrev && !isNext) return;
+  queueInteractionSound();
 
   if (isAsymptoteGameActive) {
     e.preventDefault();
@@ -1355,6 +1403,11 @@ window.addEventListener('keydown', (e) => {
   if (isNext) nextItem(navOptions);
 });
 
+document.addEventListener('pointerdown', () => {
+  if (interactionAudioUnlocked) return;
+  queueInteractionSound();
+}, { passive: true });
+
 // ─── Pull preview helpers ─────────────────────────────────────────────────────
 
 const SLINGSHOT_PARTICLE_SIZE = 4;
@@ -1363,6 +1416,7 @@ const SLINGSHOT_MIN_RELEASE   = 0.15; // pullNormalized must exceed this to comm
 function runWeakPullTapFallbackIfNeeded() {
   const action = getItemClickAction(currentSectionIdx, currentItemIdx);
   if (isOverlayAction(action)) {
+    queueInteractionSound();
     runItemClickAction(action);
   }
 }
@@ -1489,6 +1543,7 @@ function renderPullPreview(pullVector, pullNormalized) {
 function onSlingshotTap() {
   if (isTransitioning || isPulling) return;
   if (window.__SPA_Overlay?.shouldSuppressTap?.()) return;
+  queueInteractionSound();
 
   // When game is active, tap activates the current game item.
   if (isAsymptoteGameActive) {
