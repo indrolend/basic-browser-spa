@@ -76,7 +76,7 @@ const DESKTOP_CHAIN_WINDOW_MS = 260;
 const REVEAL_HANDOFF_FADE_MS = 70;
 const INTERACTION_IDLE_STOP_MS = 10_000;
 const INTERACTION_RESTART_DELAY_MS = 1_000;
-const INTERACTION_SOUND_CANDIDATES = ['byte.mp3', 'Byte.mp3'];
+const INTERACTION_SOUND_CANDIDATES = ['./Byte.mp3', './byte.mp3'];
 let interactionAudio = null;
 let interactionAudioUnlocked = false;
 let interactionIdleStopTimerId = null;
@@ -95,6 +95,7 @@ function getInteractionAudio() {
     audio.src = INTERACTION_SOUND_CANDIDATES[1];
     audio.load();
   }, { once: true });
+  audio.load();
   interactionAudio = audio;
   return interactionAudio;
 }
