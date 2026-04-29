@@ -74,12 +74,14 @@ let gameModePullItemIdx = null;
 
 const DESKTOP_CHAIN_WINDOW_MS = 260;
 const REVEAL_HANDOFF_FADE_MS = 70;
-const INTERACTION_SOUND_COOLDOWN_MS = 40;
+const INTERACTION_IDLE_STOP_MS = 10_000;
+const INTERACTION_RESTART_DELAY_MS = 1_000;
 const INTERACTION_SOUND_CANDIDATES = ['byte.mp3', 'Byte.mp3'];
 let interactionAudio = null;
 let interactionAudioUnlocked = false;
-let lastInteractionSoundAt = 0;
-let interactionSoundRafId = null;
+let interactionIdleStopTimerId = null;
+let interactionDelayedStartTimerId = null;
+let interactionAwaitingDelayedRestart = false;
 
 function getInteractionAudio() {
   if (interactionAudio) return interactionAudio;
@@ -97,22 +99,67 @@ function getInteractionAudio() {
   return interactionAudio;
 }
 
+function stopInteractionSongAndRequireDelay() {
+  const audio = getInteractionAudio();
+  try {
+    audio.pause();
+    audio.currentTime = 0;
+  } catch (_) {}
+  interactionAwaitingDelayedRestart = true;
+}
+
+function scheduleInteractionIdleStop() {
+  if (interactionIdleStopTimerId != null) {
+    window.clearTimeout(interactionIdleStopTimerId);
+  }
+  interactionIdleStopTimerId = window.setTimeout(() => {
+    interactionIdleStopTimerId = null;
+    stopInteractionSongAndRequireDelay();
+  }, INTERACTION_IDLE_STOP_MS);
+}
+
+function startInteractionSong() {
+  const audio = getInteractionAudio();
+  try {
+    audio.currentTime = 0;
+    const p = audio.play();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+    interactionAudioUnlocked = true;
+  } catch (_) {}
+}
+
 function queueInteractionSound() {
-  const now = performance.now();
-  if (now - lastInteractionSoundAt < INTERACTION_SOUND_COOLDOWN_MS) return;
-  lastInteractionSoundAt = now;
-  if (interactionSoundRafId != null) return;
-  interactionSoundRafId = requestAnimationFrame(() => {
-    interactionSoundRafId = null;
-    const audio = getInteractionAudio();
-    if (!audio) return;
-    try {
-      audio.currentTime = 0;
-      const p = audio.play();
-      if (p && typeof p.catch === 'function') p.catch(() => {});
-      interactionAudioUnlocked = true;
-    } catch (_) {}
-  });
+  if (interactionDelayedStartTimerId != null) {
+    window.clearTimeout(interactionDelayedStartTimerId);
+    interactionDelayedStartTimerId = null;
+  }
+
+  if (interactionAwaitingDelayedRestart) {
+    interactionDelayedStartTimerId = window.setTimeout(() => {
+      interactionDelayedStartTimerId = null;
+      startInteractionSong();
+    }, INTERACTION_RESTART_DELAY_MS);
+    interactionAwaitingDelayedRestart = false;
+  } else {
+    startInteractionSong();
+  }
+
+  scheduleInteractionIdleStop();
+}
+
+function unlockInteractionAudioIfNeeded() {
+  if (interactionAudioUnlocked) return;
+  const audio = getInteractionAudio();
+  try {
+    const p = audio.play();
+    if (p && typeof p.then === 'function') {
+      p.then(() => {
+        interactionAudioUnlocked = true;
+        audio.pause();
+        audio.currentTime = 0;
+      }).catch(() => {});
+    }
+  } catch (_) {}
 }
 
 async function exitGameToCurrentItem() {
@@ -1404,8 +1451,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 document.addEventListener('pointerdown', () => {
-  if (interactionAudioUnlocked) return;
-  queueInteractionSound();
+  unlockInteractionAudioIfNeeded();
 }, { passive: true });
 
 // ─── Pull preview helpers ─────────────────────────────────────────────────────
