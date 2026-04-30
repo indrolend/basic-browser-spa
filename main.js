@@ -340,12 +340,10 @@ function addActivationHandler(element, handler) {
   element.addEventListener('touchend', (e) => {
     e.preventDefault();
     queueInteractionSound();
-    MusicManager.onAnyUserInteraction();
     handler();
   });
   element.onclick = () => {
     queueInteractionSound();
-    MusicManager.onAnyUserInteraction();
     handler();
   };
 }
@@ -1442,7 +1440,6 @@ window.addEventListener('keydown', (e) => {
   const isNext = e.key === 'ArrowRight' || e.key === 'ArrowDown';
   if (!isPrev && !isNext) return;
   queueInteractionSound();
-  MusicManager.onAnyUserInteraction();
 
   if (isAsymptoteGameActive) {
     e.preventDefault();
@@ -1471,7 +1468,6 @@ function runWeakPullTapFallbackIfNeeded() {
   const action = getItemClickAction(currentSectionIdx, currentItemIdx);
   if (isOverlayAction(action)) {
     queueInteractionSound();
-    MusicManager.onAnyUserInteraction();
     runItemClickAction(action);
   }
 }
@@ -1599,7 +1595,6 @@ function onSlingshotTap() {
   if (isTransitioning || isPulling) return;
   if (window.__SPA_Overlay?.shouldSuppressTap?.()) return;
   queueInteractionSound();
-  MusicManager.onAnyUserInteraction();
 
   // When game is active, tap activates the current game item.
   if (isAsymptoteGameActive) {
@@ -2137,7 +2132,7 @@ render();
 initMusicPlayerSection();
 initMusicButton();
 
-document.addEventListener('keydown', () => MusicManager.onAnyUserInteraction(), { passive: true });
+document.addEventListener('keydown', () => MusicManager.onAnyUserInteraction());
 document.addEventListener('pointerdown', () => MusicManager.onAnyUserInteraction(), { passive: true });
 
 {

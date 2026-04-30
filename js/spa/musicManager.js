@@ -4,14 +4,17 @@ const STORAGE_KEY_TRACK_TIME = 'spa_music_track_time';
 const STORAGE_KEY_INTERACTIONS = 'spa_music_interaction_count';
 
 const TRACKS = [
+  '/music/byte.mp3',
+  '/music/song1.mp3',
+  '/music/song2.mp3',
   '/Byte.mp3'
 ];
 
 class MusicManagerImpl {
   constructor() {
-    this.musicEnabled = localStorage.getItem(STORAGE_KEY_ENABLED) !== '0';
-    this.interactionCount = Number(localStorage.getItem(STORAGE_KEY_INTERACTIONS) || 0);
-    this.trackIndex = Number(localStorage.getItem(STORAGE_KEY_TRACK_INDEX) || 0) % TRACKS.length;
+    this.musicEnabled = this.readStorage(STORAGE_KEY_ENABLED, '1') !== '0';
+    this.interactionCount = Number(this.readStorage(STORAGE_KEY_INTERACTIONS, '0') || 0);
+    this.trackIndex = Number(this.readStorage(STORAGE_KEY_TRACK_INDEX, '0') || 0) % TRACKS.length;
     this.idleMs = 1700;
     this.idleTimer = null;
     this.listeners = new Set();
@@ -27,12 +30,12 @@ class MusicManagerImpl {
     this.freqData = null;
     this.unlocked = false;
 
-    const savedTime = Number(localStorage.getItem(STORAGE_KEY_TRACK_TIME) || 0);
+    const savedTime = Number(this.readStorage(STORAGE_KEY_TRACK_TIME, '0') || 0);
     if (Number.isFinite(savedTime) && savedTime > 0) this.audio.currentTime = savedTime;
 
     this.audio.addEventListener('ended', () => this.nextTrack());
     this.audio.addEventListener('timeupdate', () => {
-      localStorage.setItem(STORAGE_KEY_TRACK_TIME, String(this.audio.currentTime || 0));
+      this.writeStorage(STORAGE_KEY_TRACK_TIME, String(this.audio.currentTime || 0));
     });
   }
 
@@ -61,9 +64,17 @@ class MusicManagerImpl {
   }
 
   persistBasics() {
-    localStorage.setItem(STORAGE_KEY_ENABLED, this.musicEnabled ? '1' : '0');
-    localStorage.setItem(STORAGE_KEY_INTERACTIONS, String(this.interactionCount));
-    localStorage.setItem(STORAGE_KEY_TRACK_INDEX, String(this.trackIndex));
+    this.writeStorage(STORAGE_KEY_ENABLED, this.musicEnabled ? '1' : '0');
+    this.writeStorage(STORAGE_KEY_INTERACTIONS, String(this.interactionCount));
+    this.writeStorage(STORAGE_KEY_TRACK_INDEX, String(this.trackIndex));
+  }
+
+  readStorage(key, fallback) {
+    try { return localStorage.getItem(key) ?? fallback; } catch (_) { return fallback; }
+  }
+
+  writeStorage(key, value) {
+    try { localStorage.setItem(key, value); } catch (_) {}
   }
 
   unlock() {

@@ -45,5 +45,9 @@ export function initMusicPlayerSection() {
 }
 
 export function openMusicPlayer() {
+  if (window.__SPA_Overlay?.isOpen?.()) {
+    window.__SPA_Overlay.close({ restore: false });
+    return;
+  }
   window.__SPA_Overlay?.open('musicPlayer', {});
 }
