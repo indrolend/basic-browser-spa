@@ -18,7 +18,7 @@ class MusicManager {
       "wok.mp3"
       // Add more as needed
     ];
-    this.musicPath = "/music /";
+    this.musicPath = "/music/";
     this.audioElem = new Audio();
     this.audioElem.preload = "auto";
     this.audioElem.crossOrigin = "anonymous";
