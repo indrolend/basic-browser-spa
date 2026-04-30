@@ -74,7 +74,11 @@ let gameModePullItemIdx = null;
 
 const DESKTOP_CHAIN_WINDOW_MS = 260;
 const REVEAL_HANDOFF_FADE_MS = 70;
+<<<<<<< HEAD
 const INTERACTION_IDLE_STOP_MS = 4_000;
+=======
+const INTERACTION_IDLE_STOP_MS = 10_000;
+>>>>>>> music-feature
 const INTERACTION_RESTART_DELAY_MS = 1_000;
 const INTERACTION_SOUND_CANDIDATES = ['./Byte.mp3', './byte.mp3'];
 let interactionAudio = null;
@@ -1456,7 +1460,10 @@ window.addEventListener('keydown', (e) => {
 
 document.addEventListener('pointerdown', () => {
   unlockInteractionAudioIfNeeded();
+<<<<<<< HEAD
   MusicManager.unlock();
+=======
+>>>>>>> music-feature
 }, { passive: true });
 
 // ─── Pull preview helpers ─────────────────────────────────────────────────────
@@ -2126,6 +2133,23 @@ function cleanupSlingshotPull() {
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
+
+// --- MusicManager global interaction listeners ---
+function callMusicManagerInteraction() {
+  if (window.MusicManager && typeof window.MusicManager.onAnyUserInteraction === 'function') {
+    window.MusicManager.onAnyUserInteraction();
+  }
+}
+['pointerdown', 'click', 'keydown', 'touchstart'].forEach(evt => {
+  window.addEventListener(evt, callMusicManagerInteraction, { passive: true });
+});
+
+// Optionally, call on navigation/overlay events as well (SPA-specific):
+const origGoTo = window.goTo;
+window.goTo = function(...args) {
+  callMusicManagerInteraction();
+  return origGoTo ? origGoTo.apply(this, args) : undefined;
+};
 
 setupItemNav();
 render();
