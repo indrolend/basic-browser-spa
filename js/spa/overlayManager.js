@@ -68,6 +68,12 @@
     }
   };
 
+  function register(id, builder) {
+    if (typeof id !== 'string' || !id) return;
+    if (typeof builder !== 'function') return;
+    overlayBuilders[id] = builder;
+  }
+
   function getRoot() {
     if (!overlayRoot) {
       overlayRoot = document.getElementById('spa-overlay-root');
@@ -251,6 +257,7 @@
   }
 
   window.__SPA_Overlay = {
+    register: register,
     open: open,
     openInline: openInline,
     close: close,
