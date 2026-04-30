@@ -2,9 +2,16 @@ export function initOrbHero(canvas, manager) {
   const ctx = canvas.getContext('2d');
   let raf = null;
   let angle = 0;
+  let spinVelocity = 0.01;
   let dragging = false;
   let dragStartAngle = 0;
   let dragStartTime = 0;
+  let dragStartX = 0;
+  let pullDx = 0;
+  let pullDy = 0;
+
+  const TRACK_PULL_THRESHOLD_PX = 72;
+  const BASE_SPIN = 0.01;
 
   function resize() {
     const size = Math.min(canvas.clientWidth || 260, canvas.clientHeight || 260, 300);
@@ -18,7 +25,8 @@ export function initOrbHero(canvas, manager) {
   }
 
   function draw() {
-    angle += 0.01;
+    spinVelocity += (BASE_SPIN - spinVelocity) * 0.08;
+    angle += spinVelocity;
     const w = canvas.width; const h = canvas.height;
     ctx.clearRect(0, 0, w, h);
     const cx = w / 2; const cy = h / 2;
@@ -49,6 +57,18 @@ export function initOrbHero(canvas, manager) {
     }
     ctx.restore();
 
+    if (dragging) {
+      const pullNorm = Math.min(1, Math.abs(pullDx) / TRACK_PULL_THRESHOLD_PX);
+      const dir = pullDx >= 0 ? 1 : -1;
+      const tailLen = 26 + (pullNorm * 42);
+      ctx.strokeStyle = `rgba(94,232,125,${0.35 + pullNorm * 0.5})`;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(cx - dir * 16, cy + pullDy * 0.06);
+      ctx.lineTo(cx + dir * tailLen, cy + pullDy * 0.16);
+      ctx.stroke();
+    }
+
     raf = requestAnimationFrame(draw);
   }
 
@@ -57,6 +77,9 @@ export function initOrbHero(canvas, manager) {
     const rect = canvas.getBoundingClientRect();
     dragStartAngle = pointAngle(e.clientX - rect.left, e.clientY - rect.top);
     dragStartTime = manager.audio.currentTime || 0;
+    dragStartX = e.clientX;
+    pullDx = 0;
+    pullDy = 0;
     canvas.setPointerCapture(e.pointerId);
   }
 
@@ -65,12 +88,21 @@ export function initOrbHero(canvas, manager) {
     const rect = canvas.getBoundingClientRect();
     const nowA = pointAngle(e.clientX - rect.left, e.clientY - rect.top);
     const diff = nowA - dragStartAngle;
+    pullDx = e.clientX - dragStartX;
+    pullDy = e.clientY - rect.top - (canvas.height / 2);
     const duration = manager.audio.duration || 0;
     if (duration > 0) manager.scrubToPosition(dragStartTime + (diff / (Math.PI * 2)) * duration);
+    spinVelocity = BASE_SPIN + (diff * 0.02);
   }
 
   function onPointerUp(e) {
+    if (Math.abs(pullDx) >= TRACK_PULL_THRESHOLD_PX) {
+      if (pullDx < 0) manager.prevTrack();
+      else manager.nextTrack();
+    }
     dragging = false;
+    pullDx = 0;
+    pullDy = 0;
     try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
   }
 

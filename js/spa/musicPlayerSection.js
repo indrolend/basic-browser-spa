@@ -10,9 +10,7 @@ export function initMusicPlayerSection() {
       '<div class="spa-overlay-title"><span class="important-word">music</span></div>',
       '<canvas id="music-orb" class="music-orb" width="280" height="280" aria-label="Music scrub orb" tabindex="0"></canvas>',
       '<div class="music-controls">',
-      '<button class="spa-nav-btn" id="music-prev" type="button" aria-label="Previous track">◀</button>',
       '<button class="spa-nav-btn" id="music-toggle" type="button" aria-label="Toggle mute">mute</button>',
-      '<button class="spa-nav-btn" id="music-next" type="button" aria-label="Next track">▶</button>',
       '</div>',
       '<button class="spa-overlay-close" id="spa-overlay-close-btn">✕ close</button>'
     ].join('');
@@ -23,8 +21,6 @@ export function initMusicPlayerSection() {
     if (!(t instanceof Element)) return;
     if (!t.closest('.spa-overlay')) return;
 
-    if (t.id === 'music-prev') manager.prevTrack();
-    if (t.id === 'music-next') manager.nextTrack();
     if (t.id === 'music-toggle') manager.toggleEnabled();
   });
 
