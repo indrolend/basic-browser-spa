@@ -4,10 +4,12 @@ const STORAGE_KEY_TRACK_TIME = 'spa_music_track_time';
 const STORAGE_KEY_INTERACTIONS = 'spa_music_interaction_count';
 
 const TRACKS = [
-  '/music/byte.mp3',
-  '/music/song1.mp3',
-  '/music/song2.mp3',
-  '/Byte.mp3'
+  '/music/Gar.mp3',
+  '/music/crush.mp3',
+  '/music/intarsia.mp3',
+  '/music/sauce.mp3',
+  '/music/transeo.mp3',
+  '/music/wok.mp3'
 ];
 
 class MusicManagerImpl {

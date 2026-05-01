@@ -2137,10 +2137,9 @@ function callMusicManagerInteraction() {
 });
 
 // Optionally, call on navigation/overlay events as well (SPA-specific):
-const origGoTo = window.goTo;
 window.goTo = function(...args) {
   callMusicManagerInteraction();
-  return origGoTo ? origGoTo.apply(this, args) : undefined;
+  return goTo(...args);
 };
 
 setupItemNav();
