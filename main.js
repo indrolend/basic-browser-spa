@@ -74,6 +74,102 @@ let gameModePullItemIdx = null;
 
 const DESKTOP_CHAIN_WINDOW_MS = 260;
 const REVEAL_HANDOFF_FADE_MS = 70;
+<<<<<<< HEAD
+<<<<<<< HEAD
+const INTERACTION_IDLE_STOP_MS = 4_000;
+=======
+const INTERACTION_IDLE_STOP_MS = 10_000;
+>>>>>>> music-feature
+=======
+const INTERACTION_IDLE_STOP_MS = 10_000;
+>>>>>>> codex/ensure-smooth-movement-and-interaction
+const INTERACTION_RESTART_DELAY_MS = 1_000;
+const INTERACTION_SOUND_CANDIDATES = ['./Byte.mp3', './byte.mp3'];
+let interactionAudio = null;
+let interactionAudioUnlocked = false;
+let interactionIdleStopTimerId = null;
+let interactionDelayedStartTimerId = null;
+let interactionAwaitingDelayedRestart = false;
+
+function getInteractionAudio() {
+  if (interactionAudio) return interactionAudio;
+  const audio = new Audio();
+  audio.preload = 'auto';
+  audio.volume = 0.75;
+  audio.src = INTERACTION_SOUND_CANDIDATES[0];
+  audio.addEventListener('error', () => {
+    if (audio.dataset.fallbackTried === '1') return;
+    audio.dataset.fallbackTried = '1';
+    audio.src = INTERACTION_SOUND_CANDIDATES[1];
+    audio.load();
+  }, { once: true });
+  audio.load();
+  interactionAudio = audio;
+  return interactionAudio;
+}
+
+function stopInteractionSongAndRequireDelay() {
+  const audio = getInteractionAudio();
+  try {
+    audio.pause();
+    audio.currentTime = 0;
+  } catch (_) {}
+  interactionAwaitingDelayedRestart = true;
+}
+
+function scheduleInteractionIdleStop() {
+  if (interactionIdleStopTimerId != null) {
+    window.clearTimeout(interactionIdleStopTimerId);
+  }
+  interactionIdleStopTimerId = window.setTimeout(() => {
+    interactionIdleStopTimerId = null;
+    stopInteractionSongAndRequireDelay();
+  }, INTERACTION_IDLE_STOP_MS);
+}
+
+function startInteractionSong() {
+  const audio = getInteractionAudio();
+  try {
+    audio.currentTime = 0;
+    const p = audio.play();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+    interactionAudioUnlocked = true;
+  } catch (_) {}
+}
+
+function queueInteractionSound() {
+  if (interactionDelayedStartTimerId != null) {
+    window.clearTimeout(interactionDelayedStartTimerId);
+    interactionDelayedStartTimerId = null;
+  }
+
+  if (interactionAwaitingDelayedRestart) {
+    interactionDelayedStartTimerId = window.setTimeout(() => {
+      interactionDelayedStartTimerId = null;
+      startInteractionSong();
+    }, INTERACTION_RESTART_DELAY_MS);
+    interactionAwaitingDelayedRestart = false;
+  } else {
+    startInteractionSong();
+  }
+
+  scheduleInteractionIdleStop();
+}
+
+function unlockInteractionAudioIfNeeded() {
+  if (interactionAudioUnlocked) return;
+  const audio = getInteractionAudio();
+  try {
+    const p = audio.play();
+    if (p && typeof p.then === 'function') {
+      p.then(() => {
+        interactionAudioUnlocked = true;
+        audio.pause();
+        audio.currentTime = 0;
+      }).catch(() => {});
+    }
+  } catch (_) {}
+}
 
 async function exitGameToCurrentItem() {
   if (isTransitioning || isPulling) return;
@@ -249,8 +345,15 @@ window.__SPA_CancelSlingshot = () => { cancelSlingshot(); };
 // Screen readers (VoiceOver, TalkBack) fire `click` directly via accessibility APIs
 // rather than through the touch event chain, so they use the onclick path unaffected.
 function addActivationHandler(element, handler) {
-  element.addEventListener('touchend', (e) => { e.preventDefault(); handler(); });
-  element.onclick = handler;
+  element.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    queueInteractionSound();
+    handler();
+  });
+  element.onclick = () => {
+    queueInteractionSound();
+    handler();
+  };
 }
 
 function isSameTarget(a, b) {
@@ -1076,6 +1179,9 @@ function alignTransitionCanvas(transitionCanvas, fromSurface, toSurface) {
 import { rasterizeHero } from './js/spa/rasterizeHero.js';
 import { transition, transitionFromPull } from './js/spa/particleTransitionEngine.js';
 import { initSlingshot } from './js/spa/slingshotGesture.js';
+import MusicManager from './js/spa/musicManager.js';
+import { initMusicButton } from './js/spa/musicButton.js';
+import { initMusicPlayerSection } from './js/spa/musicPlayerSection.js';
 
 async function runHeroTransition(fromSurface, toSurface, transitionOptions = {}) {
   const heroContainer = document.getElementById('spa-hero-container');
@@ -1341,6 +1447,7 @@ window.addEventListener('keydown', (e) => {
   const isPrev = e.key === 'ArrowLeft' || e.key === 'ArrowUp';
   const isNext = e.key === 'ArrowRight' || e.key === 'ArrowDown';
   if (!isPrev && !isNext) return;
+  queueInteractionSound();
 
   if (isAsymptoteGameActive) {
     e.preventDefault();
@@ -1355,6 +1462,17 @@ window.addEventListener('keydown', (e) => {
   if (isNext) nextItem(navOptions);
 });
 
+document.addEventListener('pointerdown', () => {
+  unlockInteractionAudioIfNeeded();
+<<<<<<< HEAD
+<<<<<<< HEAD
+  MusicManager.unlock();
+=======
+>>>>>>> music-feature
+=======
+>>>>>>> codex/ensure-smooth-movement-and-interaction
+}, { passive: true });
+
 // ─── Pull preview helpers ─────────────────────────────────────────────────────
 
 const SLINGSHOT_PARTICLE_SIZE = 4;
@@ -1363,6 +1481,7 @@ const SLINGSHOT_MIN_RELEASE   = 0.15; // pullNormalized must exceed this to comm
 function runWeakPullTapFallbackIfNeeded() {
   const action = getItemClickAction(currentSectionIdx, currentItemIdx);
   if (isOverlayAction(action)) {
+    queueInteractionSound();
     runItemClickAction(action);
   }
 }
@@ -1489,6 +1608,7 @@ function renderPullPreview(pullVector, pullNormalized) {
 function onSlingshotTap() {
   if (isTransitioning || isPulling) return;
   if (window.__SPA_Overlay?.shouldSuppressTap?.()) return;
+  queueInteractionSound();
 
   // When game is active, tap activates the current game item.
   if (isAsymptoteGameActive) {
@@ -2021,8 +2141,30 @@ function cleanupSlingshotPull() {
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 
+// --- MusicManager global interaction listeners ---
+function callMusicManagerInteraction() {
+  if (window.MusicManager && typeof window.MusicManager.onAnyUserInteraction === 'function') {
+    window.MusicManager.onAnyUserInteraction();
+  }
+}
+['pointerdown', 'click', 'keydown', 'touchstart'].forEach(evt => {
+  window.addEventListener(evt, callMusicManagerInteraction, { passive: true });
+});
+
+// Optionally, call on navigation/overlay events as well (SPA-specific):
+const origGoTo = window.goTo;
+window.goTo = function(...args) {
+  callMusicManagerInteraction();
+  return origGoTo ? origGoTo.apply(this, args) : undefined;
+};
+
 setupItemNav();
 render();
+initMusicPlayerSection();
+initMusicButton();
+
+document.addEventListener('keydown', () => MusicManager.onAnyUserInteraction());
+document.addEventListener('pointerdown', () => MusicManager.onAnyUserInteraction(), { passive: true });
 
 {
   const sectionId = SPA_SECTIONS[currentSectionIdx]?.id;
