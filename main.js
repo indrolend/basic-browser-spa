@@ -74,15 +74,7 @@ let gameModePullItemIdx = null;
 
 const DESKTOP_CHAIN_WINDOW_MS = 260;
 const REVEAL_HANDOFF_FADE_MS = 70;
-<<<<<<< HEAD
-<<<<<<< HEAD
-const INTERACTION_IDLE_STOP_MS = 4_000;
-=======
 const INTERACTION_IDLE_STOP_MS = 10_000;
->>>>>>> music-feature
-=======
-const INTERACTION_IDLE_STOP_MS = 10_000;
->>>>>>> codex/ensure-smooth-movement-and-interaction
 const INTERACTION_RESTART_DELAY_MS = 1_000;
 const INTERACTION_SOUND_CANDIDATES = ['./Byte.mp3', './byte.mp3'];
 let interactionAudio = null;
@@ -1464,13 +1456,6 @@ window.addEventListener('keydown', (e) => {
 
 document.addEventListener('pointerdown', () => {
   unlockInteractionAudioIfNeeded();
-<<<<<<< HEAD
-<<<<<<< HEAD
-  MusicManager.unlock();
-=======
->>>>>>> music-feature
-=======
->>>>>>> codex/ensure-smooth-movement-and-interaction
 }, { passive: true });
 
 // ─── Pull preview helpers ─────────────────────────────────────────────────────
