@@ -2148,9 +2148,6 @@ render();
 initMusicPlayerSection();
 initMusicButton();
 
-document.addEventListener('keydown', () => MusicManager.onAnyUserInteraction());
-document.addEventListener('pointerdown', () => MusicManager.onAnyUserInteraction(), { passive: true });
-
 {
   const sectionId = SPA_SECTIONS[currentSectionIdx]?.id;
   const itemId = SPA_SECTIONS[currentSectionIdx]?.items[currentItemIdx]?.id;
