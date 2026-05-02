@@ -2,6 +2,7 @@ const STORAGE_KEY_ENABLED = 'spa_music_enabled';
 const STORAGE_KEY_TRACK_INDEX = 'spa_music_track_index';
 const STORAGE_KEY_TRACK_TIME = 'spa_music_track_time';
 const STORAGE_KEY_INTERACTIONS = 'spa_music_interaction_count';
+const STORAGE_KEY_VOLUME = 'spa_music_user_volume';
 
 const TRACKS = [
   { src: '/music/Gar.mp3',      gain: 0.85 },
@@ -17,6 +18,7 @@ class MusicManagerImpl {
     this.musicEnabled = this.readStorage(STORAGE_KEY_ENABLED, '1') !== '0';
     this.interactionCount = Number(this.readStorage(STORAGE_KEY_INTERACTIONS, '0') || 0);
     this.trackIndex = Number(this.readStorage(STORAGE_KEY_TRACK_INDEX, '0') || 0) % TRACKS.length;
+    this.userVolume = Math.max(0, Math.min(1, Number(this.readStorage(STORAGE_KEY_VOLUME, '1') || 1)));
     this.listeners = new Set();
     this.lastTrackIndex = -1;
 
@@ -47,7 +49,7 @@ class MusicManagerImpl {
     this.audioContext = new Ctx();
     this.source = this.audioContext.createMediaElementSource(this.audio);
     this.gainNode = this.audioContext.createGain();
-    this.gainNode.gain.value = TRACKS[this.trackIndex]?.gain ?? 1;
+    this.gainNode.gain.value = this._calculateGain(TRACKS[this.trackIndex]?.gain ?? 1);
     this.analyser = this.audioContext.createAnalyser();
     this.analyser.fftSize = 256;
     this.source.connect(this.gainNode);
@@ -114,12 +116,27 @@ class MusicManagerImpl {
     this.audio.src = track.src;
     this.audio.currentTime = Math.max(0, keepTime || 0);
     if (this.gainNode) {
-      this.gainNode.gain.value = track.gain;
+      this.gainNode.gain.value = this._calculateGain(track.gain);
     } else {
-      this.audio.volume = track.gain;
+      this.audio.volume = this._calculateGain(track.gain);
     }
     this.persistBasics();
     this.play();
+  }
+
+  getUserVolume() { return this.userVolume; }
+
+  _calculateGain(trackGain) { return (trackGain ?? 1) * this.userVolume; }
+
+  setUserVolume(v) {
+    this.userVolume = Math.max(0, Math.min(1, v));
+    this.writeStorage(STORAGE_KEY_VOLUME, String(this.userVolume));
+    const trackGain = TRACKS[this.trackIndex]?.gain ?? 1;
+    if (this.gainNode) {
+      this.gainNode.gain.value = this._calculateGain(trackGain);
+    } else {
+      this.audio.volume = this._calculateGain(trackGain);
+    }
   }
 
   nextTrack() {

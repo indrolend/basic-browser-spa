@@ -7,13 +7,22 @@ export function initOrbHero(canvas, manager) {
   let dragStartAngle = 0;
   let dragStartTime = 0;
   let dragStartX = 0;
+  let dragStartY = 0;
   let pullDx = 0;
   let pullDy = 0;
   // Armed only when horizontal movement clearly dominates — prevents accidental track switches
   let pullArmed = false;
+  // Armed only when vertical movement clearly dominates — controls volume
+  let volumeArmed = false;
+  let dragStartVolume = 1.0;
 
   const TRACK_PULL_THRESHOLD_PX = 72;
+  // 120px vertical drag spans the full 0–1 volume range
+  const VOLUME_DRAG_PX = 120;
   const BASE_SPIN = 0.005;
+  // Shared thresholds for both dominance gates
+  const DOMINANCE_GATE_RATIO = 1.4;
+  const MIN_GESTURE_PX = 12;
 
   // Single unified blob particle pool — allocated once, never recreated in draw()
   const N = 144;
@@ -49,7 +58,7 @@ export function initOrbHero(canvas, manager) {
     const h = canvas.height;
     const cx = w / 2;
     const cy = h / 2;
-    const baseR = w * 0.30;
+    const baseR = w * 0.30 * (0.5 + (manager.getUserVolume ? manager.getUserVolume() : 1.0) * 0.5);
 
     const freq   = manager.getAnalyserData();
     const wave   = manager.getWaveformData();
@@ -71,7 +80,8 @@ export function initOrbHero(canvas, manager) {
     ctx.fillStyle = paused ? 'rgba(17,17,17,0.12)' : 'rgba(17,17,17,0.20)';
     ctx.fillRect(0, 0, w, h);
 
-    const masterAlpha = paused ? 0.28 : 1.0;
+    const userVol = manager.getUserVolume ? manager.getUserVolume() : 1.0;
+    const masterAlpha = (paused ? 0.28 : 1.0) * (0.35 + userVol * 0.65);
 
     // Pointer influence — precomputed, no per-frame allocations
     // isPulling only true when pull mode is armed (horizontal dominance confirmed)
@@ -149,9 +159,12 @@ export function initOrbHero(canvas, manager) {
     dragStartAngle = pointAngle(e.clientX - rect.left, e.clientY - rect.top);
     dragStartTime  = manager.audio.currentTime || 0;
     dragStartX     = e.clientX;
+    dragStartY     = e.clientY;
     pullDx = 0;
     pullDy = 0;
-    pullArmed = false;
+    pullArmed   = false;
+    volumeArmed = false;
+    dragStartVolume = manager.getUserVolume ? manager.getUserVolume() : 1.0;
     canvas.setPointerCapture(e.pointerId);
   }
 
@@ -161,25 +174,42 @@ export function initOrbHero(canvas, manager) {
     const nowA = pointAngle(e.clientX - rect.left, e.clientY - rect.top);
     const diff = nowA - dragStartAngle;
     pullDx = e.clientX - dragStartX;
-    pullDy = e.clientY - rect.top - (canvas.height / 2);
-    // Arm pull mode only when horizontal movement clearly dominates vertical (1.4× ratio + minimum)
-    if (!pullArmed && Math.abs(pullDx) > Math.abs(pullDy) * 1.4 && Math.abs(pullDx) > 12) {
+    pullDy = e.clientY - dragStartY;
+
+    // Arm horizontal pull mode — only when neither mode is latched yet
+    if (!pullArmed && !volumeArmed && Math.abs(pullDx) > Math.abs(pullDy) * DOMINANCE_GATE_RATIO && Math.abs(pullDx) > MIN_GESTURE_PX) {
       pullArmed = true;
     }
-    const duration = manager.audio.duration || 0;
-    if (duration > 0) manager.scrubToPosition(dragStartTime + (diff / (Math.PI * 2)) * duration);
+    // Arm vertical volume mode — only when neither mode is latched yet
+    if (!volumeArmed && !pullArmed && Math.abs(pullDy) > Math.abs(pullDx) * DOMINANCE_GATE_RATIO && Math.abs(pullDy) > MIN_GESTURE_PX) {
+      volumeArmed = true;
+    }
+
+    // Volume mode: upward drag has negative pullDy, so subtracting it raises volume
+    if (volumeArmed && manager.setUserVolume) {
+      manager.setUserVolume(dragStartVolume - pullDy / VOLUME_DRAG_PX);
+    }
+
+    // Rotational scrub — only when no mode is armed (pure circular gesture)
+    if (!pullArmed && !volumeArmed) {
+      const duration = manager.audio.duration || 0;
+      if (duration > 0) manager.scrubToPosition(dragStartTime + (diff / (Math.PI * 2)) * duration);
+    }
+
     spinVelocity = BASE_SPIN + diff * 0.02;
   }
 
   function onPointerUp(e) {
+    // Right-to-left (pullDx < 0) = next track; left-to-right (pullDx > 0) = previous track
     if (pullArmed && Math.abs(pullDx) >= TRACK_PULL_THRESHOLD_PX) {
-      if (pullDx < 0) manager.prevTrack();
-      else manager.nextTrack();
+      if (pullDx < 0) manager.nextTrack();
+      else manager.prevTrack();
     }
-    dragging  = false;
-    pullDx    = 0;
-    pullDy    = 0;
-    pullArmed = false;
+    dragging    = false;
+    pullDx      = 0;
+    pullDy      = 0;
+    pullArmed   = false;
+    volumeArmed = false;
     try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
   }
 
