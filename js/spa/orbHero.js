@@ -9,6 +9,8 @@ export function initOrbHero(canvas, manager) {
   let dragStartX = 0;
   let pullDx = 0;
   let pullDy = 0;
+  // Armed only when horizontal movement clearly dominates — prevents accidental track switches
+  let pullArmed = false;
 
   const TRACK_PULL_THRESHOLD_PX = 72;
   const BASE_SPIN = 0.005;
@@ -72,7 +74,8 @@ export function initOrbHero(canvas, manager) {
     const masterAlpha = paused ? 0.28 : 1.0;
 
     // Pointer influence — precomputed, no per-frame allocations
-    const isPulling  = dragging && Math.abs(pullDx) > 4;
+    // isPulling only true when pull mode is armed (horizontal dominance confirmed)
+    const isPulling  = dragging && pullArmed && Math.abs(pullDx) > 4;
     const pullNorm   = isPulling ? Math.min(1, Math.abs(pullDx) / TRACK_PULL_THRESHOLD_PX) : 0;
     const stretchDir = pullDx >= 0 ? 1 : -1;
 
@@ -148,6 +151,7 @@ export function initOrbHero(canvas, manager) {
     dragStartX     = e.clientX;
     pullDx = 0;
     pullDy = 0;
+    pullArmed = false;
     canvas.setPointerCapture(e.pointerId);
   }
 
@@ -158,19 +162,24 @@ export function initOrbHero(canvas, manager) {
     const diff = nowA - dragStartAngle;
     pullDx = e.clientX - dragStartX;
     pullDy = e.clientY - rect.top - (canvas.height / 2);
+    // Arm pull mode only when horizontal movement clearly dominates vertical (1.4× ratio + minimum)
+    if (!pullArmed && Math.abs(pullDx) > Math.abs(pullDy) * 1.4 && Math.abs(pullDx) > 12) {
+      pullArmed = true;
+    }
     const duration = manager.audio.duration || 0;
     if (duration > 0) manager.scrubToPosition(dragStartTime + (diff / (Math.PI * 2)) * duration);
     spinVelocity = BASE_SPIN + diff * 0.02;
   }
 
   function onPointerUp(e) {
-    if (Math.abs(pullDx) >= TRACK_PULL_THRESHOLD_PX) {
+    if (pullArmed && Math.abs(pullDx) >= TRACK_PULL_THRESHOLD_PX) {
       if (pullDx < 0) manager.prevTrack();
       else manager.nextTrack();
     }
-    dragging = false;
-    pullDx   = 0;
-    pullDy   = 0;
+    dragging  = false;
+    pullDx    = 0;
+    pullDy    = 0;
+    pullArmed = false;
     try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
   }
 
