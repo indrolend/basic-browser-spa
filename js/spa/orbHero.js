@@ -4,25 +4,30 @@ export function initOrbHero(canvas, manager) {
   let angle = 0;
   let spinVelocity = 0.005;
   let dragging = false;
-  let dragStartTime = 0;
-  let lastPointerAngle = 0;
-  let accumulatedAngle = 0;  // total rotation since drag start (multi-wrap safe)
-  let angularVelocity = 0;   // per-move angular delta — carries into spin on release
-  let scratchEnergy = 0;     // 0–1, drives radial blob swell during active scratch
-  let wasPlaying = false;    // restore play state on pointer up
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let pullDx = 0;
+  let pullDy = 0;
+  // Armed only when horizontal movement clearly dominates — prevents accidental track switches
+  let pullArmed = false;
+  // Armed only when vertical movement clearly dominates — controls volume
+  let volumeArmed = false;
+  let dragStartVolume = 1.0;
 
+  const TRACK_PULL_THRESHOLD_PX = 72;
+  // 120px vertical drag spans the full 0–1 volume range
+  const VOLUME_DRAG_PX = 120;
   const BASE_SPIN = 0.005;
-  // One full rotation (2π) maps to the full track duration
-  const SCRATCH_SCALE = 1.0;
-  // Per-frame multiplier for scratch energy decay (0.88 = ~12% decay per frame at 60fps)
-  const ENERGY_DECAY = 0.88;
+  // Shared thresholds for both dominance gates
+  const DOMINANCE_GATE_RATIO = 1.4;
+  const MIN_GESTURE_PX = 12;
 
   // Single unified blob particle pool — allocated once, never recreated in draw()
   const N = 144;
   const pts = Array.from({ length: N }, (_, i) => {
     const t = i / N;
     return {
-      a:   t * Math.PI * 2,          // evenly-spaced base angle
+      a:   t * Math.PI * 2,             // evenly-spaced base angle
       r:   0.82 + Math.random() * 0.36, // base radius multiplier (variance gives blob depth)
       ph:  Math.random() * Math.PI * 2, // shimmer/wobble phase
       bin: Math.floor(t * 96),          // freq bin 0–95 (bass → highs)
@@ -30,33 +35,15 @@ export function initOrbHero(canvas, manager) {
     };
   });
 
-  // Wrap an angular delta to the [−π, π] range so boundary crossing is handled cleanly
-  function wrapDelta(d) {
-    if (d >  Math.PI) return d - Math.PI * 2;
-    if (d < -Math.PI) return d + Math.PI * 2;
-    return d;
-  }
-
-
+  function resize() {
     const size = Math.min(canvas.clientWidth || 260, canvas.clientHeight || 260, 300);
     canvas.width = size;
     canvas.height = size;
     ctx.clearRect(0, 0, size, size);
   }
 
-  function pointAngle(x, y) {
-    const cx = canvas.width / 2;
-    const cy = canvas.height / 2;
-    return Math.atan2(y - cy, x - cx);
-  }
-
   function draw() {
-    // Decay scratch energy toward zero each frame
-    scratchEnergy *= ENERGY_DECAY;
-    // Spin velocity decays toward idle speed only when not holding the orb
-    if (!dragging) {
-      spinVelocity += (BASE_SPIN - spinVelocity) * 0.06;
-    }
+    spinVelocity += (BASE_SPIN - spinVelocity) * 0.06;
     angle += spinVelocity;
 
     const w = canvas.width;
@@ -89,8 +76,13 @@ export function initOrbHero(canvas, manager) {
     const masterAlpha = (paused ? 0.28 : 1.0) * (0.35 + userVol * 0.65);
 
     // Pointer influence — precomputed, no per-frame allocations
-    // Press compression: squish on initial contact, releases as scratch energy builds
-    const pressScale = dragging ? (scratchEnergy > 0.1 ? 1.0 : 0.93) : 1.0;
+    // isPulling only true when pull mode is armed (horizontal dominance confirmed)
+    const isPulling  = dragging && pullArmed && Math.abs(pullDx) > 4;
+    const pullNorm   = isPulling ? Math.min(1, Math.abs(pullDx) / TRACK_PULL_THRESHOLD_PX) : 0;
+    const stretchDir = pullDx >= 0 ? 1 : -1;
+
+    // Press-only (finger down, no pull yet): slightly compress the blob inward
+    const pressScale = (dragging && !isPulling) ? 0.93 : 1.0;
 
     // Bass expands the whole blob; press compresses it
     const blobScale = pressScale * (1.0 + bass * 0.22);
@@ -118,13 +110,23 @@ export function initOrbHero(canvas, manager) {
       const shimmer = Math.sin(p.ph + angle * 4 + i * 0.3) * 0.5 + 0.5;
       r += high * shimmer * baseR * 0.12;
 
-      // Scratch energy: isotropic radial swell — blob pulses outward during active scratch
-      r += scratchEnergy * baseR * 0.22;
-
       // Effective angle: base + rotation + mid wobble — all baked so (px,py) is in screen space
       const pa = p.a + angle + mid * 0.12 * Math.sin(p.ph + angle * 2);
-      const px = Math.cos(pa) * r;
-      const py = Math.sin(pa) * r;
+      let px = Math.cos(pa) * r;
+      let py = Math.sin(pa) * r;
+
+      // ── Pointer deformation — stretch blob in pull direction ──
+      if (isPulling) {
+        // Asymmetric X stretch: pull-side particles expand, opposite side compresses
+        const cosProj = Math.cos(pa);  // projection onto screen horizontal axis
+        px *= (1.0 + pullNorm * 0.55 * stretchDir * cosProj);
+        // Perpendicular squeeze (oval feel, conservation of mass)
+        py *= (1.0 - pullNorm * 0.18);
+        // Near-threshold snap: leading-edge particles surge to signal the snap point
+        if (pullNorm > 0.78 && stretchDir * px > 0) {
+          px += stretchDir * ((pullNorm - 0.78) / 0.22) * baseR * 0.18;
+        }
+      }
 
       // Dot radius: amp + high shimmer; shrink when paused
       const szBase = paused ? 0.8 : 1.0;
@@ -144,52 +146,57 @@ export function initOrbHero(canvas, manager) {
   }
 
   function onPointerDown(e) {
-    wasPlaying = !manager.audio.paused && manager.musicEnabled;
     dragging = true;
-    manager.audio.pause(); // user takes full control of playback position
-    const rect = canvas.getBoundingClientRect();
-    const pa = pointAngle(e.clientX - rect.left, e.clientY - rect.top);
-    lastPointerAngle = pa;
-    dragStartTime    = manager.audio.currentTime || 0;
-    accumulatedAngle = 0;
-    angularVelocity  = 0;
-    scratchEnergy    = 0;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    pullDx = 0;
+    pullDy = 0;
+    pullArmed   = false;
+    volumeArmed = false;
+    dragStartVolume = manager.getUserVolume ? manager.getUserVolume() : 1.0;
     canvas.setPointerCapture(e.pointerId);
   }
 
   function onPointerMove(e) {
     if (!dragging) return;
-    const rect = canvas.getBoundingClientRect();
-    const nowA = pointAngle(e.clientX - rect.left, e.clientY - rect.top);
+    pullDx = e.clientX - dragStartX;
+    pullDy = e.clientY - dragStartY;
 
-    // Per-move angular delta — wrap to [−π, π] so boundary crossing is handled
-    const delta = wrapDelta(nowA - lastPointerAngle);
-
-    angularVelocity   = delta;
-    accumulatedAngle += delta;
-    lastPointerAngle  = nowA;
-
-    // Build scratch energy from rotation speed
-    scratchEnergy = Math.min(1, scratchEnergy + Math.abs(delta) * 6);
-
-    // Scrub playback: accumulated rotation maps linearly to track position
-    const duration = manager.audio.duration || 0;
-    if (duration > 0) {
-      manager.scrubToPosition(dragStartTime + (accumulatedAngle / (Math.PI * 2)) * duration * SCRATCH_SCALE);
+    // Arm horizontal pull mode — only when neither mode is latched yet
+    if (!pullArmed && !volumeArmed &&
+        Math.abs(pullDx) > Math.abs(pullDy) * DOMINANCE_GATE_RATIO &&
+        Math.abs(pullDx) > MIN_GESTURE_PX) {
+      pullArmed = true;
+    }
+    // Arm vertical volume mode — only when neither mode is latched yet
+    if (!volumeArmed && !pullArmed &&
+        Math.abs(pullDy) > Math.abs(pullDx) * DOMINANCE_GATE_RATIO &&
+        Math.abs(pullDy) > MIN_GESTURE_PX) {
+      volumeArmed = true;
     }
 
-    // Drive visual spin in the direction the user is rotating
-    spinVelocity = angularVelocity;
+    // Volume mode: upward drag has negative pullDy, so subtracting it raises volume
+    if (volumeArmed && manager.setUserVolume) {
+      manager.setUserVolume(dragStartVolume - pullDy / VOLUME_DRAG_PX);
+    }
+
+    // Keep spin hinting toward pull direction while dragging horizontally
+    if (pullArmed) {
+      spinVelocity = BASE_SPIN + (pullDx / TRACK_PULL_THRESHOLD_PX) * 0.02;
+    }
   }
 
   function onPointerUp(e) {
-    dragging = false;
-    // Carry angular momentum into the blob spin (partial transfer for natural decay)
-    spinVelocity = angularVelocity * 0.5;
-    // Resume playback from the scrubbed position if audio was playing before
-    if (wasPlaying) manager.play();
-    wasPlaying      = false;
-    angularVelocity = 0;
+    // Right-to-left (pullDx < 0) = next track; left-to-right (pullDx > 0) = previous track
+    if (pullArmed && Math.abs(pullDx) >= TRACK_PULL_THRESHOLD_PX) {
+      if (pullDx < 0) manager.nextTrack();
+      else manager.prevTrack();
+    }
+    dragging    = false;
+    pullDx      = 0;
+    pullDy      = 0;
+    pullArmed   = false;
+    volumeArmed = false;
     try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
   }
 
