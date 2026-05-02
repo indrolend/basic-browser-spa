@@ -35,6 +35,9 @@ export function initMusicPlayerSection() {
         if (e.key === 'ArrowLeft') manager.prevTrack();
         if (e.key === ' ') { e.preventDefault(); manager.toggleEnabled(); }
       });
+    } else if (!orb && orbCleanup) {
+      orbCleanup.destroy();
+      orbCleanup = null;
     }
   });
   observer.observe(document.body, { childList: true, subtree: true });

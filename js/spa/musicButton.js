@@ -10,14 +10,20 @@ export function initMusicButton() {
   document.body.appendChild(btn);
 
   let pressTimer = null;
+  let longPressTriggered = false;
   btn.addEventListener('pointerdown', () => {
-    pressTimer = setTimeout(() => manager.toggleEnabled(), 650);
+    longPressTriggered = false;
+    pressTimer = setTimeout(() => {
+      longPressTriggered = true;
+      manager.toggleEnabled();
+    }, 650);
   });
   btn.addEventListener('pointerup', () => {
     if (pressTimer) clearTimeout(pressTimer);
   });
   btn.addEventListener('click', (e) => {
     e.preventDefault();
+    if (longPressTriggered) { longPressTriggered = false; return; }
     openMusicPlayer();
   });
   btn.addEventListener('contextmenu', (e) => {

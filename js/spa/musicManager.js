@@ -17,8 +17,6 @@ class MusicManagerImpl {
     this.musicEnabled = this.readStorage(STORAGE_KEY_ENABLED, '1') !== '0';
     this.interactionCount = Number(this.readStorage(STORAGE_KEY_INTERACTIONS, '0') || 0);
     this.trackIndex = Number(this.readStorage(STORAGE_KEY_TRACK_INDEX, '0') || 0) % TRACKS.length;
-    this.idleMs = 1700;
-    this.idleTimer = null;
     this.listeners = new Set();
     this.lastTrackIndex = -1;
 
@@ -150,8 +148,6 @@ class MusicManagerImpl {
     this.interactionCount += 1;
     this.persistBasics();
     if (this.musicEnabled) this.play();
-    if (this.idleTimer) clearTimeout(this.idleTimer);
-    this.idleTimer = setTimeout(() => this.pause(), this.idleMs);
     this.emit();
   }
 }
