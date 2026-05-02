@@ -71,22 +71,30 @@ export function initOrbHero(canvas, manager) {
 
     const masterAlpha = paused ? 0.28 : 1.0;
 
-    // Bass expands the whole blob uniformly
-    const blobScale = 1.0 + bass * 0.22;
+    // Pointer influence — precomputed, no per-frame allocations
+    const isPulling  = dragging && Math.abs(pullDx) > 4;
+    const pullNorm   = isPulling ? Math.min(1, Math.abs(pullDx) / TRACK_PULL_THRESHOLD_PX) : 0;
+    const stretchDir = pullDx >= 0 ? 1 : -1;
+
+    // Press-only (finger down, no pull yet): slightly compress the blob inward
+    const pressScale = (dragging && !isPulling) ? 0.93 : 1.0;
+
+    // Bass expands the whole blob; press compresses it
+    const blobScale = pressScale * (1.0 + bass * 0.22);
 
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.rotate(angle);
+    // No ctx.rotate — rotation baked into pa so deformations apply in canvas/screen space
 
-    // ── Unified blob — one particle field, all audio encoded into the same set ──
+    // ── Unified blob — audio + pointer state deform the same particle field ──
     for (let i = 0; i < N; i++) {
       const p   = pts[i];
       const amp = freq ? freq[p.bin] / 255 : 0;
 
-      // Radial deformation: base radius + per-particle variance + freq push + bass expansion
+      // Radial deformation: base radius + per-particle variance + freq push + scale
       let r = baseR * p.r * blobScale + amp * baseR * 0.45;
 
-      // Waveform bends each particle's radius by mapping the particle's angle to a waveform index
+      // Waveform bends each particle's radius (uses stable base angle p.a, not rotated pa)
       if (wave) {
         const wIdx    = Math.floor(((p.a / (Math.PI * 2)) + 0.5) % 1 * (wave.length - 1));
         const wSample = (wave[wIdx] - 128) / 128;   // –1 to 1
@@ -97,16 +105,29 @@ export function initOrbHero(canvas, manager) {
       const shimmer = Math.sin(p.ph + angle * 4 + i * 0.3) * 0.5 + 0.5;
       r += high * shimmer * baseR * 0.12;
 
-      // Mid wobble: small angular displacement so the blob's outline ripples
-      const pa = p.a + mid * 0.12 * Math.sin(p.ph + angle * 2);
-      const px = Math.cos(pa) * r;
-      const py = Math.sin(pa) * r;
+      // Effective angle: base + rotation + mid wobble — all baked so (px,py) is in screen space
+      const pa = p.a + angle + mid * 0.12 * Math.sin(p.ph + angle * 2);
+      let px = Math.cos(pa) * r;
+      let py = Math.sin(pa) * r;
 
-      // Dot radius: amp + high shimmer; shrink slightly when paused
+      // ── Pointer deformation — stretch blob in pull direction ──
+      if (isPulling) {
+        // Asymmetric X stretch: pull-side particles expand, opposite side compresses
+        const cosProj = Math.cos(pa);  // projection onto screen horizontal axis
+        px *= (1.0 + pullNorm * 0.55 * stretchDir * cosProj);
+        // Perpendicular squeeze (oval feel, conservation of mass)
+        py *= (1.0 - pullNorm * 0.18);
+        // Near-threshold snap: leading-edge particles surge to signal the snap point
+        if (pullNorm > 0.78 && stretchDir * px > 0) {
+          px += stretchDir * ((pullNorm - 0.78) / 0.22) * baseR * 0.18;
+        }
+      }
+
+      // Dot radius: amp + high shimmer; shrink when paused
       const szBase = paused ? 0.8 : 1.0;
       const sz = Math.max(0.5, szBase * (1.0 + amp * 3.2 + high * shimmer * 1.2));
 
-      // Alpha: depth layer + amplitude; unified family so it reads as one mass
+      // Alpha: depth layer + amplitude; unified family reads as one mass
       ctx.globalAlpha = Math.min(1, (0.22 + p.d * 0.35 + amp * 0.42) * masterAlpha);
       ctx.fillStyle   = amp > 0.70 ? '#a0ffe0' : (amp > 0.40 ? '#7df0a8' : '#5ee87d');
       ctx.beginPath();
@@ -115,25 +136,6 @@ export function initOrbHero(canvas, manager) {
     }
 
     ctx.restore();
-
-    // ── Drag pull indicator — dotted ──
-    if (dragging && Math.abs(pullDx) > 4) {
-      const pullNorm = Math.min(1, Math.abs(pullDx) / TRACK_PULL_THRESHOLD_PX);
-      const dir      = pullDx >= 0 ? 1 : -1;
-      const dotCount = 6;
-      const maxLen   = 26 + pullNorm * 42;
-      for (let d = 0; d < dotCount; d++) {
-        const t  = (d + 1) / dotCount;
-        const dx = cx + dir * t * maxLen;
-        const dy = cy + pullDy * t * 0.12;
-        const sz = 1.5 + pullNorm * 1.5 * (1 - t * 0.4);
-        ctx.globalAlpha = (0.35 + pullNorm * 0.5) * (1 - t * 0.3);
-        ctx.fillStyle = '#5ee87d';
-        ctx.beginPath();
-        ctx.arc(dx, dy, sz, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
 
     raf = requestAnimationFrame(draw);
   }
