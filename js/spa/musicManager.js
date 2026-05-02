@@ -54,6 +54,7 @@ class MusicManagerImpl {
     this.gainNode.connect(this.analyser);
     this.analyser.connect(this.audioContext.destination);
     this.freqData = new Uint8Array(this.analyser.frequencyBinCount);
+    this.waveData = new Uint8Array(this.analyser.fftSize);
   }
 
   onChange(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
@@ -142,6 +143,18 @@ class MusicManagerImpl {
     if (!this.analyser || !this.freqData) return null;
     this.analyser.getByteFrequencyData(this.freqData);
     return this.freqData;
+  }
+
+  getWaveformData() {
+    if (!this.analyser || !this.waveData) return null;
+    this.analyser.getByteTimeDomainData(this.waveData);
+    return this.waveData;
+  }
+
+  getTrackName() {
+    const src = this.audio.src || '';
+    const file = src.split('/').pop() || '';
+    return file.replace(/\.[^.]+$/, '') || `track ${this.trackIndex + 1}`;
   }
 
   onAnyUserInteraction() {

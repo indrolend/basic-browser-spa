@@ -2,6 +2,7 @@ import manager from './musicManager.js';
 import { initOrbHero } from './orbHero.js';
 
 let orbCleanup = null;
+let offChange = null;
 
 export function initMusicPlayerSection() {
   if (!window.__SPA_Overlay?.register) return;
@@ -9,6 +10,7 @@ export function initMusicPlayerSection() {
     return [
       '<div class="spa-overlay-title"><span class="important-word">music</span></div>',
       '<canvas id="music-orb" class="music-orb" width="280" height="280" aria-label="Music scrub orb" tabindex="0"></canvas>',
+      '<div id="music-track-label" class="music-track-label"></div>',
       '<div class="music-controls">',
       '<button class="spa-nav-btn" id="music-toggle" type="button" aria-label="Toggle mute">mute</button>',
       '</div>',
@@ -24,6 +26,14 @@ export function initMusicPlayerSection() {
     if (t.id === 'music-toggle') manager.toggleEnabled();
   });
 
+  function updateLabel() {
+    const el = document.getElementById('music-track-label');
+    if (!el) return;
+    el.textContent = manager.getTrackName();
+    const toggle = document.getElementById('music-toggle');
+    if (toggle) toggle.textContent = manager.musicEnabled ? 'mute' : 'unmute';
+  }
+
   const observer = new MutationObserver(() => {
     const orb = document.getElementById('music-orb');
     if (orb && !orb.dataset.bound) {
@@ -35,9 +45,13 @@ export function initMusicPlayerSection() {
         if (e.key === 'ArrowLeft') manager.prevTrack();
         if (e.key === ' ') { e.preventDefault(); manager.toggleEnabled(); }
       });
+      updateLabel();
+      if (offChange) { offChange(); offChange = null; }
+      offChange = manager.onChange(updateLabel);
     } else if (!orb && orbCleanup) {
       orbCleanup.destroy();
       orbCleanup = null;
+      if (offChange) { offChange(); offChange = null; }
     }
   });
   observer.observe(document.body, { childList: true, subtree: true });

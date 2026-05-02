@@ -576,7 +576,18 @@ body {
   width: min(72vw, 300px);
   height: min(72vw, 300px);
   display: block;
-  margin: 0.6rem auto 1rem;
+  margin: 0.6rem auto 0.5rem;
+}
+
+.music-track-label {
+  text-align: center;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: lowercase;
+  color: #5ee87d;
+  opacity: 0.72;
+  margin: 0 0 0.75rem;
+  min-height: 1.1em;
 }
 
 .music-controls {
