@@ -13,28 +13,18 @@ export function initOrbHero(canvas, manager) {
   const TRACK_PULL_THRESHOLD_PX = 72;
   const BASE_SPIN = 0.005;
 
-  // Stable particle pools — allocated once, never recreated inside draw()
-  const N_RADIAL = 80;   // radial spectrum cloud
-  const N_HALO   = 36;   // bass halo ring dots
-  const N_WAVE   = 64;   // waveform sample dots
-  const N_SPARKS = 14;   // pre-allocated spark positions (reused each frame)
-
-  const radialPts = Array.from({ length: N_RADIAL }, (_, i) => ({
-    a:     (i / N_RADIAL) * Math.PI * 2,
-    phase: Math.random() * Math.PI * 2,
-  }));
-
-  const haloPts = Array.from({ length: N_HALO }, (_, i) => ({
-    a:     (i / N_HALO) * Math.PI * 2,
-    phase: Math.random() * Math.PI * 2,
-  }));
-
-  // Pre-generate stable spark angles/offsets; randomised once so they look
-  // scattered but don't allocate per frame.
-  const sparkPts = Array.from({ length: N_SPARKS }, () => ({
-    a:   Math.random() * Math.PI * 2,
-    off: Math.random(),          // 0–1 radial offset multiplier
-  }));
+  // Single unified blob particle pool — allocated once, never recreated in draw()
+  const N = 144;
+  const pts = Array.from({ length: N }, (_, i) => {
+    const t = i / N;
+    return {
+      a:   t * Math.PI * 2,          // evenly-spaced base angle
+      r:   0.82 + Math.random() * 0.36, // base radius multiplier (variance gives blob depth)
+      ph:  Math.random() * Math.PI * 2, // shimmer/wobble phase
+      bin: Math.floor(t * 96),          // freq bin 0–95 (bass → highs)
+      d:   Math.random(),               // depth 0–1 for alpha layering
+    };
+  });
 
   function resize() {
     const size = Math.min(canvas.clientWidth || 260, canvas.clientHeight || 260, 300);
@@ -76,80 +66,57 @@ export function initOrbHero(canvas, manager) {
 
     // ── Trail fade ──
     ctx.globalAlpha = 1;
-    ctx.fillStyle = paused ? 'rgba(17,17,17,0.10)' : 'rgba(17,17,17,0.18)';
+    ctx.fillStyle = paused ? 'rgba(17,17,17,0.12)' : 'rgba(17,17,17,0.20)';
     ctx.fillRect(0, 0, w, h);
 
     const masterAlpha = paused ? 0.28 : 1.0;
 
-    // ── Bass halo — dotted ring ──
-    const haloR = baseR * (1.08 + bass * 0.28);
-    for (let i = 0; i < N_HALO; i++) {
-      const p  = haloPts[i];
-      const jitter = Math.sin(p.phase + angle * 2) * baseR * 0.04;
-      const r  = haloR + jitter;
-      const px = cx + Math.cos(p.a + angle * 0.3) * r;
-      const py = cy + Math.sin(p.a + angle * 0.3) * r;
-      const sz = 1.0 + bass * 2.5;
-      ctx.globalAlpha = (0.18 + bass * 0.55) * masterAlpha;
-      ctx.fillStyle = '#5ee87d';
+    // Bass expands the whole blob uniformly
+    const blobScale = 1.0 + bass * 0.22;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(angle);
+
+    // ── Unified blob — one particle field, all audio encoded into the same set ──
+    for (let i = 0; i < N; i++) {
+      const p   = pts[i];
+      const amp = freq ? freq[p.bin] / 255 : 0;
+
+      // Radial deformation: base radius + per-particle variance + freq push + bass expansion
+      let r = baseR * p.r * blobScale + amp * baseR * 0.45;
+
+      // Waveform bends each particle's radius by mapping the particle's angle to a waveform index
+      if (wave) {
+        const wIdx    = Math.floor(((p.a / (Math.PI * 2)) + 0.5) % 1 * (wave.length - 1));
+        const wSample = (wave[wIdx] - 128) / 128;   // –1 to 1
+        r += wSample * baseR * mid * 0.18;
+      }
+
+      // High-frequency shimmer: per-particle phase-driven radius flicker
+      const shimmer = Math.sin(p.ph + angle * 4 + i * 0.3) * 0.5 + 0.5;
+      r += high * shimmer * baseR * 0.12;
+
+      // Mid wobble: small angular displacement so the blob's outline ripples
+      const pa = p.a + mid * 0.12 * Math.sin(p.ph + angle * 2);
+      const px = Math.cos(pa) * r;
+      const py = Math.sin(pa) * r;
+
+      // Dot radius: amp + high shimmer; shrink slightly when paused
+      const szBase = paused ? 0.8 : 1.0;
+      const sz = Math.max(0.5, szBase * (1.0 + amp * 3.2 + high * shimmer * 1.2));
+
+      // Alpha: depth layer + amplitude; unified family so it reads as one mass
+      ctx.globalAlpha = Math.min(1, (0.22 + p.d * 0.35 + amp * 0.42) * masterAlpha);
+      ctx.fillStyle   = amp > 0.70 ? '#a0ffe0' : (amp > 0.40 ? '#7df0a8' : '#5ee87d');
       ctx.beginPath();
       ctx.arc(px, py, sz, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // ── Radial spectrum particle cloud ──
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(angle);
-    for (let i = 0; i < N_RADIAL; i++) {
-      const p      = radialPts[i];
-      const binIdx = freq ? Math.floor((i / N_RADIAL) * freq.length) : 0;
-      const amp    = freq ? freq[binIdx] / 255 : 0;
-      const r      = baseR + amp * baseR * 0.6;
-      const shimmer = Math.sin(p.phase + angle * 3 + i * 0.4) * 0.5 + 0.5;
-      const sz     = 1.2 + amp * 3.8 + (high > 0.5 ? high * 1.5 : 0);
-      ctx.globalAlpha = (0.30 + amp * 0.70) * shimmer * masterAlpha;
-      ctx.fillStyle = amp > 0.65 ? '#8fffd0' : '#5ee87d';
-      ctx.beginPath();
-      ctx.arc(Math.cos(p.a) * r, Math.sin(p.a) * r, sz, 0, Math.PI * 2);
-      ctx.fill();
-    }
     ctx.restore();
 
-    // ── Waveform — dot samples ──
-    if (wave) {
-      const waveAmp = baseR * (0.18 + mid * 0.32);
-      const step = Math.floor(wave.length / N_WAVE);
-      for (let i = 0; i < N_WAVE; i++) {
-        const sample = wave[i * step] ?? 128;
-        const x = cx - w * 0.38 + (i / (N_WAVE - 1)) * w * 0.76;
-        const y = cy + ((sample - 128) / 128) * waveAmp;
-        const deviation = Math.abs(sample - 128) / 128;
-        const sz = 1.0 + deviation * 2.5;
-        ctx.globalAlpha = (0.35 + deviation * 0.65) * masterAlpha;
-        ctx.fillStyle = '#5ee87d';
-        ctx.beginPath();
-        ctx.arc(x, y, sz, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    // ── High-frequency outer sparks — stable pool ──
-    if (high > 0.42 && !paused) {
-      const count = Math.min(N_SPARKS, Math.floor(high * N_SPARKS));
-      for (let s = 0; s < count; s++) {
-        const sp = sparkPts[s];
-        const sr = baseR * (1.1 + sp.off * 0.6);
-        ctx.globalAlpha = high * 0.65 * masterAlpha;
-        ctx.fillStyle = '#c8ffdf';
-        ctx.beginPath();
-        ctx.arc(cx + Math.cos(sp.a + angle) * sr, cy + Math.sin(sp.a + angle) * sr, 1.3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
     // ── Drag pull indicator — dotted ──
-    ctx.globalAlpha = 1;
     if (dragging && Math.abs(pullDx) > 4) {
       const pullNorm = Math.min(1, Math.abs(pullDx) / TRACK_PULL_THRESHOLD_PX);
       const dir      = pullDx >= 0 ? 1 : -1;
