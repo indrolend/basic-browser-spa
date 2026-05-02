@@ -565,24 +565,11 @@ body {
   outline: none;
 }
 
-.music-fab {
+.music-nav-btn {
   position: fixed;
-  right: 14px;
-  bottom: 14px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: 1px solid #2f2f2f;
-  background: #111;
-  padding: 0;
-  z-index: 40;
-  cursor: pointer;
-}
-
-.music-fab canvas {
-  width: 56px;
-  height: 56px;
-  display: block;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 21;
 }
 
 .music-orb {

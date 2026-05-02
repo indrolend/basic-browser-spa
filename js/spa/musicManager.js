@@ -4,12 +4,12 @@ const STORAGE_KEY_TRACK_TIME = 'spa_music_track_time';
 const STORAGE_KEY_INTERACTIONS = 'spa_music_interaction_count';
 
 const TRACKS = [
-  '/music/Gar.mp3',
-  '/music/crush.mp3',
-  '/music/intarsia.mp3',
-  '/music/sauce.mp3',
-  '/music/transeo.mp3',
-  '/music/wok.mp3'
+  { src: '/music/Gar.mp3',      gain: 0.85 },
+  { src: '/music/crush.mp3',    gain: 0.90 },
+  { src: '/music/intarsia.mp3', gain: 0.85 },
+  { src: '/music/sauce.mp3',    gain: 0.80 },
+  { src: '/music/transeo.mp3',  gain: 0.90 },
+  { src: '/music/wok.mp3',      gain: 0.85 },
 ];
 
 class MusicManagerImpl {
@@ -22,11 +22,12 @@ class MusicManagerImpl {
     this.listeners = new Set();
     this.lastTrackIndex = -1;
 
-    this.audio = new Audio(TRACKS[this.trackIndex]);
+    this.audio = new Audio(TRACKS[this.trackIndex].src);
     this.audio.preload = 'auto';
     this.audio.loop = false;
 
     this.audioContext = null;
+    this.gainNode = null;
     this.analyser = null;
     this.source = null;
     this.freqData = null;
@@ -47,9 +48,12 @@ class MusicManagerImpl {
     if (!Ctx) return;
     this.audioContext = new Ctx();
     this.source = this.audioContext.createMediaElementSource(this.audio);
+    this.gainNode = this.audioContext.createGain();
+    this.gainNode.gain.value = TRACKS[this.trackIndex]?.gain ?? 1;
     this.analyser = this.audioContext.createAnalyser();
     this.analyser.fftSize = 256;
-    this.source.connect(this.analyser);
+    this.source.connect(this.gainNode);
+    this.gainNode.connect(this.analyser);
     this.analyser.connect(this.audioContext.destination);
     this.freqData = new Uint8Array(this.analyser.frequencyBinCount);
   }
@@ -107,8 +111,14 @@ class MusicManagerImpl {
 
   setTrack(index, keepTime = 0) {
     this.trackIndex = ((index % TRACKS.length) + TRACKS.length) % TRACKS.length;
-    this.audio.src = TRACKS[this.trackIndex];
+    const track = TRACKS[this.trackIndex];
+    this.audio.src = track.src;
     this.audio.currentTime = Math.max(0, keepTime || 0);
+    if (this.gainNode) {
+      this.gainNode.gain.value = track.gain;
+    } else {
+      this.audio.volume = track.gain;
+    }
     this.persistBasics();
     this.play();
   }
