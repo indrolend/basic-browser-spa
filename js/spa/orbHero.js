@@ -105,7 +105,7 @@ export function initOrbHero(canvas, manager) {
     const pressScale = (dragging && !isPulling) ? 0.93 : 1.0;
 
     // Bass expands the whole blob; hold compresses it slightly; tension stretches it
-    const blobScale = pressScale * (1.0 + bass * 0.22) * (1 + tension * 0.2) * (1 - holdStrength * 0.1);
+    const blobScale = pressScale * (1.0 + bass * 0.22) * (1 + tension * 0.10) * (1 - holdStrength * 0.06);
 
     // Subtle audio slowdown while held — skip when scrubbing (audio already paused by pullArmed)
     if (!pullArmed && manager.audio) {
@@ -153,12 +153,14 @@ export function initOrbHero(canvas, manager) {
         }
       }
 
-      // Pointer attraction — pull particles toward the held position (ferrofluid cling)
+      // Pointer attraction — only nearby particles cling to the held position (local ferrofluid dent)
       if (holdStrength > 0) {
         const dpx = (pointerX - cx) - px;
         const dpy = (pointerY - cy) - py;
-        px += dpx * holdStrength * 0.08;
-        py += dpy * holdStrength * 0.08;
+        const dist2   = dpx * dpx + dpy * dpy;
+        const falloff = 1.0 / (1.0 + dist2 / (baseR * baseR));  // 1 at pointer, fades over ~one orb radius
+        px += dpx * holdStrength * falloff * 0.20;
+        py += dpy * holdStrength * falloff * 0.20;
       }
 
       // Dot radius: amp + high shimmer; shrink when paused
