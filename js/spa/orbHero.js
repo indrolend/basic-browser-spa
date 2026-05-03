@@ -48,8 +48,8 @@ export function initOrbHero(canvas, manager) {
   }
 
   function draw() {
-    // During horizontalGrab the pointer drives spin directly; skip idle lerp so it doesn't fight back
-    if (!pullArmed) {
+    // While the orb is grabbed, freeze idle spin; on release the lerp eases it back in naturally
+    if (!dragging) {
       spinVelocity += (BASE_SPIN - spinVelocity) * 0.06;
     }
     angle += spinVelocity;
@@ -155,6 +155,7 @@ export function initOrbHero(canvas, manager) {
 
   function onPointerDown(e) {
     dragging = true;
+    spinVelocity = 0;  // freeze the orb the moment it's grabbed
     dragStartX = e.clientX;
     dragStartY = e.clientY;
     pullDx = 0;
