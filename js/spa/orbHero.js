@@ -228,10 +228,9 @@ export function initOrbHero(canvas, manager) {
       manager.setUserVolume(dragStartVolume - pullDy / VOLUME_DRAG_PX);
     }
 
-    // Horizontal grab: scrub audio position + let pointer drive spin (no idle lerp)
+    // Horizontal grab: scrub audio position; spin stays frozen during drag
     if (pullArmed) {
       manager.scrubToPosition(dragStartTime + pullDx * SCRUB_RATE);
-      spinVelocity = (pullDx / TRACK_PULL_THRESHOLD_PX) * 0.03;
     }
   }
 
