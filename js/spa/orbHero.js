@@ -17,6 +17,12 @@ export function initOrbHero(canvas, manager) {
   let wasPlaying = false;
   let dragStartTime = 0;
 
+  // Ferrofluid hold/stretch/release state — all animated via lerp, no per-frame allocations
+  let holdStrength   = 0;   // 0→1: how "grabbed" the orb currently feels
+  let tension        = 0;   // 0→1: stretch magnitude from drag distance
+  let pointerX       = 0;   // canvas-relative pointer position (updated on down/move)
+  let pointerY       = 0;
+
   const TRACK_PULL_THRESHOLD_PX = 72;
   // 120px vertical drag spans the full 0–1 volume range
   const VOLUME_DRAG_PX = 120;
@@ -53,6 +59,12 @@ export function initOrbHero(canvas, manager) {
       spinVelocity += (BASE_SPIN - spinVelocity) * 0.06;
     }
     angle += spinVelocity;
+
+    // Lerp holdStrength and tension each frame — drives blob scale and particle attraction
+    holdStrength += ((dragging ? 1 : 0) - holdStrength) * 0.12;
+    const dragDist    = Math.sqrt(pullDx * pullDx + pullDy * pullDy);
+    const tensionTarget = dragging ? Math.min(1, dragDist / TRACK_PULL_THRESHOLD_PX) : 0;
+    tension += (tensionTarget - tension) * 0.10;
 
     const w = canvas.width;
     const h = canvas.height;
@@ -92,8 +104,13 @@ export function initOrbHero(canvas, manager) {
     // Press-only (finger down, no pull yet): slightly compress the blob inward
     const pressScale = (dragging && !isPulling) ? 0.93 : 1.0;
 
-    // Bass expands the whole blob; press compresses it
-    const blobScale = pressScale * (1.0 + bass * 0.22);
+    // Bass expands the whole blob; hold compresses it slightly; tension stretches it
+    const blobScale = pressScale * (1.0 + bass * 0.22) * (1 + tension * 0.2) * (1 - holdStrength * 0.1);
+
+    // Subtle audio slowdown while held — skip when scrubbing (audio already paused by pullArmed)
+    if (!pullArmed && manager.audio) {
+      manager.audio.playbackRate = 1 - holdStrength * 0.15;
+    }
 
     ctx.save();
     ctx.translate(cx, cy);
@@ -136,6 +153,14 @@ export function initOrbHero(canvas, manager) {
         }
       }
 
+      // Pointer attraction — pull particles toward the held position (ferrofluid cling)
+      if (holdStrength > 0) {
+        const dpx = (pointerX - cx) - px;
+        const dpy = (pointerY - cy) - py;
+        px += dpx * holdStrength * 0.08;
+        py += dpy * holdStrength * 0.08;
+      }
+
       // Dot radius: amp + high shimmer; shrink when paused
       const szBase = paused ? 0.8 : 1.0;
       const sz = Math.max(0.5, szBase * (1.0 + amp * 3.2 + high * shimmer * 1.2));
@@ -153,7 +178,14 @@ export function initOrbHero(canvas, manager) {
     raf = requestAnimationFrame(draw);
   }
 
+  function trackPointer(e) {
+    const rect = canvas.getBoundingClientRect();
+    pointerX = e.clientX - rect.left;
+    pointerY = e.clientY - rect.top;
+  }
+
   function onPointerDown(e) {
+    trackPointer(e);
     dragging = true;
     spinVelocity = 0;  // freeze the orb the moment it's grabbed
     dragStartX = e.clientX;
@@ -170,6 +202,7 @@ export function initOrbHero(canvas, manager) {
 
   function onPointerMove(e) {
     if (!dragging) return;
+    trackPointer(e);
     pullDx = e.clientX - dragStartX;
     pullDy = e.clientY - dragStartY;
 
@@ -214,6 +247,13 @@ export function initOrbHero(canvas, manager) {
     if (pullArmed && wasPlaying) {
       manager.play();
     }
+
+    // Restore normal playback rate (in case hold-slowdown was active)
+    if (manager.audio) manager.audio.playbackRate = 1;
+
+    // Inject a snap impulse from horizontal drag velocity — gives satisfying release feel
+    const releaseImpulse = pullDx / TRACK_PULL_THRESHOLD_PX;
+    spinVelocity += releaseImpulse * 0.05;
 
     dragging      = false;
     pullDx        = 0;
