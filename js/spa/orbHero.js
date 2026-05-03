@@ -8,16 +8,21 @@ export function initOrbHero(canvas, manager) {
   let dragStartY = 0;
   let pullDx = 0;
   let pullDy = 0;
-  // Armed only when horizontal movement clearly dominates — prevents accidental track switches
+  // Armed only when horizontal movement clearly dominates — grabs playback for scrubbing
   let pullArmed = false;
   // Armed only when vertical movement clearly dominates — controls volume
   let volumeArmed = false;
   let dragStartVolume = 1.0;
+  // Playback state captured when horizontalGrab arms; restored on release
+  let wasPlaying = false;
+  let dragStartTime = 0;
 
   const TRACK_PULL_THRESHOLD_PX = 72;
   // 120px vertical drag spans the full 0–1 volume range
   const VOLUME_DRAG_PX = 120;
   const BASE_SPIN = 0.005;
+  // Seconds of audio scrubbed per pixel of horizontal drag (72 px ≈ 10 s)
+  const SCRUB_RATE = 0.14;
   // Shared thresholds for both dominance gates
   const DOMINANCE_GATE_RATIO = 1.4;
   const MIN_GESTURE_PX = 12;
@@ -43,7 +48,10 @@ export function initOrbHero(canvas, manager) {
   }
 
   function draw() {
-    spinVelocity += (BASE_SPIN - spinVelocity) * 0.06;
+    // During horizontalGrab the pointer drives spin directly; skip idle lerp so it doesn't fight back
+    if (!pullArmed) {
+      spinVelocity += (BASE_SPIN - spinVelocity) * 0.06;
+    }
     angle += spinVelocity;
 
     const w = canvas.width;
@@ -153,6 +161,8 @@ export function initOrbHero(canvas, manager) {
     pullDy = 0;
     pullArmed   = false;
     volumeArmed = false;
+    wasPlaying  = false;
+    dragStartTime = 0;
     dragStartVolume = manager.getUserVolume ? manager.getUserVolume() : 1.0;
     canvas.setPointerCapture(e.pointerId);
   }
@@ -162,11 +172,15 @@ export function initOrbHero(canvas, manager) {
     pullDx = e.clientX - dragStartX;
     pullDy = e.clientY - dragStartY;
 
-    // Arm horizontal pull mode — only when neither mode is latched yet
+    // Arm horizontal grab mode — pause only once at the moment of arming
     if (!pullArmed && !volumeArmed &&
         Math.abs(pullDx) > Math.abs(pullDy) * DOMINANCE_GATE_RATIO &&
         Math.abs(pullDx) > MIN_GESTURE_PX) {
       pullArmed = true;
+      // Capture playback state at arm time — we resume on release, not immediately
+      wasPlaying = !(manager.audio.paused || !manager.musicEnabled);
+      dragStartTime = manager.audio.currentTime;
+      if (wasPlaying) manager.pause();
     }
     // Arm vertical volume mode — only when neither mode is latched yet
     if (!volumeArmed && !pullArmed &&
@@ -180,23 +194,33 @@ export function initOrbHero(canvas, manager) {
       manager.setUserVolume(dragStartVolume - pullDy / VOLUME_DRAG_PX);
     }
 
-    // Keep spin hinting toward pull direction while dragging horizontally
+    // Horizontal grab: scrub audio position + let pointer drive spin (no idle lerp)
     if (pullArmed) {
-      spinVelocity = BASE_SPIN + (pullDx / TRACK_PULL_THRESHOLD_PX) * 0.02;
+      manager.scrubToPosition(dragStartTime + pullDx * SCRUB_RATE);
+      spinVelocity = (pullDx / TRACK_PULL_THRESHOLD_PX) * 0.03;
     }
   }
 
   function onPointerUp(e) {
-    // Right-to-left (pullDx < 0) = next track; left-to-right (pullDx > 0) = previous track
-    if (pullArmed && Math.abs(pullDx) >= TRACK_PULL_THRESHOLD_PX) {
-      if (pullDx < 0) manager.nextTrack();
-      else manager.prevTrack();
+    const totalMove = Math.max(Math.abs(pullDx), Math.abs(pullDy));
+
+    // Tap: no mode armed and minimal movement → toggle play/pause
+    if (!pullArmed && !volumeArmed && totalMove < MIN_GESTURE_PX) {
+      manager.toggleEnabled();
     }
-    dragging    = false;
-    pullDx      = 0;
-    pullDy      = 0;
-    pullArmed   = false;
-    volumeArmed = false;
+
+    // Horizontal grab: resume playback if it was playing before the grab
+    if (pullArmed && wasPlaying) {
+      manager.play();
+    }
+
+    dragging      = false;
+    pullDx        = 0;
+    pullDy        = 0;
+    pullArmed     = false;
+    volumeArmed   = false;
+    wasPlaying    = false;
+    dragStartTime = 0;
     try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
   }
 
