@@ -1,0 +1,42 @@
+name: "Copilot Setup Steps"
+
+# Run automatically when this file changes to validate it, and allow manual testing.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  # This job MUST be called `copilot-setup-steps` to be picked up by Copilot.
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # This is a vanilla HTML/CSS/JS project with no build step.
+      # We install a lightweight static file server so Copilot can
+      # serve the app and verify changes in-browser during its session.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install static file server
+        run: npm install -g serve
+
+      - name: Verify project structure
+        run: |
+          echo "Project files:"
+          ls -la
+          echo ""
+          echo "JS module tree:"
+          find js -type f -name "*.js" | sort
