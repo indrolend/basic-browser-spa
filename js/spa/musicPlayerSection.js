@@ -74,6 +74,9 @@ export function initMusicPlayerSection() {
         if (e.key === ' ') { e.preventDefault(); manager.toggleEnabled(); }
       });
       updateLabel();
+      // Ensure music is enabled and playing when overlay opens
+      if (!manager.musicEnabled) manager.toggleEnabled();
+      else manager.play();
       if (offChange) { offChange(); offChange = null; }
       offChange = manager.onChange(updateLabel);
     } else if (!orb && orbCleanup) {
