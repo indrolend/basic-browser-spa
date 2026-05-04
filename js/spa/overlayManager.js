@@ -186,6 +186,11 @@
     root.appendChild(overlay);
     root.style.display = 'block';
 
+    // --- FORCE FULLSCREEN FOR MUSIC PLAYER OVERLAY ---
+    if (id === 'musicPlayer') {
+      overlay.classList.add('music-player-overlay');
+    }
+
     // Close when clicking the backdrop (root), not the overlay panel itself
     root.addEventListener('click', onBackdropClick);
     bindOverlayControls(overlay);

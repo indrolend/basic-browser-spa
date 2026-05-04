@@ -35,37 +35,73 @@ export function initOrbHero3D(canvas, manager) {
     shininess: 60,
     specular: 0x222222,
     flatShading: false,
+    transparent: true,
+    opacity: 0.92,
   });
   const sphere = new THREE.Mesh(geometry, material);
   scene.add(sphere);
+
+  // Add wireframe overlay for depth perception
+  const wireMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    wireframe: true,
+    opacity: 0.38,
+    transparent: true,
+    depthTest: true,
+    blending: THREE.AdditiveBlending,
+  });
+  const wireframe = new THREE.Mesh(geometry, wireMaterial);
+  scene.add(wireframe);
 
   // Animation state
   let raf = null;
   let dragging = false;
   let lastX = 0, lastY = 0;
   let rotationY = 0, rotationX = 0;
-  let autoSpin = 0.008; // gentle spin speed
+  // No auto-spin, no camera rotation
   let dragInfluence = { x: 0, y: 0, active: false };
+  let dragStartX = 0, dragStartY = 0;
+  let dragStartVolume = 1.0;
+  let dragDx = 0, dragDy = 0;
+
+  // Elastic center state
+  let centerTarget = { x: 0, y: 0 };
+  let centerPos = { x: 0, y: 0 };
+  let centerVel = { x: 0, y: 0 };
 
   // Pointer controls (simple rotation)
   canvas.addEventListener('pointerdown', (e) => {
     dragging = true;
     lastX = e.clientX;
     lastY = e.clientY;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    dragDx = 0;
+    dragDy = 0;
     dragInfluence.active = true;
     dragInfluence.x = 0;
     dragInfluence.y = 0;
+    dragStartVolume = manager && manager.getUserVolume ? manager.getUserVolume() : 1.0;
     canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener('pointermove', (e) => {
     if (!dragging) return;
     const dx = (e.clientX - lastX) / width;
     const dy = (e.clientY - lastY) / height;
-    rotationY += dx * Math.PI;
-    rotationX += dy * Math.PI;
+    // No camera rotation
     // Store drag direction for surface influence
     dragInfluence.x += dx;
     dragInfluence.y += dy;
+    dragDx = e.clientX - dragStartX;
+    dragDy = e.clientY - dragStartY;
+    // Volume control (vertical drag)
+    if (Math.abs(dragDy) > Math.abs(dragDx) * 1.4 && Math.abs(dragDy) > 8 && manager && manager.setUserVolume) {
+      const VOLUME_DRAG_PX = 120;
+      manager.setUserVolume(dragStartVolume - dragDy / VOLUME_DRAG_PX);
+    }
+    // Set elastic center target (normalized to canvas size)
+    centerTarget.x = dragDx / (width * 0.5);
+    centerTarget.y = dragDy / (height * 0.5);
     lastX = e.clientX;
     lastY = e.clientY;
   });
@@ -73,6 +109,27 @@ export function initOrbHero3D(canvas, manager) {
     dragging = false;
     dragInfluence.active = false;
     canvas.releasePointerCapture(e.pointerId);
+
+    // Controls: horizontal pull-and-release for song change, tap for play/pause
+    const TRACK_PULL_THRESHOLD_PX = 72;
+    const totalMove = Math.max(Math.abs(dragDx), Math.abs(dragDy));
+    let didTrackChange = false;
+    if (Math.abs(dragDx) > Math.abs(dragDy) * 1.4 && Math.abs(dragDx) > TRACK_PULL_THRESHOLD_PX * 0.92) {
+      if (dragDx > 0) {
+        manager && manager.nextTrack && manager.nextTrack();
+      } else {
+        manager && manager.prevTrack && manager.prevTrack();
+      }
+      didTrackChange = true;
+    } else if (totalMove < 12) {
+      manager && manager.toggleEnabled && manager.toggleEnabled();
+    }
+    // On release, set elastic center target back to origin (recoil)
+    centerTarget.x = 0;
+    centerTarget.y = 0;
+    // Reset drag deltas
+    dragDx = 0;
+    dragDy = 0;
   });
   canvas.addEventListener('pointercancel', (e) => {
     dragging = false;
@@ -81,7 +138,20 @@ export function initOrbHero3D(canvas, manager) {
 
   // Animation loop
   function animate() {
-    // Audio reactivity: bulge surface with frequency peaks
+
+    // Elastic center spring physics (simple damped spring)
+    // Parameters: stiffness, damping
+    const k = 0.18; // spring stiffness
+    const d = 0.72; // damping
+    // Spring force toward target
+    const fx = (centerTarget.x - centerPos.x) * k;
+    const fy = (centerTarget.y - centerPos.y) * k;
+    centerVel.x = centerVel.x * d + fx;
+    centerVel.y = centerVel.y * d + fy;
+    centerPos.x += centerVel.x;
+    centerPos.y += centerVel.y;
+
+    // Audio reactivity + elastic squash/stretch (kendama effect)
     if (manager && manager.getAnalyserData) {
       const freq = manager.getAnalyserData();
       const pos = geometry.attributes.position;
@@ -98,6 +168,9 @@ export function initOrbHero3D(canvas, manager) {
             dragPhi = dragInfluence.x * 5.0; // horizontal drag
           }
         }
+        // 2D grid squash/stretch: drag X stretches X, drag Y stretches Y
+        const springX = centerPos.x; // horizontal drag
+        const springY = centerPos.y; // vertical drag
         for (let i = 0; i < pos.count; i++) {
           // Get original vertex
           const ox = orig[i * 3];
@@ -123,18 +196,38 @@ export function initOrbHero3D(canvas, manager) {
             const dragEffect = Math.exp(-angDist * 6.0) * Math.min(1, dragMag * 2.5);
             bulge += dragEffect * 0.33; // drag bulge strength
           }
-          pos.setXYZ(i, ox * bulge, oy * bulge, oz * bulge);
+          // Rubber band effect: strong bulge in drag direction, minimal compression elsewhere
+          // Compute direction of this vertex in XY plane
+          const vLen = Math.sqrt(ox * ox + oy * oy);
+          let dirX = 0, dirY = 0;
+          if (vLen > 0.0001) {
+            dirX = ox / vLen;
+            dirY = oy / vLen;
+          }
+          // Project spring vector onto this vertex direction
+          const dot = dirX * springX + dirY * springY;
+          // Bulge is strong in drag direction, gentle elsewhere
+          let tension = 1.0 + Math.max(0, dot) * 1.5;
+          // Optionally, add a tiny bit of compression on the opposite side
+          if (dot < 0) tension += dot * 0.18;
+          // Clamp to avoid inversion
+          tension = Math.max(0.7, Math.min(1.6, tension));
+          // Final position
+          pos.setXYZ(i,
+            ox * bulge * tension,
+            oy * bulge * tension,
+            oz * bulge * tension
+          );
         }
         pos.needsUpdate = true;
         geometry.computeVertexNormals();
       }
     }
-    // Gentle auto-spin for visibility
-    if (!dragging) {
-      rotationY += autoSpin;
-    }
-    sphere.rotation.y = rotationY;
-    sphere.rotation.x = rotationX;
+    // No auto-spin; keep orb stationary
+    sphere.rotation.y = 0;
+    sphere.rotation.x = 0;
+    wireframe.rotation.y = 0;
+    wireframe.rotation.x = 0;
     renderer.render(scene, camera);
     raf = requestAnimationFrame(animate);
   }
