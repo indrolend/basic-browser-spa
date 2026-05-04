@@ -1,5 +1,5 @@
 import manager from './musicManager.js';
-import { initOrbHero } from './orbHero.js';
+import { initOrbHero3D } from './OrbHero3D.js';
 
 let orbCleanup = null;
 let offChange = null;
@@ -55,7 +55,7 @@ export function initMusicPlayerSection() {
       window.addEventListener('orientationchange', resizeOrbCanvas);
       setTimeout(resizeOrbCanvas, 100);
       try {
-        orbCleanup = initOrbHero(orb, manager);
+        orbCleanup = initOrbHero3D(orb, manager);
       } catch (err) {
         console.warn('[musicPlayer] orb init failed; closing overlay to avoid broken state:', err);
         window.__SPA_Overlay?.close({ restore: false });

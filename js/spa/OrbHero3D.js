@@ -8,8 +8,6 @@ export function initOrbHero3D(canvas, manager) {
   const VOLUME_DRAG_PX = 120;
   const DOMINANCE_GATE_RATIO = 1.35;
   const MIN_GESTURE_PX = 12;
-  const ROT_FRICTION = 0.94;
-  const ROT_RETURN = 0.04;
 
   let raf = null;
   let width = 280;
@@ -26,11 +24,12 @@ export function initOrbHero3D(canvas, manager) {
   let pullArmed = false;
   let volumeArmed = false;
   let dragStartVolume = 1;
+  let pointerX = centerX;
+  let pointerY = centerY;
 
-  let rotX = -0.14;
-  let rotY = 0.12;
-  let rotVX = 0;
-  let rotVY = 0;
+  // Elastic surface state (ported conceptually from the 2D orb).
+  let holdStrength = 0;
+  let tension = 0;
 
   let pulse = 0;
 
@@ -46,6 +45,10 @@ export function initOrbHero3D(canvas, manager) {
       z: Math.sin(theta) * r,
       p: Math.random() * Math.PI * 2,
       bin: i % 128,
+      ix: 0,
+      iy: 0,
+      ivx: 0,
+      ivy: 0,
     };
   });
 
@@ -95,19 +98,22 @@ export function initOrbHero3D(canvas, manager) {
 
     pulse += 0.035 + high * 0.03;
 
-    // Gesture-driven rotation and gentle settle back to center.
-    if (!dragging) {
-      rotVX *= ROT_FRICTION;
-      rotVY *= ROT_FRICTION;
-      rotX += (0 - rotX) * ROT_RETURN;
-      rotY += (0 - rotY) * ROT_RETURN;
-    }
-    rotX += rotVX;
-    rotY += rotVY;
+    // Elastic blend: hold tracks press state, tension tracks pull distance.
+    holdStrength += ((dragging ? 1 : 0) - holdStrength) * 0.12;
+    const dragDist = Math.sqrt(pullDx * pullDx + pullDy * pullDy);
+    const tensionTarget = dragging ? Math.min(1, dragDist / TRACK_PULL_THRESHOLD_PX) : 0;
+    tension += (tensionTarget - tension) * 0.1;
+
+    // Keep a subtle ambient wobble; dragging no longer rotates the sphere.
+    const ambientRotX = Math.sin(pulse * 0.23) * 0.08;
+    const ambientRotY = Math.cos(pulse * 0.19) * 0.1;
 
     const volume = manager.getUserVolume ? manager.getUserVolume() : 1;
     const baseAlpha = manager.musicEnabled === false ? 0.55 : 1;
-    const dynamicRadius = radius * (1 + bass * 0.12 + Math.sin(pulse) * 0.012);
+    const dynamicRadius = radius
+      * (1 + bass * 0.12 + Math.sin(pulse) * 0.012)
+      * (1 - holdStrength * 0.03)
+      * (1 + tension * 0.07);
 
     ctx.clearRect(0, 0, width, height);
 
@@ -118,16 +124,39 @@ export function initOrbHero3D(canvas, manager) {
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, width, height);
 
+    // Solid sphere body: gradient-lit fill so the orb reads as a single mass.
+    const body = ctx.createRadialGradient(
+      centerX - dynamicRadius * 0.28,
+      centerY - dynamicRadius * 0.3,
+      dynamicRadius * 0.12,
+      centerX,
+      centerY,
+      dynamicRadius * 1.06
+    );
+    body.addColorStop(0, `rgba(170,255,214,${0.96 * baseAlpha})`);
+    body.addColorStop(0.22, `rgba(124,244,174,${0.94 * baseAlpha})`);
+    body.addColorStop(0.68, `rgba(78,202,130,${0.98 * baseAlpha})`);
+    body.addColorStop(1, `rgba(32,106,72,${0.995 * baseAlpha})`);
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, dynamicRadius, 0, Math.PI * 2);
+    ctx.fill();
+
     // Project points and sort by depth for proper layering.
     const projected = [];
     const pullNorm = pullArmed ? Math.min(1, Math.abs(pullDx) / TRACK_PULL_THRESHOLD_PX) : 0;
     const stretchX = pullArmed ? (pullDx > 0 ? 1 : -1) : 0;
+    const dragPullNorm = dragging ? Math.min(1, Math.sqrt(pullDx * pullDx + pullDy * pullDy) / TRACK_PULL_THRESHOLD_PX) : 0;
+    const dragPullLen = Math.sqrt(pullDx * pullDx + pullDy * pullDy) || 1;
+    const dragPullDirX = pullDx / dragPullLen;
+    const dragPullDirY = pullDy / dragPullLen;
+    const interactRadius = dynamicRadius * 0.55;
 
     for (let i = 0; i < points.length; i++) {
       const p = points[i];
       const f = freq ? (freq[p.bin % freq.length] / 255) : 0;
       const wobble = 1 + f * 0.24 + Math.sin(pulse + p.p) * high * 0.1;
-      const rotated = rotatePoint(p, rotX + mid * 0.1, rotY + mid * 0.14);
+      const rotated = rotatePoint(p, ambientRotX + mid * 0.1, ambientRotY + mid * 0.14);
 
       // Subtle screen-space stretch when scrubbing horizontally.
       let sx = rotated.x;
@@ -136,18 +165,51 @@ export function initOrbHero3D(canvas, manager) {
       }
 
       const depth = rotated.z;
+      if (depth <= 0.03) {
+        // Only draw the visible hemisphere so vertices read as surface points,
+        // not particles floating inside the orb.
+        continue;
+      }
       const perspective = 1 / (1.65 - depth * 0.85);
-      const px = centerX + sx * dynamicRadius * wobble * perspective;
-      const py = centerY + rotated.y * dynamicRadius * wobble * perspective;
+      let px = centerX + sx * dynamicRadius * wobble * perspective;
+      let py = centerY + rotated.y * dynamicRadius * wobble * perspective;
       const dot = (0.6 + depth * 0.4) * perspective;
+
+      // Vertex interaction: each point has independent elastic offsets.
+      const toPointerX = pointerX - px;
+      const toPointerY = pointerY - py;
+      const pointerDist = Math.sqrt(toPointerX * toPointerX + toPointerY * toPointerY);
+      const influence = dragging ? Math.max(0, 1 - pointerDist / interactRadius) : 0;
+      const softenedInfluence = influence * influence;
+
+      let targetIX = 0;
+      let targetIY = 0;
+      if (softenedInfluence > 0) {
+        const clingScale = 0.12 + holdStrength * 0.18;
+        const pullScale = dynamicRadius * dragPullNorm * 0.2;
+        targetIX = softenedInfluence * (toPointerX * clingScale + dragPullDirX * pullScale);
+        targetIY = softenedInfluence * (toPointerY * clingScale + dragPullDirY * pullScale);
+      }
+
+      const springK = 0.22;
+      const springD = 0.8;
+      p.ivx = p.ivx * springD + (targetIX - p.ix) * springK;
+      p.ivy = p.ivy * springD + (targetIY - p.iy) * springK;
+      p.ix += p.ivx;
+      p.iy += p.ivy;
+
+      px += p.ix;
+      py += p.iy;
+
+      const interactionMag = Math.min(1, Math.sqrt(p.ix * p.ix + p.iy * p.iy) / Math.max(1, dynamicRadius * 0.28));
 
       projected.push({
         px,
         py,
         depth,
         f,
-        size: Math.max(0.7, (1.2 + f * 2.6) * perspective),
-        alpha: Math.max(0.08, dot * (0.35 + volume * 0.65) * baseAlpha),
+        size: Math.max(0.45, (0.45 + f * 1.2 + interactionMag * 1.35) * perspective),
+        alpha: Math.max(0.04, dot * (0.1 + volume * 0.22 + interactionMag * 0.18) * baseAlpha),
       });
     }
 
@@ -177,6 +239,9 @@ export function initOrbHero3D(canvas, manager) {
     dragging = true;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
+    const rect = canvas.getBoundingClientRect();
+    pointerX = e.clientX - rect.left;
+    pointerY = e.clientY - rect.top;
     pullDx = 0;
     pullDy = 0;
     pullArmed = false;
@@ -192,12 +257,9 @@ export function initOrbHero3D(canvas, manager) {
     pullDx = dx;
     pullDy = dy;
 
-    const ndx = dx / Math.max(1, width);
-    const ndy = dy / Math.max(1, height);
-
-    // Manual sphere rotation.
-    rotVY = ndx * Math.PI * 0.7;
-    rotVX = ndy * Math.PI * 0.7;
+    const rect = canvas.getBoundingClientRect();
+    pointerX = e.clientX - rect.left;
+    pointerY = e.clientY - rect.top;
 
     if (!pullArmed && !volumeArmed && Math.abs(dx) > Math.abs(dy) * DOMINANCE_GATE_RATIO && Math.abs(dx) > MIN_GESTURE_PX) {
       pullArmed = true;
