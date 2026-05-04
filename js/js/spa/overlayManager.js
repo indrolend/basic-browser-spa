@@ -68,12 +68,6 @@
     }
   };
 
-  function register(id, builder) {
-    if (typeof id !== 'string' || !id) return;
-    if (typeof builder !== 'function') return;
-    overlayBuilders[id] = builder;
-  }
-
   function getRoot() {
     if (!overlayRoot) {
       overlayRoot = document.getElementById('spa-overlay-root');
@@ -186,11 +180,6 @@
     root.appendChild(overlay);
     root.style.display = 'block';
 
-    // --- FORCE FULLSCREEN FOR MUSIC PLAYER OVERLAY ---
-    if (id === 'musicPlayer') {
-      overlay.classList.add('music-player-overlay');
-    }
-
     // Close when clicking the backdrop (root), not the overlay panel itself
     root.addEventListener('click', onBackdropClick);
     bindOverlayControls(overlay);
@@ -262,7 +251,6 @@
   }
 
   window.__SPA_Overlay = {
-    register: register,
     open: open,
     openInline: openInline,
     close: close,

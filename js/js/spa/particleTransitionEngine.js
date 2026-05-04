@@ -95,7 +95,7 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
     (Math.max(fromRegion.width, toRegion.width) * Math.max(fromRegion.height, toRegion.height)) /
     (PARTICLE_SIZE * PARTICLE_SIZE)
   );
-  const timingProfile = (options.timingProfile === 'chained' || options.timingProfile === 'releaseLikeChained') ? 'chained' : 'default';
+  const timingProfile = options.timingProfile === 'chained' ? 'chained' : 'default';
   const EXPLODE_DURATION = timingProfile === 'chained' ?  80 : 120;
   const REFORM_DURATION  = timingProfile === 'chained' ? 160 : 230;
   const TOTAL_DURATION   = EXPLODE_DURATION + REFORM_DURATION;
