@@ -27,7 +27,7 @@ export function initOrbHero3D(canvas, manager) {
   scene.add(directional);
 
   // Sphere geometry & material
-  const geometry = new THREE.SphereGeometry(1, 64, 64);
+  const geometry = new THREE.SphereGeometry(0.7, 64, 64);
   // Store original vertex positions for deformation
   const basePositions = geometry.attributes.position.array.slice();
   const material = new THREE.MeshPhongMaterial({
@@ -62,7 +62,11 @@ export function initOrbHero3D(canvas, manager) {
   let dragInfluence = { x: 0, y: 0, active: false };
   let dragStartX = 0, dragStartY = 0;
   let dragStartVolume = 1.0;
+
   let dragDx = 0, dragDy = 0;
+
+  // Surface tension spring state
+  let surfacePull = { value: 0, velocity: 0, target: 0 };
 
   // Elastic center state
   let centerTarget = { x: 0, y: 0 };
@@ -102,6 +106,9 @@ export function initOrbHero3D(canvas, manager) {
     // Set elastic center target (normalized to canvas size)
     centerTarget.x = dragDx / (width * 0.5);
     centerTarget.y = dragDy / (height * 0.5);
+    // Set surface tension target to current drag length
+    const dragLen = Math.sqrt(dragDx * dragDx + dragDy * dragDy);
+    surfacePull.target = Math.min(1, dragLen / 72);
     lastX = e.clientX;
     lastY = e.clientY;
   });
@@ -127,6 +134,8 @@ export function initOrbHero3D(canvas, manager) {
     // On release, set elastic center target back to origin (recoil)
     centerTarget.x = 0;
     centerTarget.y = 0;
+    // On release, set surface tension target to zero (snap back)
+    surfacePull.target = 0;
     // Reset drag deltas
     dragDx = 0;
     dragDy = 0;
@@ -137,7 +146,52 @@ export function initOrbHero3D(canvas, manager) {
   });
 
   // Animation loop
+
+  // --- BPM/Audio bounce state ---
+  // You can set this to a fixed value or expose from manager
+  let bpm = 110; // fallback BPM if not available
+  let bouncePhase = 0;
+
+  function getAudioLoudness() {
+    if (manager && manager.getWaveformData) {
+      const wave = manager.getWaveformData();
+      if (wave) {
+        // Compute RMS (root mean square) loudness
+        let sum = 0;
+        for (let i = 0; i < wave.length; ++i) {
+          const v = (wave[i] - 128) / 128;
+          sum += v * v;
+        }
+        return Math.sqrt(sum / wave.length);
+      }
+    }
+    return 0.1;
+  }
+
   function animate() {
+
+    // --- Orb bounce based on BPM and loudness ---
+    // Use BPM if available, otherwise fallback
+    let songBpm = bpm;
+    if (manager && typeof manager.getBpm === 'function') {
+      songBpm = manager.getBpm() || bpm;
+    }
+    // Advance phase by BPM
+    bouncePhase += (songBpm / 60) * 0.04; // 0.04 ~ 60fps
+    if (bouncePhase > Math.PI * 2) bouncePhase -= Math.PI * 2;
+    // Get loudness (RMS)
+    const loudness = getAudioLoudness();
+    // Bounce amplitude (tweakable)
+    const bounceAmp = 0.13 + loudness * 0.22;
+    // Sine bounce (vertical)
+    const bounceY = Math.abs(Math.sin(bouncePhase)) * bounceAmp;
+    // Optionally, add a little horizontal sway
+    const bounceX = Math.sin(bouncePhase * 0.5) * bounceAmp * 0.18;
+    // Add bounce to center target
+    const userTargetX = centerTarget.x;
+    const userTargetY = centerTarget.y;
+    centerTarget.x = userTargetX + bounceX;
+    centerTarget.y = userTargetY + bounceY;
 
     // Elastic center spring physics (simple damped spring)
     // Parameters: stiffness, damping
@@ -150,6 +204,17 @@ export function initOrbHero3D(canvas, manager) {
     centerVel.y = centerVel.y * d + fy;
     centerPos.x += centerVel.x;
     centerPos.y += centerVel.y;
+
+    // Restore user drag target for next frame
+    centerTarget.x = userTargetX;
+    centerTarget.y = userTargetY;
+
+    // Surface tension spring (same params for simplicity)
+    const sk = 0.18;
+    const sd = 0.72;
+    const sForce = (surfacePull.target - surfacePull.value) * sk;
+    surfacePull.velocity = surfacePull.velocity * sd + sForce;
+    surfacePull.value += surfacePull.velocity;
 
     // Audio reactivity + elastic squash/stretch (kendama effect)
     if (manager && manager.getAnalyserData) {
@@ -171,6 +236,15 @@ export function initOrbHero3D(canvas, manager) {
         // 2D grid squash/stretch: drag X stretches X, drag Y stretches Y
         const springX = centerPos.x; // horizontal drag
         const springY = centerPos.y; // vertical drag
+        // Compute drag direction and amount for additive displacement
+        let pullDirX = 0, pullDirY = 0, pullAmount = 0;
+        if (dragInfluence.active && (Math.abs(dragDx) > 2 || Math.abs(dragDy) > 2)) {
+          const dragLen = Math.sqrt(dragDx * dragDx + dragDy * dragDy) || 1;
+          pullDirX = dragDx / dragLen;
+          pullDirY = -dragDy / dragLen;
+        }
+        // Use spring-driven pullAmount for tension
+        pullAmount = surfacePull.value * 0.35;
         for (let i = 0; i < pos.count; i++) {
           // Get original vertex
           const ox = orig[i * 3];
@@ -186,37 +260,37 @@ export function initOrbHero3D(canvas, manager) {
           const f = freq[bin] / 255;
           // Bulge outward based on frequency (peaks try to escape)
           let bulge = 1.0 + f * 0.22;
-          // If dragging, add extra bulge in drag direction
+          // If dragging, add extra bulge in drag direction (localized)
           if (dragInfluence.active && dragMag > 0.001) {
-            // Compute angular distance from this vertex to drag direction
             const dTheta = theta - dragTheta;
             const dPhi = phi - dragPhi;
-            // Use a Gaussian-like falloff for influence
             const angDist = Math.sqrt(dTheta * dTheta + dPhi * dPhi);
-            const dragEffect = Math.exp(-angDist * 6.0) * Math.min(1, dragMag * 2.5);
-            bulge += dragEffect * 0.33; // drag bulge strength
+            const dragEffect = Math.exp(-angDist * 12.0) * Math.min(1, dragMag * 2.5);
+            bulge += dragEffect * 0.33;
           }
-          // Rubber band effect: strong bulge in drag direction, minimal compression elsewhere
-          // Compute direction of this vertex in XY plane
-          const vLen = Math.sqrt(ox * ox + oy * oy);
-          let dirX = 0, dirY = 0;
-          if (vLen > 0.0001) {
-            dirX = ox / vLen;
-            dirY = oy / vLen;
+          // Radial (audio) component
+          const radialX = ox * bulge;
+          const radialY = oy * bulge;
+          const radialZ = oz * bulge;
+          // Directional (drag) component
+          // Local influence: only vertices in drag direction get pulled
+          let localInfluence = 0;
+          if (dragInfluence.active && (Math.abs(dragDx) > 2 || Math.abs(dragDy) > 2)) {
+            // Project vertex direction onto drag direction
+            const vLen = Math.sqrt(ox * ox + oy * oy);
+            let dirX = 0, dirY = 0;
+            if (vLen > 0.0001) {
+              dirX = ox / vLen;
+              dirY = oy / vLen;
+            }
+            const dot = dirX * pullDirX + dirY * pullDirY;
+            if (dot > 0.15) localInfluence = dot;
           }
-          // Project spring vector onto this vertex direction
-          const dot = dirX * springX + dirY * springY;
-          // Bulge is strong in drag direction, gentle elsewhere
-          let tension = 1.0 + Math.max(0, dot) * 1.5;
-          // Optionally, add a tiny bit of compression on the opposite side
-          if (dot < 0) tension += dot * 0.18;
-          // Clamp to avoid inversion
-          tension = Math.max(0.7, Math.min(1.6, tension));
-          // Final position
+          // Final position: radial + directional pull
           pos.setXYZ(i,
-            ox * bulge * tension,
-            oy * bulge * tension,
-            oz * bulge * tension
+            radialX + pullDirX * pullAmount * localInfluence,
+            radialY + pullDirY * pullAmount * localInfluence,
+            radialZ
           );
         }
         pos.needsUpdate = true;
