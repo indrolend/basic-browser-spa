@@ -1,5 +1,5 @@
 import manager from './musicManager.js';
-import { initOrbHero3D } from './OrbHero3D.js';
+import { initOrbHero } from './orbHero.js';
 
 let orbCleanup = null;
 let offChange = null;
@@ -37,22 +37,13 @@ export function initMusicPlayerSection() {
   }
 
   const observer = new MutationObserver(() => {
-    // Force fullscreen overlay for music player
-    const overlays = document.querySelectorAll('.spa-overlay');
-    overlays.forEach(overlay => {
-      if (!overlay.classList.contains('music-player-overlay')) {
-        overlay.classList.add('music-player-overlay');
-      }
-    });
     const orb = document.getElementById('music-orb');
     if (orb && !orb.dataset.bound) {
       orb.dataset.bound = '1';
       if (orbCleanup) orbCleanup.destroy();
-      // Make orb canvas fill container responsively
       function resizeOrbCanvas() {
         const container = orb.parentElement;
         if (!container) return;
-        // Use the smaller of width/height for a square orb
         const size = Math.min(container.clientWidth, container.clientHeight);
         orb.width = size;
         orb.height = size;
@@ -62,10 +53,14 @@ export function initMusicPlayerSection() {
       resizeOrbCanvas();
       window.addEventListener('resize', resizeOrbCanvas);
       window.addEventListener('orientationchange', resizeOrbCanvas);
-      // Also resize after overlay open (in case of late layout)
       setTimeout(resizeOrbCanvas, 100);
-      orbCleanup = initOrbHero3D(orb, manager);
-      // Clean up resize listener on destroy
+      try {
+        orbCleanup = initOrbHero(orb, manager);
+      } catch (err) {
+        console.warn('[musicPlayer] orb init failed:', err);
+        return;
+      }
+      // Wrap destroy to also remove resize listeners
       const oldDestroy = orbCleanup.destroy;
       orbCleanup.destroy = function() {
         window.removeEventListener('resize', resizeOrbCanvas);

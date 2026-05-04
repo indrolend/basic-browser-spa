@@ -44,20 +44,6 @@
   border-radius: 50%;
   box-shadow: 0 0 0 0 #0000;
 }
-#spa-overlay-root {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  max-width: 100vw;
-  max-height: 100svh;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(17,17,17,0.98);
-  pointer-events: auto;
-}
 /* Homedev SPA - Minimal, dark theme */
 :root {
   --bg: #111;
@@ -630,13 +616,6 @@ body {
   top: 0.75rem;
   left: 0.75rem;
   z-index: 21;
-}
-
-.music-orb {
-  width: min(72vw, 300px);
-  height: min(72vw, 300px);
-  display: block;
-  margin: 0.6rem auto 0.5rem;
 }
 
 .music-track-label {
