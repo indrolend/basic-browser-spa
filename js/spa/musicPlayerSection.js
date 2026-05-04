@@ -1,5 +1,5 @@
 import manager from './musicManager.js';
-import { initOrbHero } from './orbHero.js';
+import { initOrbHero3D } from './OrbHero3D.js';
 
 let orbCleanup = null;
 let offChange = null;
@@ -39,7 +39,7 @@ export function initMusicPlayerSection() {
     if (orb && !orb.dataset.bound) {
       orb.dataset.bound = '1';
       if (orbCleanup) orbCleanup.destroy();
-      orbCleanup = initOrbHero(orb, manager);
+      orbCleanup = initOrbHero3D(orb, manager);
       orb.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowRight') manager.nextTrack();
         if (e.key === 'ArrowLeft') manager.prevTrack();

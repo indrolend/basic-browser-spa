@@ -129,6 +129,7 @@ class MusicManagerImpl {
   _calculateGain(trackGain) { return (trackGain ?? 1) * this.userVolume; }
 
   setUserVolume(v) {
+    this.ensureAudioGraph();
     this.userVolume = Math.max(0, Math.min(1, v));
     this.writeStorage(STORAGE_KEY_VOLUME, String(this.userVolume));
     const trackGain = TRACKS[this.trackIndex]?.gain ?? 1;

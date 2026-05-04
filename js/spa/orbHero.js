@@ -16,6 +16,7 @@ export function initOrbHero(canvas, manager) {
   // Playback state captured when horizontalGrab arms; restored on release
   let wasPlaying = false;
   let dragStartTime = 0;
+  let orbMomentum = 1; // Shared momentum for visual/audio slowdown
 
   // Ferrofluid hold/stretch/release state — all animated via lerp, no per-frame allocations
   let holdStrength   = 0;   // 0→1: how "grabbed" the orb currently feels
@@ -54,11 +55,16 @@ export function initOrbHero(canvas, manager) {
   }
 
   function draw() {
-    // While the orb is grabbed, freeze idle spin; on release the lerp eases it back in naturally
-    if (!dragging) {
-      spinVelocity += (BASE_SPIN - spinVelocity) * 0.06;
+
+    // Solid orb: no idle spin when untouched
+    if (dragging) {
+      // During drag, allow spinVelocity to be set by interaction (if needed)
+      angle += spinVelocity * orbMomentum;
+    } else {
+      // When idle, keep perfectly still
+      spinVelocity = 0;
+      // angle does not change
     }
-    angle += spinVelocity;
 
     // Lerp holdStrength and tension each frame — drives blob scale and particle attraction
     holdStrength += ((dragging ? 1 : 0) - holdStrength) * 0.12;
@@ -105,11 +111,22 @@ export function initOrbHero(canvas, manager) {
     const pressScale = (dragging && !isPulling) ? 0.93 : 1.0;
 
     // Bass expands the whole blob; hold compresses it slightly; tension stretches it
-    const blobScale = pressScale * (1.0 + bass * 0.22) * (1 + tension * 0.10) * (1 - holdStrength * 0.06);
+    // Reduce global blobScale multipliers for more cohesive feel
+    const blobScale = pressScale * (1.0 + bass * 0.22) * (1 + tension * 0.04) * (1 - holdStrength * 0.025);
 
-    // Subtle audio slowdown while held — skip when scrubbing (audio already paused by pullArmed)
-    if (!pullArmed && manager.audio) {
-      manager.audio.playbackRate = 1 - holdStrength * 0.15;
+    // --- Audio slowdown and freeze logic ---
+    let targetPlaybackRate = orbMomentum;
+    if (pullArmed) {
+      targetPlaybackRate = 1 - holdStrength * 0.15 - pullNorm * 0.45;
+    }
+    targetPlaybackRate = Math.max(0.35, Math.min(1.15, targetPlaybackRate));
+    if (manager.audio && manager.musicEnabled) {
+      manager.audio.playbackRate = targetPlaybackRate;
+    }
+
+    // Only allow hard freeze/pause at full pull
+    if (pullArmed && pullNorm > 0.92 && manager.audio && !manager.audio.paused) {
+      manager.audio.pause();
     }
 
     ctx.save();
@@ -117,6 +134,12 @@ export function initOrbHero(canvas, manager) {
     // No ctx.rotate — rotation baked into pa so deformations apply in canvas/screen space
 
     // ── Unified blob — audio + pointer state deform the same particle field ──
+    // --- Cohesive blob deformation ---
+    // Compute pointer vector from orb center
+    const tx = pointerX - cx;
+    const ty = pointerY - cy;
+    const pointerAngle = Math.atan2(ty, tx);
+
     for (let i = 0; i < N; i++) {
       const p   = pts[i];
       const amp = freq ? freq[p.bin] / 255 : 0;
@@ -140,6 +163,21 @@ export function initOrbHero(canvas, manager) {
       let px = Math.cos(pa) * r;
       let py = Math.sin(pa) * r;
 
+      // --- Local angular surface deformation (cling) ---
+      if (holdStrength > 0) {
+        const particleAngle = Math.atan2(py, px);
+        const angularDiff = Math.atan2(
+          Math.sin(particleAngle - pointerAngle),
+          Math.cos(particleAngle - pointerAngle)
+        );
+        const localInfluence = Math.max(0, 1 - Math.abs(angularDiff) / 1.15);
+        const cling = localInfluence * localInfluence * holdStrength;
+        const pointerDist = Math.sqrt(tx * tx + ty * ty);
+        const surfacePull = Math.min(baseR * 0.16, pointerDist * 0.10);
+        px += Math.cos(pointerAngle) * surfacePull * cling;
+        py += Math.sin(pointerAngle) * surfacePull * cling;
+      }
+
       // ── Pointer deformation — stretch blob in pull direction ──
       if (isPulling) {
         // Asymmetric X stretch: pull-side particles expand, opposite side compresses
@@ -151,16 +189,6 @@ export function initOrbHero(canvas, manager) {
         if (pullNorm > 0.78 && stretchDir * px > 0) {
           px += stretchDir * ((pullNorm - 0.78) / 0.22) * baseR * 0.18;
         }
-      }
-
-      // Pointer attraction — only nearby particles cling to the held position (local ferrofluid dent)
-      if (holdStrength > 0) {
-        const dpx = (pointerX - cx) - px;
-        const dpy = (pointerY - cy) - py;
-        const dist2   = dpx * dpx + dpy * dpy;
-        const falloff = 1.0 / (1.0 + dist2 / (baseR * baseR));  // 1 at pointer, fades over ~one orb radius
-        px += dpx * holdStrength * falloff * 0.20;
-        py += dpy * holdStrength * falloff * 0.20;
       }
 
       // Dot radius: amp + high shimmer; shrink when paused
@@ -187,6 +215,7 @@ export function initOrbHero(canvas, manager) {
   }
 
   function onPointerDown(e) {
+    manager.unlock && manager.unlock();
     trackPointer(e);
     dragging = true;
     spinVelocity = 0;  // freeze the orb the moment it's grabbed
@@ -202,13 +231,15 @@ export function initOrbHero(canvas, manager) {
     canvas.setPointerCapture(e.pointerId);
   }
 
+  // Throttle scrubbing to avoid frame drops
+  let lastScrubTime = 0;
   function onPointerMove(e) {
     if (!dragging) return;
     trackPointer(e);
     pullDx = e.clientX - dragStartX;
     pullDy = e.clientY - dragStartY;
 
-    // Arm horizontal grab mode — pause only once at the moment of arming
+    // Arm horizontal grab mode — only once at the moment of arming
     if (!pullArmed && !volumeArmed &&
         Math.abs(pullDx) > Math.abs(pullDy) * DOMINANCE_GATE_RATIO &&
         Math.abs(pullDx) > MIN_GESTURE_PX) {
@@ -216,7 +247,7 @@ export function initOrbHero(canvas, manager) {
       // Capture playback state at arm time — we resume on release, not immediately
       wasPlaying = !(manager.audio.paused || !manager.musicEnabled);
       dragStartTime = manager.audio.currentTime;
-      if (wasPlaying) manager.pause();
+      // Do NOT pause here; only allow freeze at full pull
     }
     // Arm vertical volume mode — only when neither mode is latched yet
     if (!volumeArmed && !pullArmed &&
@@ -230,10 +261,29 @@ export function initOrbHero(canvas, manager) {
       manager.setUserVolume(dragStartVolume - pullDy / VOLUME_DRAG_PX);
     }
 
-    // Horizontal grab: scrub audio position; spin stays frozen during drag
-    if (pullArmed) {
-      manager.scrubToPosition(dragStartTime + pullDx * SCRUB_RATE);
+    // Only allow scrubbing at full pull
+    if (pullArmed && Math.abs(pullDx) > TRACK_PULL_THRESHOLD_PX * 0.92) {
+      const now = performance.now();
+      if (now - lastScrubTime > 32) { // ~30fps throttle
+        manager.scrubToPosition(dragStartTime + pullDx * SCRUB_RATE);
+        lastScrubTime = now;
+      }
     }
+  }
+
+  function resetGestureState(resumePlayback = true) {
+    if (pullArmed && wasPlaying && resumePlayback) {
+      manager.play();
+    }
+    if (manager.audio) manager.audio.playbackRate = 1;
+    dragging      = false;
+    pullDx        = 0;
+    pullDy        = 0;
+    pullArmed     = false;
+    volumeArmed   = false;
+    wasPlaying    = false;
+    dragStartTime = 0;
+    try { canvas.releasePointerCapture && canvas.releasePointerCapture(); } catch (_) {}
   }
 
   function onPointerUp(e) {
@@ -244,26 +294,27 @@ export function initOrbHero(canvas, manager) {
       manager.toggleEnabled();
     }
 
-    // Horizontal grab: resume playback if it was playing before the grab
-    if (pullArmed && wasPlaying) {
-      manager.play();
+    // Full horizontal pull and release: change song
+    const isFullPull = pullArmed && Math.abs(pullDx) > TRACK_PULL_THRESHOLD_PX * 0.92;
+    if (isFullPull) {
+      if (pullDx > 0) {
+        manager.nextTrack && manager.nextTrack();
+      } else {
+        manager.prevTrack && manager.prevTrack();
+      }
+      // Always resume playback and reset playbackRate after track change
+      if (manager.audio) manager.audio.playbackRate = 1;
+      manager.play && manager.play();
     }
 
-    // Restore normal playback rate (in case hold-slowdown was active)
-    if (manager.audio) manager.audio.playbackRate = 1;
+    // Snapback: do not add spin impulse, just reset spinVelocity to 0 for stillness
+    spinVelocity = 0;
 
-    // Inject a snap impulse from horizontal drag velocity — gives satisfying release feel
-    const releaseImpulse = pullDx / TRACK_PULL_THRESHOLD_PX;
-    spinVelocity += releaseImpulse * 0.05;
+    resetGestureState(true);
+  }
 
-    dragging      = false;
-    pullDx        = 0;
-    pullDy        = 0;
-    pullArmed     = false;
-    volumeArmed   = false;
-    wasPlaying    = false;
-    dragStartTime = 0;
-    try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+  function onPointerCancel(e) {
+    resetGestureState(true);
   }
 
   resize();
@@ -271,6 +322,7 @@ export function initOrbHero(canvas, manager) {
   canvas.addEventListener('pointerdown', onPointerDown);
   canvas.addEventListener('pointermove', onPointerMove);
   canvas.addEventListener('pointerup',   onPointerUp);
+  canvas.addEventListener('pointercancel', onPointerCancel);
   window.addEventListener('resize',      resize);
 
   return {
@@ -279,7 +331,9 @@ export function initOrbHero(canvas, manager) {
       canvas.removeEventListener('pointerdown', onPointerDown);
       canvas.removeEventListener('pointermove', onPointerMove);
       canvas.removeEventListener('pointerup',   onPointerUp);
+      canvas.removeEventListener('pointercancel', onPointerCancel);
       window.removeEventListener('resize',      resize);
+      resetGestureState(true);
     }
   };
 }
