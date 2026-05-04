@@ -1,13 +1,21 @@
-// Lightweight 3D orb rendered on 2D canvas (no external dependencies).
+// Lightweight orb rendered on 2D canvas (no external dependencies).
+// Surface vertices spring toward the pointer for a solid deformable feel.
 export function initOrbHero3D(canvas, manager) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return { destroy() {} };
 
-  const POINT_COUNT = 420;
+  // Gesture thresholds
   const TRACK_PULL_THRESHOLD_PX = 72;
   const VOLUME_DRAG_PX = 120;
   const DOMINANCE_GATE_RATIO = 1.35;
   const MIN_GESTURE_PX = 12;
+
+  // Surface mesh — vertices evenly spaced around the orb perimeter
+  const VERT_COUNT = 72;
+  const SPRING_K = 0.18;
+  const SPRING_DAMP = 0.78;
+  // Fraction of dynamic radius within which a vertex responds to the pointer
+  const INFLUENCE_RADIUS_RATIO = 0.72;
 
   let raf = null;
   let width = 280;
@@ -27,30 +35,15 @@ export function initOrbHero3D(canvas, manager) {
   let pointerX = centerX;
   let pointerY = centerY;
 
-  // Elastic surface state (ported conceptually from the 2D orb).
-  let holdStrength = 0;
-  let tension = 0;
-
   let pulse = 0;
 
-  // Build an even point cloud on a sphere using a Fibonacci spiral.
-  const points = Array.from({ length: POINT_COUNT }, (_, i) => {
-    const t = i + 0.5;
-    const y = 1 - (t / POINT_COUNT) * 2;
-    const r = Math.sqrt(Math.max(0, 1 - y * y));
-    const theta = Math.PI * (3 - Math.sqrt(5)) * i;
-    return {
-      x: Math.cos(theta) * r,
-      y,
-      z: Math.sin(theta) * r,
-      p: Math.random() * Math.PI * 2,
-      bin: i % 128,
-      ix: 0,
-      iy: 0,
-      ivx: 0,
-      ivy: 0,
-    };
-  });
+  const verts = Array.from({ length: VERT_COUNT }, (_, i) => ({
+    angle: (i / VERT_COUNT) * Math.PI * 2,
+    ix: 0,
+    iy: 0,
+    ivx: 0,
+    ivy: 0,
+  }));
 
   function resize() {
     const size = Math.max(220, Math.min(canvas.clientWidth || 280, canvas.clientHeight || 280));
@@ -63,23 +56,6 @@ export function initOrbHero3D(canvas, manager) {
     radius = width * 0.34;
   }
 
-  function rotatePoint(p, ax, ay) {
-    const cosX = Math.cos(ax);
-    const sinX = Math.sin(ax);
-    const cosY = Math.cos(ay);
-    const sinY = Math.sin(ay);
-
-    // Rotate around X
-    const y1 = p.y * cosX - p.z * sinX;
-    const z1 = p.y * sinX + p.z * cosX;
-
-    // Rotate around Y
-    const x2 = p.x * cosY + z1 * sinY;
-    const z2 = -p.x * sinY + z1 * cosY;
-
-    return { x: x2, y: y1, z: z2 };
-  }
-
   function averageRange(data, start, end) {
     if (!data || !data.length) return 0;
     const s = Math.max(0, start);
@@ -90,146 +66,105 @@ export function initOrbHero3D(canvas, manager) {
     return (sum / (e - s)) / 255;
   }
 
+  // Advance each surface vertex spring toward its target offset.
+  function updateVerts(dynRadius) {
+    const influenceRadius = dynRadius * INFLUENCE_RADIUS_RATIO;
+    const dragLen = Math.sqrt(pullDx * pullDx + pullDy * pullDy) || 1;
+    const dragDirX = pullDx / dragLen;
+    const dragDirY = pullDy / dragLen;
+    const dragNorm = dragging
+      ? Math.min(1, Math.sqrt(pullDx * pullDx + pullDy * pullDy) / TRACK_PULL_THRESHOLD_PX)
+      : 0;
+
+    for (let i = 0; i < VERT_COUNT; i++) {
+      const v = verts[i];
+      const baseX = centerX + Math.cos(v.angle) * dynRadius;
+      const baseY = centerY + Math.sin(v.angle) * dynRadius;
+      const dx = pointerX - baseX;
+      const dy = pointerY - baseY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const influence = dragging ? Math.max(0, 1 - dist / influenceRadius) ** 2 : 0;
+
+      let targetIX = 0;
+      let targetIY = 0;
+      if (influence > 0) {
+        // Vertex clings toward pointer and is pushed in the drag direction.
+        targetIX = influence * (dx * 0.14 + dragDirX * dynRadius * dragNorm * 0.2);
+        targetIY = influence * (dy * 0.14 + dragDirY * dynRadius * dragNorm * 0.2);
+      }
+
+      v.ivx = v.ivx * SPRING_DAMP + (targetIX - v.ix) * SPRING_K;
+      v.ivy = v.ivy * SPRING_DAMP + (targetIY - v.iy) * SPRING_K;
+      v.ix += v.ivx;
+      v.iy += v.ivy;
+    }
+  }
+
+  // Smooth closed path through the deformed surface vertices (midpoint bezier).
+  function buildSurfacePath(dynRadius) {
+    ctx.beginPath();
+    for (let i = 0; i < VERT_COUNT; i++) {
+      const v = verts[i];
+      const vn = verts[(i + 1) % VERT_COUNT];
+      const x = centerX + Math.cos(v.angle) * dynRadius + v.ix;
+      const y = centerY + Math.sin(v.angle) * dynRadius + v.iy;
+      const nx = centerX + Math.cos(vn.angle) * dynRadius + vn.ix;
+      const ny = centerY + Math.sin(vn.angle) * dynRadius + vn.iy;
+      const mx = (x + nx) * 0.5;
+      const my = (y + ny) * 0.5;
+      if (i === 0) ctx.moveTo(mx, my);
+      ctx.quadraticCurveTo(x, y, mx, my);
+    }
+    ctx.closePath();
+  }
+
+  function drawGlow(dynRadius, baseAlpha) {
+    const glow = ctx.createRadialGradient(
+      centerX, centerY, dynRadius * 0.4,
+      centerX, centerY, dynRadius * 1.3
+    );
+    glow.addColorStop(0, `rgba(94,232,125,${(0.18 * baseAlpha).toFixed(3)})`);
+    glow.addColorStop(1, 'rgba(94,232,125,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  function drawSphere(dynRadius, baseAlpha) {
+    buildSurfacePath(dynRadius);
+
+    // Gradient lit from upper-left so the orb reads as a solid mass.
+    const body = ctx.createRadialGradient(
+      centerX - dynRadius * 0.28, centerY - dynRadius * 0.3, dynRadius * 0.1,
+      centerX, centerY, dynRadius * 1.05
+    );
+    body.addColorStop(0,    `rgba(190,255,220,${baseAlpha.toFixed(3)})`);
+    body.addColorStop(0.25, `rgba(124,244,174,${baseAlpha.toFixed(3)})`);
+    body.addColorStop(0.65, `rgba(68,192,122,${baseAlpha.toFixed(3)})`);
+    body.addColorStop(1,    `rgba(26,90,60,${baseAlpha.toFixed(3)})`);
+    ctx.fillStyle = body;
+    ctx.fill();
+
+    // Rim highlight traces the deformed outline.
+    ctx.strokeStyle = `rgba(160,255,200,${(0.28 * baseAlpha).toFixed(3)})`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
   function draw() {
     const freq = manager.getAnalyserData ? manager.getAnalyserData() : null;
     const bass = averageRange(freq, 0, 8);
-    const mid = averageRange(freq, 10, 42);
     const high = averageRange(freq, 42, 96);
 
     pulse += 0.035 + high * 0.03;
 
-    // Elastic blend: hold tracks press state, tension tracks pull distance.
-    holdStrength += ((dragging ? 1 : 0) - holdStrength) * 0.12;
-    const dragDist = Math.sqrt(pullDx * pullDx + pullDy * pullDy);
-    const tensionTarget = dragging ? Math.min(1, dragDist / TRACK_PULL_THRESHOLD_PX) : 0;
-    tension += (tensionTarget - tension) * 0.1;
-
-    // Keep a subtle ambient wobble; dragging no longer rotates the sphere.
-    const ambientRotX = Math.sin(pulse * 0.23) * 0.08;
-    const ambientRotY = Math.cos(pulse * 0.19) * 0.1;
-
-    const volume = manager.getUserVolume ? manager.getUserVolume() : 1;
     const baseAlpha = manager.musicEnabled === false ? 0.55 : 1;
-    const dynamicRadius = radius
-      * (1 + bass * 0.12 + Math.sin(pulse) * 0.012)
-      * (1 - holdStrength * 0.03)
-      * (1 + tension * 0.07);
+    const dynRadius = radius * (1 + bass * 0.12 + Math.sin(pulse) * 0.012);
 
     ctx.clearRect(0, 0, width, height);
 
-    // Soft glow behind the sphere.
-    const glow = ctx.createRadialGradient(centerX, centerY, dynamicRadius * 0.5, centerX, centerY, dynamicRadius * 1.35);
-    glow.addColorStop(0, `rgba(94,232,125,${0.22 * baseAlpha})`);
-    glow.addColorStop(1, 'rgba(94,232,125,0)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, width, height);
-
-    // Solid sphere body: gradient-lit fill so the orb reads as a single mass.
-    const body = ctx.createRadialGradient(
-      centerX - dynamicRadius * 0.28,
-      centerY - dynamicRadius * 0.3,
-      dynamicRadius * 0.12,
-      centerX,
-      centerY,
-      dynamicRadius * 1.06
-    );
-    body.addColorStop(0, `rgba(170,255,214,${0.96 * baseAlpha})`);
-    body.addColorStop(0.22, `rgba(124,244,174,${0.94 * baseAlpha})`);
-    body.addColorStop(0.68, `rgba(78,202,130,${0.98 * baseAlpha})`);
-    body.addColorStop(1, `rgba(32,106,72,${0.995 * baseAlpha})`);
-    ctx.fillStyle = body;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, dynamicRadius, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Project points and sort by depth for proper layering.
-    const projected = [];
-    const pullNorm = pullArmed ? Math.min(1, Math.abs(pullDx) / TRACK_PULL_THRESHOLD_PX) : 0;
-    const stretchX = pullArmed ? (pullDx > 0 ? 1 : -1) : 0;
-    const dragPullNorm = dragging ? Math.min(1, Math.sqrt(pullDx * pullDx + pullDy * pullDy) / TRACK_PULL_THRESHOLD_PX) : 0;
-    const dragPullLen = Math.sqrt(pullDx * pullDx + pullDy * pullDy) || 1;
-    const dragPullDirX = pullDx / dragPullLen;
-    const dragPullDirY = pullDy / dragPullLen;
-    const interactRadius = dynamicRadius * 0.55;
-
-    for (let i = 0; i < points.length; i++) {
-      const p = points[i];
-      const f = freq ? (freq[p.bin % freq.length] / 255) : 0;
-      const wobble = 1 + f * 0.24 + Math.sin(pulse + p.p) * high * 0.1;
-      const rotated = rotatePoint(p, ambientRotX + mid * 0.1, ambientRotY + mid * 0.14);
-
-      // Subtle screen-space stretch when scrubbing horizontally.
-      let sx = rotated.x;
-      if (pullArmed && stretchX !== 0) {
-        sx += rotated.x * stretchX * 0.18 * pullNorm;
-      }
-
-      const depth = rotated.z;
-      if (depth <= 0.03) {
-        // Only draw the visible hemisphere so vertices read as surface points,
-        // not particles floating inside the orb.
-        continue;
-      }
-      const perspective = 1 / (1.65 - depth * 0.85);
-      let px = centerX + sx * dynamicRadius * wobble * perspective;
-      let py = centerY + rotated.y * dynamicRadius * wobble * perspective;
-      const dot = (0.6 + depth * 0.4) * perspective;
-
-      // Vertex interaction: each point has independent elastic offsets.
-      const toPointerX = pointerX - px;
-      const toPointerY = pointerY - py;
-      const pointerDist = Math.sqrt(toPointerX * toPointerX + toPointerY * toPointerY);
-      const influence = dragging ? Math.max(0, 1 - pointerDist / interactRadius) : 0;
-      const softenedInfluence = influence * influence;
-
-      let targetIX = 0;
-      let targetIY = 0;
-      if (softenedInfluence > 0) {
-        const clingScale = 0.12 + holdStrength * 0.18;
-        const pullScale = dynamicRadius * dragPullNorm * 0.2;
-        targetIX = softenedInfluence * (toPointerX * clingScale + dragPullDirX * pullScale);
-        targetIY = softenedInfluence * (toPointerY * clingScale + dragPullDirY * pullScale);
-      }
-
-      const springK = 0.22;
-      const springD = 0.8;
-      p.ivx = p.ivx * springD + (targetIX - p.ix) * springK;
-      p.ivy = p.ivy * springD + (targetIY - p.iy) * springK;
-      p.ix += p.ivx;
-      p.iy += p.ivy;
-
-      px += p.ix;
-      py += p.iy;
-
-      const interactionMag = Math.min(1, Math.sqrt(p.ix * p.ix + p.iy * p.iy) / Math.max(1, dynamicRadius * 0.28));
-
-      projected.push({
-        px,
-        py,
-        depth,
-        f,
-        size: Math.max(0.45, (0.45 + f * 1.2 + interactionMag * 1.35) * perspective),
-        alpha: Math.max(0.04, dot * (0.1 + volume * 0.22 + interactionMag * 0.18) * baseAlpha),
-      });
-    }
-
-    projected.sort((a, b) => a.depth - b.depth);
-
-    for (let i = 0; i < projected.length; i++) {
-      const d = projected[i];
-      const g = Math.floor(210 + d.f * 45);
-      ctx.fillStyle = `rgba(94,${g},125,${d.alpha.toFixed(3)})`;
-      ctx.beginPath();
-      ctx.arc(d.px, d.py, d.size, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Rim ring for shape readability.
-    ctx.strokeStyle = `rgba(130,255,180,${(0.22 + bass * 0.2) * baseAlpha})`;
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, dynamicRadius * (1 + pullNorm * 0.05), 0, Math.PI * 2);
-    ctx.stroke();
+    updateVerts(dynRadius);
+    drawGlow(dynRadius, baseAlpha);
+    drawSphere(dynRadius, baseAlpha);
 
     raf = requestAnimationFrame(draw);
   }
