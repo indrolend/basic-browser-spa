@@ -57,7 +57,8 @@ export function initMusicPlayerSection() {
       try {
         orbCleanup = initOrbHero(orb, manager);
       } catch (err) {
-        console.warn('[musicPlayer] orb init failed:', err);
+        console.warn('[musicPlayer] orb init failed; closing overlay to avoid broken state:', err);
+        window.__SPA_Overlay?.close({ restore: false });
         return;
       }
       // Wrap destroy to also remove resize listeners
