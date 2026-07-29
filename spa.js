@@ -32,7 +32,17 @@ const SPA_SECTIONS = [
     label: 'Games',
     items: [
       { id: 'asymptote', label: 'Asymptote Engine', hero: { kind: 'text', text: 'Asymptote Engine' } },
-      { id: 'digitalBreakdown', label: 'Data', hero: { kind: 'text', text: 'Data' } }
+      {
+        id: 'digitalBreakdown',
+        label: 'Data',
+        hero: {
+          kind: 'video',
+          text: 'Data',
+          mp4: 'videos/data-cinematic.mp4',
+          webm: 'videos/data-cinematic.webm',
+          poster: 'videos/data-cinematic-poster.jpg'
+        }
+      }
     ]
   }
   // About is temporarily hidden while it is being refactored from the legacy SPA.
@@ -265,6 +275,15 @@ function getHeroSpec(sectionIdx, itemIdx) {
 
   if (item.hero?.kind === 'image' && item.hero.src) {
     return { kind: 'image', src: item.hero.src };
+  }
+  if (item.hero?.kind === 'video' && item.hero.mp4 && item.hero.poster) {
+    return {
+      kind: 'video',
+      text: item.hero.text || item.label,
+      mp4: item.hero.mp4,
+      webm: item.hero.webm,
+      poster: item.hero.poster
+    };
   }
   if (item.hero?.kind === 'text' && item.hero.text) {
     return { kind: 'text', text: item.hero.text };
@@ -514,6 +533,10 @@ function isGifHeroSpec(hero) {
   return hero?.kind === 'image' && /\.gif(?:[?#]|$)/i.test(hero.src || '');
 }
 
+function isVideoHeroSpec(hero) {
+  return hero?.kind === 'video';
+}
+
 // Returns true when the hero for the given section/item is rendered by a view
 // that provides a buildHeroProbe AND the live hero element currently contains
 // a <canvas> (i.e. an animated canvas is on screen right now).
@@ -723,10 +746,10 @@ function startCurrentHeroSurfaceTracking(sectionIdx, itemIdx) {
     return;
   }
 
-  if (isGifHeroSpec(hero)) {
+  if (isGifHeroSpec(hero) || isVideoHeroSpec(hero)) {
     currentHeroSurface = null;
     currentHeroSurfaceKey = null;
-    spaDebug('[heroCapture] skipping cached surface tracking for live GIF canvas hero');
+    spaDebug('[heroCapture] skipping cached surface tracking for live animated hero');
     return;
   }
 
@@ -801,6 +824,16 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
     return { type: 'text', text: hero.text };
   }
 
+  if (isVideoHeroSpec(hero)) {
+    if (phase === 'from') {
+      const liveVideoEl = container?.querySelector('.spa-hero-video');
+      if (liveVideoEl instanceof window.HTMLVideoElement && liveVideoEl.readyState >= 2) {
+        return { type: 'videoElement', element: liveVideoEl };
+      }
+    }
+    return { type: 'videoPoster', src: hero.poster };
+  }
+
   if (phase === 'from') {
     const container = document.getElementById('spa-hero-container');
     const liveGifCanvasEl = container?.querySelector('.spa-hero-gif-canvas');
@@ -829,6 +862,7 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
 async function buildHeroSurface(sectionIdx, itemIdx, phase) {
   const hero = getHeroSpec(sectionIdx, itemIdx);
   const shouldForceLiveGifFromCapture = phase === 'from' && isGifHeroSpec(hero);
+  const shouldForceLiveVideoCapture = phase === 'from' && isVideoHeroSpec(hero);
   const shouldForceLiveCanvasCapture  = phase === 'from' && isProceduralCanvasHero(sectionIdx, itemIdx);
 
   if (phase === 'from') {
@@ -836,6 +870,7 @@ async function buildHeroSurface(sectionIdx, itemIdx, phase) {
     const committedSurfaceKey = getHeroSurfaceKey(currentSectionIdx, currentItemIdx);
     if (
       !shouldForceLiveGifFromCapture &&
+      !shouldForceLiveVideoCapture &&
       !shouldForceLiveCanvasCapture &&
       requestedSurfaceKey === committedSurfaceKey &&
       currentHeroSurface &&
@@ -845,8 +880,8 @@ async function buildHeroSurface(sectionIdx, itemIdx, phase) {
       return currentHeroSurface;
     }
 
-    if (shouldForceLiveGifFromCapture) {
-      spaDebug('[heroCapture] forcing live GIF from-surface capture at transition start');
+    if (shouldForceLiveGifFromCapture || shouldForceLiveVideoCapture) {
+      spaDebug('[heroCapture] forcing live animated from-surface capture at transition start');
     }
     if (shouldForceLiveCanvasCapture) {
       spaDebug('[heroCapture] forcing live canvas from-surface capture at transition start');
@@ -856,9 +891,9 @@ async function buildHeroSurface(sectionIdx, itemIdx, phase) {
   const input = buildHeroRenderInput(sectionIdx, itemIdx, phase);
   if (!input) throw new Error(`Missing hero render input for phase "${phase}"`);
 
-  if (phase === 'from' && input.type === 'element') {
+  if (phase === 'from' && (input.type === 'element' || input.type === 'videoElement')) {
     const fallbackInput = buildHeroRenderInput(sectionIdx, itemIdx, 'to');
-    if (fallbackInput?.type === 'gif') {
+    if (fallbackInput?.type === 'gif' || fallbackInput?.type === 'videoPoster') {
       return rasterizeWithCleanup(input).catch((err) => {
         spaDebug(`[heroCapture] live element capture failed; falling back to src rasterization: ${err?.message || err}`);
         return rasterizeWithCleanup(fallbackInput);
@@ -958,7 +993,37 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
     });
   }
 
-  if (heroSpec?.kind === 'image') {
+  if (heroSpec?.kind === 'video') {
+    hero.classList.add('data-title-card', 'data-title-card--video');
+    const video = document.createElement('video');
+    video.className = 'spa-hero-video';
+    video.poster = heroSpec.poster;
+    video.autoplay = true;
+    video.loop = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'metadata';
+    video.setAttribute('aria-label', 'A cinematic Data combat shot with a close-range hit and particle burst.');
+    const webmSource = document.createElement('source');
+    webmSource.src = heroSpec.webm;
+    webmSource.type = 'video/webm';
+    const mp4Source = document.createElement('source');
+    mp4Source.src = heroSpec.mp4;
+    mp4Source.type = 'video/mp4';
+    video.append(webmSource, mp4Source);
+    hero.appendChild(video);
+
+    const title = document.createElement('div');
+    title.className = 'spa-hero-text data-rolling-title';
+    title.setAttribute('aria-label', heroSpec.text || item.label);
+    Array.from(heroSpec.text || item.label).forEach((letter) => {
+      const letterSpan = document.createElement('span');
+      letterSpan.setAttribute('aria-hidden', 'true');
+      letterSpan.textContent = letter;
+      title.appendChild(letterSpan);
+    });
+    hero.appendChild(title);
+  } else if (heroSpec?.kind === 'image') {
     if (isGifHeroSpec(heroSpec)) {
       const gifCanvas = options.preparedGifCanvas instanceof window.HTMLCanvasElement
         ? options.preparedGifCanvas

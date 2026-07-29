@@ -306,7 +306,21 @@ export function rasterizeHero(hero) {
       finish(finishOptions);
     }
 
-    if (hero.type === 'gif') {
+    if (hero.type === 'videoPoster') {
+      const img = new window.Image();
+      img.onload = function() {
+        canvas.width = Math.max(HERO_CANVAS_WIDTH, img.naturalWidth);
+        canvas.height = Math.max(HERO_CANVAS_HEIGHT, img.naturalHeight);
+        drawCenteredImage(img, img.naturalWidth, img.naturalHeight, {
+          debugLabel: 'videoPoster(full-frame)',
+          skipCrop: true,
+        });
+      };
+      img.onerror = function() {
+        reject(new Error('Failed to load video poster'));
+      };
+      img.src = hero.src;
+    } else if (hero.type === 'gif') {
       spaDebug(`[rasterizeHero] branch=gif src=${hero.src}`);
       const img = new window.Image();
       img.onload = function() {
@@ -320,6 +334,18 @@ export function rasterizeHero(hero) {
         reject(new Error('Failed to load GIF'));
       };
       img.src = hero.src;
+    } else if (hero.type === 'videoElement') {
+      const videoEl = hero.element;
+      if (!(videoEl instanceof window.HTMLVideoElement) || videoEl.readyState < 2) {
+        reject(new Error('Video element not ready'));
+        return;
+      }
+      canvas.width = Math.max(HERO_CANVAS_WIDTH, videoEl.videoWidth);
+      canvas.height = Math.max(HERO_CANVAS_HEIGHT, videoEl.videoHeight);
+      drawCenteredImage(videoEl, videoEl.videoWidth, videoEl.videoHeight, {
+        debugLabel: 'videoElement(full-frame)',
+        skipCrop: true,
+      });
     } else if (hero.type === 'element') {
       const sourceEl = hero.element;
       if (sourceEl instanceof window.HTMLCanvasElement) {

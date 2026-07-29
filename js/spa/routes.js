@@ -76,7 +76,7 @@ window.__INDROLEND_ROUTES__ = {
     },
     'games/digitalBreakdown': {
       label: 'data',
-      transitionSource: 'textPoster',
+      transitionSource: 'canvasPoster',
       scroll: { mode: 'none', edgeGatedSwipe: false },
       clickAction: 'overlay:digitalBreakdownDownloads'
     },

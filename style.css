@@ -567,7 +567,8 @@ body {
 /* Data title matches the game's slow per-letter pastel rainbow roll. */
 .data-title-card {
   position: relative;
-  width: min(86vw, 480px);
+  width: min(88vw, 960px);
+  max-height: min(68vh, 540px);
   padding: 0;
   overflow: hidden;
   border: 1px solid #67808b;
@@ -581,6 +582,15 @@ body {
   width: 100%;
   height: auto;
   image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.spa-hero-video {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(68vh, 540px);
+  object-fit: contain;
   pointer-events: none;
 }
 
