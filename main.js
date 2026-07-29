@@ -31,7 +31,8 @@ const SPA_SECTIONS = [
     id: 'games',
     label: 'Games',
     items: [
-      { id: 'asymptote', label: 'Asymptote Engine', hero: { kind: 'text', text: 'Asymptote Engine' } }
+      { id: 'asymptote', label: 'Asymptote Engine', hero: { kind: 'text', text: 'Asymptote Engine' } },
+      { id: 'digitalBreakdown', label: 'Digital Breakdown', hero: { kind: 'text', text: 'Digital Breakdown' } }
     ]
   }
   // About is temporarily hidden while it is being refactored from the legacy SPA.
@@ -925,8 +926,8 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
   const itemId = item?.id;
   if (sectionId && itemId && window.__SPA_Views?.[sectionId]?.mount) {
     try {
-      window.__SPA_Views[sectionId].mount(itemId, heroContainer);
-      return;
+      const didMount = window.__SPA_Views[sectionId].mount(itemId, heroContainer);
+      if (didMount !== false) return;
     } catch (err) {
       console.warn('[SPA_Views] mount failed for', sectionId + '/' + itemId, err);
       // Fall through to default hero rendering

@@ -11,7 +11,7 @@ window.__INDROLEND_ROUTES__ = {
     home:   { label: 'Home',   items: ['swarm'] },
     social: { label: 'Social', items: ['tiktok', 'instagram', 'youtube'] },
     music:  { label: 'Music',  items: ['spotify', 'appleMusic', 'bandcamp', 'soundcloud'] },
-    games:  { label: 'Games',  items: ['asymptote'] }
+    games:  { label: 'Games',  items: ['asymptote', 'digitalBreakdown'] }
     // About is intentionally hidden for now while it is being refactored.
   },
 
@@ -73,6 +73,12 @@ window.__INDROLEND_ROUTES__ = {
       transitionSource: 'textPoster',
       scroll: { mode: 'none', edgeGatedSwipe: false },
       clickAction: 'none'
+    },
+    'games/digitalBreakdown': {
+      label: 'digital breakdown',
+      transitionSource: 'textPoster',
+      scroll: { mode: 'none', edgeGatedSwipe: false },
+      clickAction: 'overlay:digitalBreakdownDownloads'
     },
 
     'about/spotifyAnalytics': {

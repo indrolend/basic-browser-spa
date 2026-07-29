@@ -490,6 +490,8 @@ body {
   border-radius: 14px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
   padding: 1rem;
+  max-height: calc(100svh - 2rem);
+  overflow-y: auto;
 }
 
 .spa-overlay--inline {
@@ -559,4 +561,71 @@ body {
   background: #27342a;
   border-color: #3e6b49;
   outline: none;
+}
+
+/* Digital Breakdown downloads — plain release links with visible provenance. */
+.download-notice {
+  margin: 0.8rem 0 0;
+  color: #c8c8c8;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.download-option {
+  min-width: 0;
+}
+
+.download-link {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.download-link small {
+  color: #9aa19b;
+  font-size: 0.7rem;
+  text-align: right;
+}
+
+.download-checksum {
+  padding: 0.35rem 0.4rem 0;
+  color: #777;
+  font-size: 0.66rem;
+}
+
+.download-checksum summary {
+  cursor: pointer;
+}
+
+.download-checksum code {
+  display: block;
+  margin-top: 0.35rem;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.download-source-link {
+  display: inline-block;
+  margin-top: 0.9rem;
+  color: #9aa19b;
+  font-size: 0.75rem;
+}
+
+.download-source-link:hover,
+.download-source-link:focus-visible {
+  color: var(--accent);
+  outline: none;
+}
+
+@media (max-width: 480px) {
+  .download-link {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .download-link small {
+    text-align: left;
+  }
 }

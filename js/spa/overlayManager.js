@@ -25,6 +25,25 @@
     { label: '2022 Archive',      url: 'https://soundcloud.com/indrolendarchive2022' }
   ];
 
+  var DIGITAL_BREAKDOWN_RELEASE = {
+    version: 'ec39cbb experimental',
+    sourceUrl: 'https://github.com/indrolend/digital-breakdown',
+    downloads: [
+      {
+        label: 'Windows PC',
+        detail: '64-bit \u00b7 ZIP \u00b7 4.6 MB',
+        url: 'https://github.com/indrolend/digital-breakdown/releases/latest/download/DigitalBreakdown-Windows-x64.zip',
+        sha256: 'c4222a8051d90ab3721e587310186a47f002e709f4491a99c4a39d2bff044908'
+      },
+      {
+        label: 'macOS',
+        detail: 'Apple + Intel \u00b7 ZIP \u00b7 5.5 MB',
+        url: 'https://github.com/indrolend/digital-breakdown/releases/latest/download/DigitalBreakdown-macOS-Universal.zip',
+        sha256: '549eed86fdd1a0f11025bb505f3d1f0dff447477f6ef27987b517ace1d52c74c'
+      }
+    ]
+  };
+
   function escapeHtml(value) {
     return String(value == null ? '' : value)
       .replace(/&/g, '&amp;')
@@ -65,6 +84,37 @@
              '<p class="spa-overlay-subtitle">' + subtitle + '</p>' +
              '<div class="spa-overlay-links">' + linksHtml + '</div>' +
              '<button class="spa-overlay-close" id="spa-overlay-close-btn">\u2715 close</button>';
+    },
+
+    digitalBreakdownDownloads: function () {
+      var release = DIGITAL_BREAKDOWN_RELEASE;
+      var downloadHtml = release.downloads.map(function (download) {
+        var safeUrl = normalizeExternalUrl(download.url);
+        if (!safeUrl) return '';
+
+        return '<div class="download-option">' +
+          '<a class="spa-overlay-link download-link" href="' + safeUrl + '" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">' +
+            '<span>' + escapeHtml(download.label) + '</span>' +
+            '<small>' + escapeHtml(download.detail) + '</small>' +
+          '</a>' +
+          '<details class="download-checksum">' +
+            '<summary>SHA-256 checksum</summary>' +
+            '<code>' + escapeHtml(download.sha256) + '</code>' +
+          '</details>' +
+        '</div>';
+      }).join('');
+
+      var sourceUrl = normalizeExternalUrl(release.sourceUrl);
+      var sourceLink = sourceUrl
+        ? '<a class="download-source-link" href="' + sourceUrl + '" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">Source code \u00b7 AGPL-3.0</a>'
+        : '';
+
+      return '<div class="spa-overlay-title"><span class="important-word">digital breakdown</span></div>' +
+        '<p class="spa-overlay-subtitle">Experimental desktop build \u00b7 ' + escapeHtml(release.version) + '</p>' +
+        '<p class="download-notice">Free, nonprofit, and open source. These builds are not code-signed, so Windows or macOS may show a security warning. Downloads start only after you choose a platform.</p>' +
+        '<div class="spa-overlay-links">' + downloadHtml + '</div>' +
+        sourceLink +
+        '<button class="spa-overlay-close" id="spa-overlay-close-btn">\u2715 close</button>';
     }
   };
 

@@ -10,7 +10,7 @@
   var gameActive = false;
 
   function mount(itemId, containerEl) {
-    if (itemId !== 'asymptote') return;
+    if (itemId !== 'asymptote') return false;
     if (window.AsymptoteApp) {
       window.AsymptoteApp.mount(containerEl);
     } else {
@@ -23,6 +23,7 @@
       hero.appendChild(heroText);
       containerEl.appendChild(hero);
     }
+    return true;
   }
 
   function onActivate(itemId) {
