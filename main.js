@@ -1008,6 +1008,15 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
     textDiv.className = 'spa-hero-text';
     const heroText = heroSpec?.text || item.label;
     if (itemId === 'digitalBreakdown') {
+      hero.classList.add('data-title-card');
+      const preview = document.createElement('img');
+      preview.className = 'data-combat-preview';
+      preview.src = 'gifs/data-combat-loop.gif';
+      preview.alt = 'A Data enemy flashes on impact as pixel particles scatter.';
+      preview.width = 480;
+      preview.height = 270;
+      preview.draggable = false;
+      hero.appendChild(preview);
       textDiv.classList.add('data-rolling-title');
       textDiv.setAttribute('aria-label', heroText);
       Array.from(heroText).forEach((letter) => {

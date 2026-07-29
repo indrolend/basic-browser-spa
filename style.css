@@ -565,6 +565,41 @@ body {
 
 /* Digital Breakdown downloads — plain release links with visible provenance. */
 /* Data title matches the game's slow per-letter pastel rainbow roll. */
+.data-title-card {
+  position: relative;
+  width: min(86vw, 480px);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #67808b;
+  border-radius: 0;
+  background: #19262c;
+  box-shadow: 8px 8px 0 #0b1013;
+}
+
+.data-combat-preview {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.data-title-card .data-rolling-title {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  margin: 0;
+  padding-top: 0.7rem;
+  font-size: clamp(2rem, 7vw, 3.4rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-shadow: 2px 2px 0 #132027, -1px -1px 0 #132027;
+  pointer-events: none;
+}
+
 .data-rolling-title span {
   display: inline-block;
   animation: data-title-roll 38.46s linear infinite;
