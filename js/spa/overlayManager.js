@@ -106,10 +106,10 @@
 
       var sourceUrl = normalizeExternalUrl(release.sourceUrl);
       var sourceLink = sourceUrl
-        ? '<a class="download-source-link" href="' + sourceUrl + '" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">Source code \u00b7 AGPL-3.0</a>'
+        ? '<a class="download-source-link" href="' + sourceUrl + '" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">Digital Breakdown source \u00b7 AGPL-3.0</a>'
         : '';
 
-      return '<div class="spa-overlay-title"><span class="important-word">digital breakdown</span></div>' +
+      return '<div class="spa-overlay-title"><span class="important-word">data</span></div>' +
         '<p class="spa-overlay-subtitle">Experimental desktop build \u00b7 ' + escapeHtml(release.version) + '</p>' +
         '<p class="download-notice">Free, nonprofit, and open source. These builds are not code-signed, so Windows or macOS may show a security warning. Downloads start only after you choose a platform.</p>' +
         '<div class="spa-overlay-links">' + downloadHtml + '</div>' +

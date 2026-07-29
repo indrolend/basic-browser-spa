@@ -75,7 +75,7 @@ window.__INDROLEND_ROUTES__ = {
       clickAction: 'none'
     },
     'games/digitalBreakdown': {
-      label: 'digital breakdown',
+      label: 'data',
       transitionSource: 'textPoster',
       scroll: { mode: 'none', edgeGatedSwipe: false },
       clickAction: 'overlay:digitalBreakdownDownloads'

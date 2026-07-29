@@ -564,6 +564,33 @@ body {
 }
 
 /* Digital Breakdown downloads — plain release links with visible provenance. */
+/* Data title matches the game's slow per-letter pastel rainbow roll. */
+.data-rolling-title span {
+  display: inline-block;
+  animation: data-title-roll 38.46s linear infinite;
+}
+
+.data-rolling-title span:nth-child(2) { animation-delay: -4.42s; }
+.data-rolling-title span:nth-child(3) { animation-delay: -8.85s; }
+.data-rolling-title span:nth-child(4) { animation-delay: -13.27s; }
+
+@keyframes data-title-roll {
+  0%, 100% { color: rgb(247, 166, 184); }
+  16.666%  { color: rgb(140, 252, 184); }
+  33.333%  { color: rgb(140, 252, 255); }
+  50%      { color: rgb(140, 166, 255); }
+  66.666%  { color: rgb(247, 166, 255); }
+  83.333%  { color: rgb(247, 166, 184); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .data-rolling-title span { animation: none; }
+  .data-rolling-title span:nth-child(1) { color: rgb(140, 166, 255); }
+  .data-rolling-title span:nth-child(2) { color: rgb(247, 166, 255); }
+  .data-rolling-title span:nth-child(3) { color: rgb(247, 166, 184); }
+  .data-rolling-title span:nth-child(4) { color: rgb(140, 252, 184); }
+}
+
 .download-notice {
   margin: 0.8rem 0 0;
   color: #c8c8c8;

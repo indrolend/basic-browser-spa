@@ -32,7 +32,7 @@ const SPA_SECTIONS = [
     label: 'Games',
     items: [
       { id: 'asymptote', label: 'Asymptote Engine', hero: { kind: 'text', text: 'Asymptote Engine' } },
-      { id: 'digitalBreakdown', label: 'Digital Breakdown', hero: { kind: 'text', text: 'Digital Breakdown' } }
+      { id: 'digitalBreakdown', label: 'Data', hero: { kind: 'text', text: 'Data' } }
     ]
   }
   // About is temporarily hidden while it is being refactored from the legacy SPA.
@@ -1006,7 +1006,19 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
     hero.classList.add('spa-hero--text');
     const textDiv = document.createElement('div');
     textDiv.className = 'spa-hero-text';
-    textDiv.textContent = heroSpec?.text || item.label;
+    const heroText = heroSpec?.text || item.label;
+    if (itemId === 'digitalBreakdown') {
+      textDiv.classList.add('data-rolling-title');
+      textDiv.setAttribute('aria-label', heroText);
+      Array.from(heroText).forEach((letter) => {
+        const letterSpan = document.createElement('span');
+        letterSpan.setAttribute('aria-hidden', 'true');
+        letterSpan.textContent = letter;
+        textDiv.appendChild(letterSpan);
+      });
+    } else {
+      textDiv.textContent = heroText;
+    }
     hero.appendChild(textDiv);
   }
 
