@@ -1,9 +1,12 @@
 // Basic Browser SPA runtime. Replace js/content.js to provide another site map;
 // navigation and rendering behavior remain here.
-import { SPA_SECTIONS } from './js/content.js';
 import { createAdapterLoader } from './js/spa/adapterLoader.js';
 
-const adapterLoader = createAdapterLoader({ baseUrl: new URL('./js/content.js', import.meta.url) });
+const contentPath = document.querySelector('meta[name="spa-content"]')?.content;
+if (!contentPath) throw new Error('Missing <meta name="spa-content" content="...">');
+const { CONTENT_BASE_URL, SPA_SECTIONS } = await import(new URL(contentPath, document.baseURI).href);
+
+const adapterLoader = createAdapterLoader({ baseUrl: CONTENT_BASE_URL });
 
 async function ensureItemAdapter(sectionIdx, itemIdx) {
   const item = SPA_SECTIONS[sectionIdx]?.items[itemIdx];
@@ -243,7 +246,7 @@ function getHeroSpec(sectionIdx, itemIdx) {
   if (!item) return null;
 
   if (item.hero?.kind === 'image' && item.hero.src) {
-    return { kind: 'image', src: item.hero.src };
+    return { kind: 'image', src: new URL(item.hero.src, CONTENT_BASE_URL).href };
   }
   if (item.hero?.kind === 'text' && item.hero.text) {
     return { kind: 'text', text: item.hero.text };
@@ -530,7 +533,7 @@ function loadGifler() {
 
   giflerLoaderPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = 'js/vendor/gifler.min.js';
+    script.src = new URL('./js/vendor/gifler.min.js', import.meta.url).href;
     script.async = true;
     script.onload = () => {
       if (typeof window.gifler === 'function') resolve(window.gifler);

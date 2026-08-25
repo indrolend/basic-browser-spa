@@ -4,7 +4,7 @@ const { readFileSync, existsSync } = require('node:fs');
 const { readdir } = require('node:fs/promises');
 const { dirname, relative, resolve } = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { pathToFileURL } = require('node:url');
+const { fileURLToPath, pathToFileURL } = require('node:url');
 
 const root = resolve(__dirname, '..');
 
@@ -19,14 +19,20 @@ async function filesBelow(directory) {
 }
 
 test('runtime JavaScript parses in its actual script or module mode', async () => {
-  const files = [resolve(root, 'main.js'), ...await filesBelow(resolve(root, 'js'))]
+  const files = [
+    resolve(root, 'main.js'),
+    ...await filesBelow(resolve(root, 'js')),
+    ...await filesBelow(resolve(root, 'examples/indrolend'))
+  ]
     .filter((path) => path.endsWith('.js'));
 
   for (const path of files) {
     const source = readFileSync(path, 'utf8');
     const name = relative(root, path);
     assert.doesNotMatch(source, /^(?:<<<<<<<|=======|>>>>>>>)/m, name);
-    const isModule = path === resolve(root, 'main.js') || /^\s*(?:import|export)\s/m.test(source);
+    const isModule = path === resolve(root, 'main.js') ||
+      path.startsWith(resolve(root, 'examples/indrolend')) ||
+      /^\s*(?:import|export)\s/m.test(source);
     const args = isModule ? ['--input-type=module', '--check'] : ['--check', '-'];
     const parsed = spawnSync(process.execPath, args, { input: source, encoding: 'utf8' });
     assert.equal(parsed.status, 0, `${name}\n${parsed.stderr}`);
@@ -68,20 +74,53 @@ test('content can be replaced and validated without editing the runtime', async 
   ]), /duplicate section id/);
 
   const runtime = readFileSync(resolve(root, 'main.js'), 'utf8');
-  assert.match(runtime, /import \{ SPA_SECTIONS \} from '.\/js\/content\.js'/);
+  assert.match(runtime, /meta\[name="spa-content"\]/);
+  assert.match(runtime, /await import\(new URL\(contentPath, document\.baseURI\)\.href\)/);
+  assert.match(runtime, /new URL\('\.\/js\/vendor\/gifler\.min\.js', import\.meta\.url\)\.href/);
   assert.doesNotMatch(runtime, /const SPA_SECTIONS\s*=\s*\[/);
+});
+
+test('default and preserved example entrypoints select committed content modules', () => {
+  for (const htmlPath of ['index.html', 'examples/indrolend/index.html']) {
+    const absolute = resolve(root, htmlPath);
+    const source = readFileSync(absolute, 'utf8');
+    const selected = source.match(/<meta name="spa-content" content="([^"]+)">/)?.[1];
+    assert.ok(selected, htmlPath);
+    assert.equal(existsSync(resolve(dirname(absolute), selected)), true, `${htmlPath}: ${selected}`);
+  }
 });
 
 test('example content image heroes resolve to committed assets', async () => {
   const contentUrl = pathToFileURL(resolve(root, 'js/content.js')).href;
-  const { SPA_SECTIONS } = await import(contentUrl);
+  const { CONTENT_BASE_URL, SPA_SECTIONS } = await import(contentUrl);
   for (const section of SPA_SECTIONS) {
     for (const item of section.items) {
       if (item.hero.kind === 'image') {
-        assert.equal(existsSync(resolve(root, item.hero.src)), true, item.hero.src);
+        assert.equal(existsSync(fileURLToPath(new URL(item.hero.src, CONTENT_BASE_URL))), true, item.hero.src);
       }
     }
   }
+});
+
+test('preserved Indrolend example owns its assets and adapter modules', async () => {
+  const contentUrl = pathToFileURL(resolve(root, 'examples/indrolend/content.js')).href;
+  const { CONTENT_BASE_URL, SPA_SECTIONS } = await import(contentUrl);
+  let imageCount = 0;
+  let adapterCount = 0;
+  for (const section of SPA_SECTIONS) {
+    for (const item of section.items) {
+      if (item.hero.kind === 'image') {
+        imageCount += 1;
+        assert.equal(existsSync(fileURLToPath(new URL(item.hero.src, CONTENT_BASE_URL))), true, item.hero.src);
+      }
+      for (const modulePath of item.adapter?.modules || []) {
+        adapterCount += 1;
+        assert.equal(existsSync(fileURLToPath(new URL(modulePath, CONTENT_BASE_URL))), true, modulePath);
+      }
+    }
+  }
+  assert.ok(imageCount > 0);
+  assert.ok(adapterCount > 0);
 });
 
 test('optional adapters load in order, deduplicate, and retry after failure', async () => {
