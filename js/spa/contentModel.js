@@ -45,6 +45,13 @@ export function defineContent(sections) {
       if (item.hero.kind === 'image' && typeof item.hero.src !== 'string') {
         throw new TypeError(`image hero ${section.id}/${item.id} must define src`);
       }
+      if (item.adapter) {
+        assertIdentifier(item.adapter.id, `adapter id for ${section.id}/${item.id}`);
+        if (!Array.isArray(item.adapter.modules) || item.adapter.modules.length === 0 ||
+            item.adapter.modules.some((path) => typeof path !== 'string' || !path.startsWith('./'))) {
+          throw new TypeError(`adapter ${item.adapter.id} must define relative module paths`);
+        }
+      }
     }
   }
 

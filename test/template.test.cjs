@@ -83,3 +83,47 @@ test('example content image heroes resolve to committed assets', async () => {
     }
   }
 });
+
+test('optional adapters load in order, deduplicate, and retry after failure', async () => {
+  const loaderUrl = pathToFileURL(resolve(root, 'js/spa/adapterLoader.js')).href;
+  const { createAdapterLoader } = await import(loaderUrl);
+  const calls = [];
+  const loader = createAdapterLoader({
+    baseUrl: new URL('https://template.invalid/js/content.js'),
+    loadModule: async (specifier) => { calls.push(specifier); }
+  });
+  const adapter = { id: 'demo', modules: ['./one.js', './two.js'] };
+
+  await Promise.all([loader.load(adapter), loader.load(adapter)]);
+  assert.deepEqual(calls, [
+    'https://template.invalid/js/one.js',
+    'https://template.invalid/js/two.js'
+  ]);
+
+  let attempts = 0;
+  const retrying = createAdapterLoader({
+    baseUrl: new URL('https://template.invalid/js/content.js'),
+    loadModule: async () => {
+      attempts += 1;
+      if (attempts === 1) throw new Error('unavailable');
+    }
+  });
+  await assert.rejects(retrying.load({ id: 'retry', modules: ['./adapter.js'] }), /unavailable/);
+  await retrying.load({ id: 'retry', modules: ['./adapter.js'] });
+  assert.equal(attempts, 2);
+});
+
+test('adapter declarations remain optional and validate relative modules', async () => {
+  const modelUrl = pathToFileURL(resolve(root, 'js/spa/contentModel.js')).href;
+  const { defineContent } = await import(modelUrl);
+  assert.doesNotThrow(() => defineContent([
+    { id: 'plain', label: 'Plain', items: [{ id: 'text', label: 'Text', hero: { kind: 'text', text: 'Text' } }] }
+  ]));
+  assert.throws(() => defineContent([
+    {
+      id: 'bad', label: 'Bad', items: [
+        { id: 'adapter', label: 'Adapter', hero: { kind: 'text', text: 'Adapter' }, adapter: { id: 'bad', modules: ['https://outside.invalid/code.js'] } }
+      ]
+    }
+  ]), /relative module paths/);
+});

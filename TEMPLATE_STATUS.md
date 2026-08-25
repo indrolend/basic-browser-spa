@@ -13,4 +13,6 @@ Observed baseline at `c14e8c6`:
 
 Content now lives in `js/content.js` and is validated by the generic `defineContent()` contract in `js/spa/contentModel.js`. Another user can replace sections, items, labels, actions, and text/image heroes without editing `main.js`.
 
-The example remains Indrolend-specific, and the optional Asymptote scripts are still loaded by the primary HTML entrypoint. The next distillation checkpoint should move that game into an explicitly optional example adapter and replace the default content/assets with neutral examples. Do not copy the broken aggregate from `basicbrowserslim/main`; evaluate later Slim behavior from its tested recovery branch one feature at a time.
+The example remains Indrolend-specific. Asymptote is now a content-declared optional adapter: its scripts are absent from initial HTML hydration and load only when navigation targets the configured item. A configured text/image hero remains available when an adapter cannot load.
+
+The next distillation checkpoint should replace the default content/assets with neutral examples and move the Indrolend catalog plus Asymptote adapter into a separate example directory. Do not copy the broken aggregate from `basicbrowserslim/main`; evaluate later Slim behavior from its tested recovery branch one feature at a time.

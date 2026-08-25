@@ -1,6 +1,21 @@
 // Basic Browser SPA runtime. Replace js/content.js to provide another site map;
 // navigation and rendering behavior remain here.
 import { SPA_SECTIONS } from './js/content.js';
+import { createAdapterLoader } from './js/spa/adapterLoader.js';
+
+const adapterLoader = createAdapterLoader({ baseUrl: new URL('./js/content.js', import.meta.url) });
+
+async function ensureItemAdapter(sectionIdx, itemIdx) {
+  const item = SPA_SECTIONS[sectionIdx]?.items[itemIdx];
+  if (!item?.adapter) return true;
+  try {
+    await adapterLoader.load(item.adapter);
+    return true;
+  } catch (error) {
+    console.warn(`[adapter] ${item.adapter.id} unavailable; using the configured fallback hero`, error);
+    return false;
+  }
+}
 
 // State
 let currentSectionIdx = 0;
@@ -1106,6 +1121,7 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
 
   isTransitioning = true;
   activeTarget = { ...requestedTarget, transitionOptions };
+  await ensureItemAdapter(nextSectionIdx, nextItemIdx);
   stopActiveGifHeroPlayback();
   stopCurrentHeroSurfaceTracking();
 
@@ -1631,6 +1647,10 @@ function onSlingshotLock({ direction, pullVector, pullNormalized }) {
   pullTargetSectionIdx = target.sectionIdx;
   pullTargetItemIdx    = target.itemIdx;
   activeTarget = { sectionIdx: target.sectionIdx, itemIdx: target.itemIdx };
+
+  // Begin optional adapter hydration as soon as intent locks. The configured
+  // text/image hero remains a truthful fallback if loading fails.
+  void ensureItemAdapter(target.sectionIdx, target.itemIdx);
 
   stopActiveGifHeroPlayback();
   stopCurrentHeroSurfaceTracking();
