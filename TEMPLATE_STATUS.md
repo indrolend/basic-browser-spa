@@ -11,4 +11,6 @@ Observed baseline at `c14e8c6`:
 - routes, labels, hero assets, and optional game behavior remain Indrolend-specific;
 - `js/spa.html` belongs to an older parallel SPA layout and references paths relative to that historical layout.
 
-The next distillation checkpoint should make content a small replaceable data/configuration layer while preserving the root runtime's section/item navigation and lifecycle behavior. Do not copy the broken aggregate from `basicbrowserslim/main`; evaluate later Slim behavior from its tested recovery branch one feature at a time.
+Content now lives in `js/content.js` and is validated by the generic `defineContent()` contract in `js/spa/contentModel.js`. Another user can replace sections, items, labels, actions, and text/image heroes without editing `main.js`.
+
+The example remains Indrolend-specific, and the optional Asymptote scripts are still loaded by the primary HTML entrypoint. The next distillation checkpoint should move that game into an explicitly optional example adapter and replace the default content/assets with neutral examples. Do not copy the broken aggregate from `basicbrowserslim/main`; evaluate later Slim behavior from its tested recovery branch one feature at a time.

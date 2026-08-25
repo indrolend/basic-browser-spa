@@ -1,41 +1,6 @@
-// Homedev SPA - Minimal, modular, and particle transition ready
-
-const SPA_SECTIONS = [
-  {
-    id: 'home',
-    label: 'Home',
-    items: [
-      { id: 'swipe', label: 'Swipe', hero: { kind: 'text', text: 'swipe' } }
-    ]
-  },
-  {
-    id: 'social',
-    label: 'Social',
-    items: [
-      { id: 'tiktok', label: 'TikTok', hero: { kind: 'image', src: 'gifs/Tiktoklogospin.gif' } },
-      { id: 'instagram', label: 'Instagram', hero: { kind: 'image', src: 'gifs/Instagramlogospin.gif' } },
-      { id: 'youtube', label: 'YouTube', hero: { kind: 'image', src: 'gifs/Youtubelogospin.gif' } }
-    ]
-  },
-  {
-    id: 'music',
-    label: 'Music',
-    items: [
-      { id: 'spotify', label: 'Spotify', hero: { kind: 'image', src: 'gifs/Spotifylogospin.gif' } },
-      { id: 'appleMusic', label: 'Apple Music', hero: { kind: 'image', src: 'gifs/Applemusiclogospin.gif' } },
-      { id: 'bandcamp', label: 'Bandcamp', hero: { kind: 'image', src: 'gifs/bandcamplogospin.gif' } },
-      { id: 'soundcloud', label: 'SoundCloud', hero: { kind: 'image', src: 'gifs/soundcloudlogospin.gif' } }
-    ]
-  },
-  {
-    id: 'games',
-    label: 'Games',
-    items: [
-      { id: 'asymptote', label: 'Asymptote Engine', hero: { kind: 'text', text: 'Asymptote Engine' } }
-    ]
-  }
-  // About is temporarily hidden while it is being refactored from the legacy SPA.
-];
+// Basic Browser SPA runtime. Replace js/content.js to provide another site map;
+// navigation and rendering behavior remain here.
+import { SPA_SECTIONS } from './js/content.js';
 
 // State
 let currentSectionIdx = 0;
@@ -273,13 +238,10 @@ function getHeroSpec(sectionIdx, itemIdx) {
 }
 
 function getItemClickAction(sectionIdx, itemIdx) {
-  const routes = window.__INDROLEND_ROUTES__;
-  if (!routes) return null;
   const section = SPA_SECTIONS[sectionIdx];
   const item = section?.items[itemIdx];
   if (!section || !item) return null;
-  const key = `${section.id}/${item.id}`;
-  return routes.items?.[key]?.clickAction ?? null;
+  return item.clickAction && item.clickAction !== 'none' ? item.clickAction : null;
 }
 
 function getSafeExternalUrl(action) {
