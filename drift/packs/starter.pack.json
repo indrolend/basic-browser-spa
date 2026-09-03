@@ -1,0 +1,3737 @@
+{
+  "formatVersion": 1,
+  "id": "starter-general",
+  "title": "Starter General Learning Pack",
+  "license": "CC0-1.0",
+  "authors": [
+    "Project contributors"
+  ],
+  "sources": [
+    {
+      "id": "original-editorial",
+      "title": "Original Drift starter content",
+      "license": "CC0-1.0",
+      "attribution": "Independently authored for the Drift prototype; review status is recorded per fact."
+    }
+  ],
+  "topics": [
+    {
+      "id": "cpp",
+      "name": "C++ Fundamentals"
+    },
+    {
+      "id": "os",
+      "name": "Operating Systems"
+    },
+    {
+      "id": "cars",
+      "name": "Car Mechanics"
+    },
+    {
+      "id": "evidence",
+      "name": "Evidence Reasoning"
+    },
+    {
+      "id": "science",
+      "name": "General Science"
+    },
+    {
+      "id": "history",
+      "name": "History"
+    },
+    {
+      "id": "finance",
+      "name": "Personal Finance"
+    },
+    {
+      "id": "web",
+      "name": "Web & Software"
+    }
+  ],
+  "concepts": [
+    {
+      "id": "cpp-ownership",
+      "topicId": "cpp",
+      "name": "Ownership"
+    },
+    {
+      "id": "cpp-raii",
+      "topicId": "cpp",
+      "name": "Raii"
+    },
+    {
+      "id": "cpp-reference",
+      "topicId": "cpp",
+      "name": "Reference"
+    },
+    {
+      "id": "cpp-const",
+      "topicId": "cpp",
+      "name": "Const"
+    },
+    {
+      "id": "cpp-vector",
+      "topicId": "cpp",
+      "name": "Vector"
+    },
+    {
+      "id": "cpp-virtual",
+      "topicId": "cpp",
+      "name": "Virtual"
+    },
+    {
+      "id": "cpp-templates",
+      "topicId": "cpp",
+      "name": "Templates"
+    },
+    {
+      "id": "cpp-move",
+      "topicId": "cpp",
+      "name": "Move"
+    },
+    {
+      "id": "cpp-undefined",
+      "topicId": "cpp",
+      "name": "Undefined"
+    },
+    {
+      "id": "cpp-range",
+      "topicId": "cpp",
+      "name": "Range"
+    },
+    {
+      "id": "os-process",
+      "topicId": "os",
+      "name": "Process"
+    },
+    {
+      "id": "os-virtual-memory",
+      "topicId": "os",
+      "name": "Virtual Memory"
+    },
+    {
+      "id": "os-page-fault",
+      "topicId": "os",
+      "name": "Page Fault"
+    },
+    {
+      "id": "os-deadlock",
+      "topicId": "os",
+      "name": "Deadlock"
+    },
+    {
+      "id": "os-scheduler",
+      "topicId": "os",
+      "name": "Scheduler"
+    },
+    {
+      "id": "os-syscall",
+      "topicId": "os",
+      "name": "Syscall"
+    },
+    {
+      "id": "os-cache",
+      "topicId": "os",
+      "name": "Cache"
+    },
+    {
+      "id": "os-context-switch",
+      "topicId": "os",
+      "name": "Context Switch"
+    },
+    {
+      "id": "os-filesystem",
+      "topicId": "os",
+      "name": "Filesystem"
+    },
+    {
+      "id": "os-mutex",
+      "topicId": "os",
+      "name": "Mutex"
+    },
+    {
+      "id": "cars-alternator",
+      "topicId": "cars",
+      "name": "Alternator"
+    },
+    {
+      "id": "cars-coolant",
+      "topicId": "cars",
+      "name": "Coolant"
+    },
+    {
+      "id": "cars-abs",
+      "topicId": "cars",
+      "name": "Abs"
+    },
+    {
+      "id": "cars-oil",
+      "topicId": "cars",
+      "name": "Oil"
+    },
+    {
+      "id": "cars-spark",
+      "topicId": "cars",
+      "name": "Spark"
+    },
+    {
+      "id": "cars-tire",
+      "topicId": "cars",
+      "name": "Tire"
+    },
+    {
+      "id": "cars-differential",
+      "topicId": "cars",
+      "name": "Differential"
+    },
+    {
+      "id": "cars-catalyst",
+      "topicId": "cars",
+      "name": "Catalyst"
+    },
+    {
+      "id": "cars-thermostat",
+      "topicId": "cars",
+      "name": "Thermostat"
+    },
+    {
+      "id": "cars-brake-fluid",
+      "topicId": "cars",
+      "name": "Brake Fluid"
+    },
+    {
+      "id": "evidence-direct",
+      "topicId": "evidence",
+      "name": "Direct"
+    },
+    {
+      "id": "evidence-cause",
+      "topicId": "evidence",
+      "name": "Cause"
+    },
+    {
+      "id": "evidence-survey",
+      "topicId": "evidence",
+      "name": "Survey"
+    },
+    {
+      "id": "evidence-trend",
+      "topicId": "evidence",
+      "name": "Trend"
+    },
+    {
+      "id": "evidence-counter",
+      "topicId": "evidence",
+      "name": "Counter"
+    },
+    {
+      "id": "evidence-mechanism",
+      "topicId": "evidence",
+      "name": "Mechanism"
+    },
+    {
+      "id": "evidence-sample",
+      "topicId": "evidence",
+      "name": "Sample"
+    },
+    {
+      "id": "evidence-correlation",
+      "topicId": "evidence",
+      "name": "Correlation"
+    },
+    {
+      "id": "evidence-source",
+      "topicId": "evidence",
+      "name": "Source"
+    },
+    {
+      "id": "evidence-precision",
+      "topicId": "evidence",
+      "name": "Precision"
+    },
+    {
+      "id": "science-atoms",
+      "topicId": "science",
+      "name": "Atoms"
+    },
+    {
+      "id": "science-photosynthesis",
+      "topicId": "science",
+      "name": "Photosynthesis"
+    },
+    {
+      "id": "science-plate",
+      "topicId": "science",
+      "name": "Plate"
+    },
+    {
+      "id": "science-dna",
+      "topicId": "science",
+      "name": "Dna"
+    },
+    {
+      "id": "science-acceleration",
+      "topicId": "science",
+      "name": "Acceleration"
+    },
+    {
+      "id": "science-ph",
+      "topicId": "science",
+      "name": "Ph"
+    },
+    {
+      "id": "science-ecosystem",
+      "topicId": "science",
+      "name": "Ecosystem"
+    },
+    {
+      "id": "science-gravity",
+      "topicId": "science",
+      "name": "Gravity"
+    },
+    {
+      "id": "science-cell",
+      "topicId": "science",
+      "name": "Cell"
+    },
+    {
+      "id": "science-energy",
+      "topicId": "science",
+      "name": "Energy"
+    },
+    {
+      "id": "history-printing",
+      "topicId": "history",
+      "name": "Printing"
+    },
+    {
+      "id": "history-magna",
+      "topicId": "history",
+      "name": "Magna"
+    },
+    {
+      "id": "history-industrial",
+      "topicId": "history",
+      "name": "Industrial"
+    },
+    {
+      "id": "history-silk",
+      "topicId": "history",
+      "name": "Silk"
+    },
+    {
+      "id": "history-black-death",
+      "topicId": "history",
+      "name": "Black Death"
+    },
+    {
+      "id": "history-constitution",
+      "topicId": "history",
+      "name": "Constitution"
+    },
+    {
+      "id": "history-decolonization",
+      "topicId": "history",
+      "name": "Decolonization"
+    },
+    {
+      "id": "history-primary",
+      "topicId": "history",
+      "name": "Primary"
+    },
+    {
+      "id": "history-renaissance",
+      "topicId": "history",
+      "name": "Renaissance"
+    },
+    {
+      "id": "history-un",
+      "topicId": "history",
+      "name": "Un"
+    },
+    {
+      "id": "finance-compound",
+      "topicId": "finance",
+      "name": "Compound"
+    },
+    {
+      "id": "finance-emergency",
+      "topicId": "finance",
+      "name": "Emergency"
+    },
+    {
+      "id": "finance-diversify",
+      "topicId": "finance",
+      "name": "Diversify"
+    },
+    {
+      "id": "finance-apr",
+      "topicId": "finance",
+      "name": "Apr"
+    },
+    {
+      "id": "finance-inflation",
+      "topicId": "finance",
+      "name": "Inflation"
+    },
+    {
+      "id": "finance-index",
+      "topicId": "finance",
+      "name": "Index"
+    },
+    {
+      "id": "finance-credit",
+      "topicId": "finance",
+      "name": "Credit"
+    },
+    {
+      "id": "finance-budget",
+      "topicId": "finance",
+      "name": "Budget"
+    },
+    {
+      "id": "finance-insurance",
+      "topicId": "finance",
+      "name": "Insurance"
+    },
+    {
+      "id": "finance-fee",
+      "topicId": "finance",
+      "name": "Fee"
+    },
+    {
+      "id": "web-http",
+      "topicId": "web",
+      "name": "Http"
+    },
+    {
+      "id": "web-dns",
+      "topicId": "web",
+      "name": "Dns"
+    },
+    {
+      "id": "web-html",
+      "topicId": "web",
+      "name": "Html"
+    },
+    {
+      "id": "web-css",
+      "topicId": "web",
+      "name": "Css"
+    },
+    {
+      "id": "web-js",
+      "topicId": "web",
+      "name": "Js"
+    },
+    {
+      "id": "web-api",
+      "topicId": "web",
+      "name": "Api"
+    },
+    {
+      "id": "web-git",
+      "topicId": "web",
+      "name": "Git"
+    },
+    {
+      "id": "web-cache",
+      "topicId": "web",
+      "name": "Cache"
+    },
+    {
+      "id": "web-accessibility",
+      "topicId": "web",
+      "name": "Accessibility"
+    },
+    {
+      "id": "web-testing",
+      "topicId": "web",
+      "name": "Testing"
+    }
+  ],
+  "facts": [
+    {
+      "id": "fact-cpp-ownership",
+      "conceptId": "cpp-ownership",
+      "claim": "std::unique_ptr owns one object and transfers, rather than copies, that ownership.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-cpp-raii",
+      "conceptId": "cpp-raii",
+      "claim": "RAII acquires resources in construction and releases them automatically during destruction.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-cpp-reference",
+      "conceptId": "cpp-reference",
+      "claim": "A non-const lvalue reference aliases the caller's object.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-cpp-const",
+      "conceptId": "cpp-const",
+      "claim": "The trailing const qualifier makes this point to const within that member function.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-cpp-vector",
+      "conceptId": "cpp-vector",
+      "claim": "A vector keeps elements contiguous, so growth may require a larger allocation and relocation.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-cpp-virtual",
+      "conceptId": "cpp-virtual",
+      "claim": "Virtual dispatch ensures the derived destructor runs before the base destructor.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-cpp-templates",
+      "conceptId": "cpp-templates",
+      "claim": "The compiler instantiates type-specific functions from the template when used.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-cpp-move",
+      "conceptId": "cpp-move",
+      "claim": "Moves can reuse owned resources and leave the source valid but unspecified.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-cpp-undefined",
+      "conceptId": "cpp-undefined",
+      "claim": "Once execution has undefined behavior, the standard does not constrain the program's result.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-cpp-range",
+      "conceptId": "cpp-range",
+      "claim": "Range-based for expands to iterator-style traversal of the supplied range.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-os-process",
+      "conceptId": "os-process",
+      "claim": "Threads in one process normally share its address space; separate processes do not.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-os-virtual-memory",
+      "conceptId": "os-virtual-memory",
+      "claim": "The OS and hardware translate a process's virtual addresses to physical memory or backing storage.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-os-page-fault",
+      "conceptId": "os-page-fault",
+      "claim": "The processor traps so the OS can load, map, or reject access to the page.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-os-deadlock",
+      "conceptId": "os-deadlock",
+      "claim": "All four Coffman conditions must hold for resource deadlock to be possible.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-os-scheduler",
+      "conceptId": "os-scheduler",
+      "claim": "A timer or other event can cause the OS to deschedule the current task.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-os-syscall",
+      "conceptId": "os-syscall",
+      "claim": "System calls are the controlled boundary for services such as I/O and process creation.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-os-cache",
+      "conceptId": "os-cache",
+      "claim": "Small fast caches reduce the average delay of accessing instructions and data.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-os-context-switch",
+      "conceptId": "os-context-switch",
+      "claim": "Registers, program counter, and related execution state let the scheduler resume a thread.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-os-filesystem",
+      "conceptId": "os-filesystem",
+      "claim": "A directory organizes names that refer to files, subdirectories, and other objects.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-os-mutex",
+      "conceptId": "os-mutex",
+      "claim": "Only one holder can own a mutex at a time, coordinating access to shared state.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-cars-alternator",
+      "conceptId": "cars-alternator",
+      "claim": "The belt-driven alternator supplies the electrical system and replenishes the battery.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-cars-coolant",
+      "conceptId": "cars-coolant",
+      "claim": "Coolant circulates through engine passages and releases heat at the radiator.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-cars-abs",
+      "conceptId": "cars-abs",
+      "claim": "Anti-lock braking rapidly modulates brake pressure so tires can retain steering traction.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-cars-oil",
+      "conceptId": "cars-oil",
+      "claim": "Oil forms a protective film between moving parts and helps remove heat and debris.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-cars-spark",
+      "conceptId": "cars-spark",
+      "claim": "The ignition system sends high voltage to the spark plug at the proper time.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-cars-tire",
+      "conceptId": "cars-tire",
+      "claim": "Underinflation increases flexing, heat, wear, and energy use.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-cars-differential",
+      "conceptId": "cars-differential",
+      "claim": "The outside wheel travels farther in a turn and therefore needs to rotate faster.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-cars-catalyst",
+      "conceptId": "cars-catalyst",
+      "claim": "Catalysts promote reactions that convert several pollutants into less harmful gases.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-cars-thermostat",
+      "conceptId": "cars-thermostat",
+      "claim": "The thermostat opens as the engine warms, controlling flow toward the radiator.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-cars-brake-fluid",
+      "conceptId": "cars-brake-fluid",
+      "claim": "Hydraulic brakes depend on nearly incompressible fluid to transmit pedal force.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-evidence-direct",
+      "conceptId": "evidence-direct",
+      "claim": "A before-and-after traffic count on the affected route directly measures the claimed change.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-evidence-cause",
+      "conceptId": "evidence-cause",
+      "claim": "A matched comparison isolates the presence of shade cloth while holding conditions similar.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-evidence-survey",
+      "conceptId": "evidence-survey",
+      "claim": "A representative preference survey directly addresses what most students prefer.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-evidence-trend",
+      "conceptId": "evidence-trend",
+      "claim": "Repeated measurements using the same method establish the direction and duration of the trend.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-evidence-counter",
+      "conceptId": "evidence-counter",
+      "claim": "One reliable counterexample is enough to disprove a universal claim.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-evidence-mechanism",
+      "conceptId": "evidence-mechanism",
+      "claim": "Both lower oxygen exposure and slower browning connect the proposed cause to the outcome.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-evidence-sample",
+      "conceptId": "evidence-sample",
+      "claim": "Random selection from the relevant population reduces systematic selection bias.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-evidence-correlation",
+      "conceptId": "evidence-correlation",
+      "claim": "Correlation can arise when a third variable influences both measured outcomes.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-evidence-source",
+      "conceptId": "evidence-source",
+      "claim": "The official published ordinance is the primary source for its adopted language.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-evidence-precision",
+      "conceptId": "evidence-precision",
+      "claim": "A quantified comparison with uncertainty makes the magnitude and reliability assessable.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-science-atoms",
+      "conceptId": "science-atoms",
+      "claim": "The number of protons in the nucleus defines the chemical element.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-science-photosynthesis",
+      "conceptId": "science-photosynthesis",
+      "claim": "Photosynthetic pigments capture light energy to help build chemical energy stores.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-science-plate",
+      "conceptId": "science-plate",
+      "claim": "Earth's internal heat and gravity-driven slab motion power plate tectonics.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-science-dna",
+      "conceptId": "science-dna",
+      "claim": "The sequence of DNA bases carries information used in inheritance and cellular function.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-science-acceleration",
+      "conceptId": "science-acceleration",
+      "claim": "Acceleration is the rate of change of velocity, including changes in speed or direction.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-science-ph",
+      "conceptId": "science-ph",
+      "claim": "At ordinary conditions, pH values below 7 indicate acidic solutions.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-science-ecosystem",
+      "conceptId": "science-ecosystem",
+      "claim": "Decomposition breaks organic matter down and makes nutrients available again.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-science-gravity",
+      "conceptId": "science-gravity",
+      "claim": "Orbit is sustained free fall around Earth, so occupants lack a normal supporting force.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-science-cell",
+      "conceptId": "science-cell",
+      "claim": "The selectively permeable membrane controls exchange between the cell and its surroundings.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-science-energy",
+      "conceptId": "science-energy",
+      "claim": "Conservation of energy says total energy is unchanged in an isolated system.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-history-printing",
+      "conceptId": "history-printing",
+      "claim": "Printing lowered the labor needed per copy and helped ideas circulate more broadly.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-history-magna",
+      "conceptId": "history-magna",
+      "claim": "The charter constrained royal authority and became a symbol of government under law.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-history-industrial",
+      "conceptId": "history-industrial",
+      "claim": "Water power preceded widespread steam power in mechanized textile production.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-history-silk",
+      "conceptId": "history-silk",
+      "claim": "Multiple overland routes carried goods, technologies, religions, and ideas across Eurasia.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-history-black-death",
+      "conceptId": "history-black-death",
+      "claim": "Genetic and historical evidence identifies Yersinia pestis as the pathogen.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-history-constitution",
+      "conceptId": "history-constitution",
+      "claim": "Federalism allocates governing powers across national and state levels.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-history-decolonization",
+      "conceptId": "history-decolonization",
+      "claim": "The term covers political processes through which colonial territories became self-governing states.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-history-primary",
+      "conceptId": "history-primary",
+      "claim": "A contemporary firsthand diary is direct evidence from the person and period studied.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-history-renaissance",
+      "conceptId": "history-renaissance",
+      "claim": "Humanist scholarship recovered and critically examined classical literature and ideas.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-history-un",
+      "conceptId": "history-un",
+      "claim": "After World War II, member states established the UN as a forum for peace and cooperation.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-finance-compound",
+      "conceptId": "finance-compound",
+      "claim": "Returns added to principal can themselves generate later returns.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-finance-emergency",
+      "conceptId": "finance-emergency",
+      "claim": "Liquid savings can absorb shocks such as repairs, medical bills, or income loss.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-finance-diversify",
+      "conceptId": "finance-diversify",
+      "claim": "Spreading holdings can reduce idiosyncratic risk, though it cannot eliminate all risk.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-finance-apr",
+      "conceptId": "finance-apr",
+      "claim": "APR expresses borrowing cost on an annual basis, with legally specified inclusions.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-finance-inflation",
+      "conceptId": "finance-inflation",
+      "claim": "When prices rise, the same nominal amount buys fewer goods and services.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-finance-index",
+      "conceptId": "finance-index",
+      "claim": "An index fund holds securities according to rules intended to approximate its target index.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-finance-credit",
+      "conceptId": "finance-credit",
+      "claim": "Payment history is a major factor in common credit-scoring models.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-finance-budget",
+      "conceptId": "finance-budget",
+      "claim": "A budget makes expected inflows, commitments, goals, and tradeoffs visible.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-finance-insurance",
+      "conceptId": "finance-insurance",
+      "claim": "Insurance pools covered risks so an individual is protected from defined losses.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-finance-fee",
+      "conceptId": "finance-fee",
+      "claim": "Even modest recurring fees subtract from capital and its future potential growth.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-web-http",
+      "conceptId": "web-http",
+      "claim": "The 2xx class denotes that the server successfully received and handled the request.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-web-dns",
+      "conceptId": "web-dns",
+      "claim": "DNS is a distributed naming system that returns addresses and other records for domain names.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-web-html",
+      "conceptId": "web-html",
+      "claim": "HTML elements describe the structure and semantics of web content.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-web-css",
+      "conceptId": "web-css",
+      "claim": "CSS rules determine visual presentation such as spacing, color, and layout.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-web-js",
+      "conceptId": "web-js",
+      "claim": "JavaScript engines are embedded in browsers and available in runtimes such as Node.js.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-web-api",
+      "conceptId": "web-api",
+      "claim": "An API specifies operations, inputs, outputs, and conventions for software interaction.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-web-git",
+      "conceptId": "web-git",
+      "claim": "A commit records a tree snapshot and connects it to parent history, an author, and a message.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-web-cache",
+      "conceptId": "web-cache",
+      "claim": "Valid cached responses can avoid transferring or recomputing unchanged content.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-web-accessibility",
+      "conceptId": "web-accessibility",
+      "claim": "A programmatic label gives users of screen readers and other tools the control's name.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    },
+    {
+      "id": "fact-web-testing",
+      "conceptId": "web-testing",
+      "claim": "Unit tests isolate a small behavior so failures are quick to locate and reproduce.",
+      "sourceIds": [
+        "original-editorial"
+      ],
+      "verificationStatus": "unknown"
+    }
+  ],
+  "questions": [
+    {
+      "id": "q-cpp-ownership-a",
+      "factId": "fact-cpp-ownership",
+      "conceptId": "cpp-ownership",
+      "topicId": "cpp",
+      "prompt": "Which C++ type expresses exclusive ownership of a heap object?",
+      "choices": [
+        "std::unique_ptr",
+        "std::shared_ptr",
+        "std::weak_ptr",
+        "std::span"
+      ],
+      "correctIndex": 0,
+      "explanation": "std::unique_ptr owns one object and transfers, rather than copies, that ownership.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-cpp-ownership-b",
+      "factId": "fact-cpp-ownership",
+      "conceptId": "cpp-ownership",
+      "topicId": "cpp",
+      "prompt": "Which concept is described here? std::unique_ptr owns one object and transfers, rather than copies, that ownership.",
+      "choices": [
+        "Raii",
+        "Const",
+        "Templates",
+        "Ownership"
+      ],
+      "correctIndex": 3,
+      "explanation": "Ownership: std::unique_ptr owns one object and transfers, rather than copies, that ownership.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-cpp-raii-a",
+      "factId": "fact-cpp-raii",
+      "conceptId": "cpp-raii",
+      "topicId": "cpp",
+      "prompt": "What is the central idea of RAII in C++?",
+      "choices": [
+        "Tie resource lifetime to object lifetime",
+        "Allocate every object globally",
+        "Avoid constructors",
+        "Use garbage collection for files"
+      ],
+      "correctIndex": 0,
+      "explanation": "RAII acquires resources in construction and releases them automatically during destruction.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-cpp-raii-b",
+      "factId": "fact-cpp-raii",
+      "conceptId": "cpp-raii",
+      "topicId": "cpp",
+      "prompt": "Which concept is described here? RAII acquires resources in construction and releases them automatically during destruction.",
+      "choices": [
+        "Vector",
+        "Move",
+        "Raii",
+        "Reference"
+      ],
+      "correctIndex": 2,
+      "explanation": "Raii: RAII acquires resources in construction and releases them automatically during destruction.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-cpp-reference-a",
+      "factId": "fact-cpp-reference",
+      "conceptId": "cpp-reference",
+      "topicId": "cpp",
+      "prompt": "What does an lvalue reference parameter such as int& allow?",
+      "choices": [
+        "The function can modify the caller's integer",
+        "The argument is always copied",
+        "The value becomes immutable",
+        "The integer moves to the heap"
+      ],
+      "correctIndex": 0,
+      "explanation": "A non-const lvalue reference aliases the caller's object.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-cpp-reference-b",
+      "factId": "fact-cpp-reference",
+      "conceptId": "cpp-reference",
+      "topicId": "cpp",
+      "prompt": "Which concept is described here? A non-const lvalue reference aliases the caller's object.",
+      "choices": [
+        "Undefined",
+        "Reference",
+        "Const",
+        "Virtual"
+      ],
+      "correctIndex": 1,
+      "explanation": "Reference: A non-const lvalue reference aliases the caller's object.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-cpp-const-a",
+      "factId": "fact-cpp-const",
+      "conceptId": "cpp-const",
+      "topicId": "cpp",
+      "prompt": "Which member function promises not to modify the object's observable state?",
+      "choices": [
+        "A const member function",
+        "A static constructor",
+        "A virtual destructor",
+        "A friend function"
+      ],
+      "correctIndex": 0,
+      "explanation": "The trailing const qualifier makes this point to const within that member function.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-cpp-const-b",
+      "factId": "fact-cpp-const",
+      "conceptId": "cpp-const",
+      "topicId": "cpp",
+      "prompt": "Which concept is described here? The trailing const qualifier makes this point to const within that member function.",
+      "choices": [
+        "Vector",
+        "Templates",
+        "Range",
+        "Const"
+      ],
+      "correctIndex": 3,
+      "explanation": "Const: The trailing const qualifier makes this point to const within that member function.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-cpp-vector-a",
+      "factId": "fact-cpp-vector",
+      "conceptId": "cpp-vector",
+      "topicId": "cpp",
+      "prompt": "What happens when std::vector grows beyond its current capacity?",
+      "choices": [
+        "It may allocate new storage and move elements",
+        "It becomes a linked list",
+        "It silently drops the last element",
+        "It changes every element to const"
+      ],
+      "correctIndex": 0,
+      "explanation": "A vector keeps elements contiguous, so growth may require a larger allocation and relocation.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-cpp-vector-b",
+      "factId": "fact-cpp-vector",
+      "conceptId": "cpp-vector",
+      "topicId": "cpp",
+      "prompt": "Which concept is described here? A vector keeps elements contiguous, so growth may require a larger allocation and relocation.",
+      "choices": [
+        "Move",
+        "Ownership",
+        "Vector",
+        "Virtual"
+      ],
+      "correctIndex": 2,
+      "explanation": "Vector: A vector keeps elements contiguous, so growth may require a larger allocation and relocation.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-cpp-virtual-a",
+      "factId": "fact-cpp-virtual",
+      "conceptId": "cpp-virtual",
+      "topicId": "cpp",
+      "prompt": "Why declare a base-class destructor virtual?",
+      "choices": [
+        "To safely destroy derived objects through base pointers",
+        "To make the class copyable",
+        "To prevent inheritance",
+        "To speed up stack allocation"
+      ],
+      "correctIndex": 0,
+      "explanation": "Virtual dispatch ensures the derived destructor runs before the base destructor.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-cpp-virtual-b",
+      "factId": "fact-cpp-virtual",
+      "conceptId": "cpp-virtual",
+      "topicId": "cpp",
+      "prompt": "Which concept is described here? Virtual dispatch ensures the derived destructor runs before the base destructor.",
+      "choices": [
+        "Raii",
+        "Virtual",
+        "Templates",
+        "Undefined"
+      ],
+      "correctIndex": 1,
+      "explanation": "Virtual: Virtual dispatch ensures the derived destructor runs before the base destructor.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-cpp-templates-a",
+      "factId": "fact-cpp-templates",
+      "conceptId": "cpp-templates",
+      "topicId": "cpp",
+      "prompt": "What does a C++ function template primarily provide?",
+      "choices": [
+        "A pattern for functions over multiple types",
+        "A runtime plugin system",
+        "Automatic database schemas",
+        "A replacement for namespaces"
+      ],
+      "correctIndex": 0,
+      "explanation": "The compiler instantiates type-specific functions from the template when used.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-cpp-templates-b",
+      "factId": "fact-cpp-templates",
+      "conceptId": "cpp-templates",
+      "topicId": "cpp",
+      "prompt": "Which concept is described here? The compiler instantiates type-specific functions from the template when used.",
+      "choices": [
+        "Move",
+        "Range",
+        "Reference",
+        "Templates"
+      ],
+      "correctIndex": 3,
+      "explanation": "Templates: The compiler instantiates type-specific functions from the template when used.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-cpp-move-a",
+      "factId": "fact-cpp-move",
+      "conceptId": "cpp-move",
+      "topicId": "cpp",
+      "prompt": "What is a move operation intended to do?",
+      "choices": [
+        "Transfer resources from an expiring object",
+        "Duplicate every byte twice",
+        "Move source code into a header",
+        "Convert stack memory to static memory"
+      ],
+      "correctIndex": 0,
+      "explanation": "Moves can reuse owned resources and leave the source valid but unspecified.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-cpp-move-b",
+      "factId": "fact-cpp-move",
+      "conceptId": "cpp-move",
+      "topicId": "cpp",
+      "prompt": "Which concept is described here? Moves can reuse owned resources and leave the source valid but unspecified.",
+      "choices": [
+        "Ownership",
+        "Const",
+        "Move",
+        "Undefined"
+      ],
+      "correctIndex": 2,
+      "explanation": "Move: Moves can reuse owned resources and leave the source valid but unspecified.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-cpp-undefined-a",
+      "factId": "fact-cpp-undefined",
+      "conceptId": "cpp-undefined",
+      "topicId": "cpp",
+      "prompt": "What is undefined behavior?",
+      "choices": [
+        "Behavior for which the C++ standard imposes no requirements",
+        "A required exception",
+        "A compiler warning with fixed results",
+        "A slow but correct code path"
+      ],
+      "correctIndex": 0,
+      "explanation": "Once execution has undefined behavior, the standard does not constrain the program's result.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-cpp-undefined-b",
+      "factId": "fact-cpp-undefined",
+      "conceptId": "cpp-undefined",
+      "topicId": "cpp",
+      "prompt": "Which concept is described here? Once execution has undefined behavior, the standard does not constrain the program's result.",
+      "choices": [
+        "Vector",
+        "Undefined",
+        "Range",
+        "Raii"
+      ],
+      "correctIndex": 1,
+      "explanation": "Undefined: Once execution has undefined behavior, the standard does not constrain the program's result.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-cpp-range-a",
+      "factId": "fact-cpp-range",
+      "conceptId": "cpp-range",
+      "topicId": "cpp",
+      "prompt": "Which construct most directly iterates every element in a container?",
+      "choices": [
+        "A range-based for loop",
+        "A preprocessor include",
+        "A namespace alias",
+        "A static assertion"
+      ],
+      "correctIndex": 0,
+      "explanation": "Range-based for expands to iterator-style traversal of the supplied range.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-cpp-range-b",
+      "factId": "fact-cpp-range",
+      "conceptId": "cpp-range",
+      "topicId": "cpp",
+      "prompt": "Which concept is described here? Range-based for expands to iterator-style traversal of the supplied range.",
+      "choices": [
+        "Ownership",
+        "Reference",
+        "Virtual",
+        "Range"
+      ],
+      "correctIndex": 3,
+      "explanation": "Range: Range-based for expands to iterator-style traversal of the supplied range.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-os-process-a",
+      "factId": "fact-os-process",
+      "conceptId": "os-process",
+      "topicId": "os",
+      "prompt": "What most clearly distinguishes a process from a thread?",
+      "choices": [
+        "A process has its own virtual address space",
+        "A process cannot run code",
+        "A thread always owns a disk",
+        "Threads cannot be scheduled"
+      ],
+      "correctIndex": 0,
+      "explanation": "Threads in one process normally share its address space; separate processes do not.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-os-process-b",
+      "factId": "fact-os-process",
+      "conceptId": "os-process",
+      "topicId": "os",
+      "prompt": "Which concept is described here? Threads in one process normally share its address space; separate processes do not.",
+      "choices": [
+        "Virtual Memory",
+        "Deadlock",
+        "Cache",
+        "Process"
+      ],
+      "correctIndex": 3,
+      "explanation": "Process: Threads in one process normally share its address space; separate processes do not.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-os-virtual-memory-a",
+      "factId": "fact-os-virtual-memory",
+      "conceptId": "os-virtual-memory",
+      "topicId": "os",
+      "prompt": "What does virtual memory give each process?",
+      "choices": [
+        "A private logical address space",
+        "Unlimited physical RAM",
+        "A dedicated CPU core",
+        "Permanent network storage"
+      ],
+      "correctIndex": 0,
+      "explanation": "The OS and hardware translate a process's virtual addresses to physical memory or backing storage.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-os-virtual-memory-b",
+      "factId": "fact-os-virtual-memory",
+      "conceptId": "os-virtual-memory",
+      "topicId": "os",
+      "prompt": "Which concept is described here? The OS and hardware translate a process's virtual addresses to physical memory or backing storage.",
+      "choices": [
+        "Scheduler",
+        "Context Switch",
+        "Virtual Memory",
+        "Page Fault"
+      ],
+      "correctIndex": 2,
+      "explanation": "Virtual Memory: The OS and hardware translate a process's virtual addresses to physical memory or backing storage.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-os-page-fault-a",
+      "factId": "fact-os-page-fault",
+      "conceptId": "os-page-fault",
+      "topicId": "os",
+      "prompt": "When does a page fault occur?",
+      "choices": [
+        "When an accessed virtual page is not currently mapped as required",
+        "Whenever a file is renamed",
+        "Only when the CPU overheats",
+        "When a password is incorrect"
+      ],
+      "correctIndex": 0,
+      "explanation": "The processor traps so the OS can load, map, or reject access to the page.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-os-page-fault-b",
+      "factId": "fact-os-page-fault",
+      "conceptId": "os-page-fault",
+      "topicId": "os",
+      "prompt": "Which concept is described here? The processor traps so the OS can load, map, or reject access to the page.",
+      "choices": [
+        "Filesystem",
+        "Page Fault",
+        "Deadlock",
+        "Syscall"
+      ],
+      "correctIndex": 1,
+      "explanation": "Page Fault: The processor traps so the OS can load, map, or reject access to the page.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-os-deadlock-a",
+      "factId": "fact-os-deadlock",
+      "conceptId": "os-deadlock",
+      "topicId": "os",
+      "prompt": "Which set is necessary for a classic resource deadlock?",
+      "choices": [
+        "Mutual exclusion, hold-and-wait, no preemption, and circular wait",
+        "High CPU use and low disk space",
+        "Two users and one password",
+        "Caching and compression"
+      ],
+      "correctIndex": 0,
+      "explanation": "All four Coffman conditions must hold for resource deadlock to be possible.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-os-deadlock-b",
+      "factId": "fact-os-deadlock",
+      "conceptId": "os-deadlock",
+      "topicId": "os",
+      "prompt": "Which concept is described here? All four Coffman conditions must hold for resource deadlock to be possible.",
+      "choices": [
+        "Scheduler",
+        "Cache",
+        "Mutex",
+        "Deadlock"
+      ],
+      "correctIndex": 3,
+      "explanation": "Deadlock: All four Coffman conditions must hold for resource deadlock to be possible.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-os-scheduler-a",
+      "factId": "fact-os-scheduler",
+      "conceptId": "os-scheduler",
+      "topicId": "os",
+      "prompt": "What is a preemptive scheduler allowed to do?",
+      "choices": [
+        "Interrupt a running task and give the CPU to another",
+        "Delete blocked processes",
+        "Rewrite application source",
+        "Disable virtual memory"
+      ],
+      "correctIndex": 0,
+      "explanation": "A timer or other event can cause the OS to deschedule the current task.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-os-scheduler-b",
+      "factId": "fact-os-scheduler",
+      "conceptId": "os-scheduler",
+      "topicId": "os",
+      "prompt": "Which concept is described here? A timer or other event can cause the OS to deschedule the current task.",
+      "choices": [
+        "Context Switch",
+        "Process",
+        "Scheduler",
+        "Syscall"
+      ],
+      "correctIndex": 2,
+      "explanation": "Scheduler: A timer or other event can cause the OS to deschedule the current task.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-os-syscall-a",
+      "factId": "fact-os-syscall",
+      "conceptId": "os-syscall",
+      "topicId": "os",
+      "prompt": "Why does an application make a system call?",
+      "choices": [
+        "To request a privileged service from the kernel",
+        "To bypass all security checks",
+        "To compile itself",
+        "To add physical RAM"
+      ],
+      "correctIndex": 0,
+      "explanation": "System calls are the controlled boundary for services such as I/O and process creation.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-os-syscall-b",
+      "factId": "fact-os-syscall",
+      "conceptId": "os-syscall",
+      "topicId": "os",
+      "prompt": "Which concept is described here? System calls are the controlled boundary for services such as I/O and process creation.",
+      "choices": [
+        "Virtual Memory",
+        "Syscall",
+        "Cache",
+        "Filesystem"
+      ],
+      "correctIndex": 1,
+      "explanation": "Syscall: System calls are the controlled boundary for services such as I/O and process creation.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-os-cache-a",
+      "factId": "fact-os-cache",
+      "conceptId": "os-cache",
+      "topicId": "os",
+      "prompt": "Why is a CPU cache useful?",
+      "choices": [
+        "It keeps recently needed data closer to the processor",
+        "It makes disks larger",
+        "It encrypts every instruction",
+        "It replaces the operating system"
+      ],
+      "correctIndex": 0,
+      "explanation": "Small fast caches reduce the average delay of accessing instructions and data.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-os-cache-b",
+      "factId": "fact-os-cache",
+      "conceptId": "os-cache",
+      "topicId": "os",
+      "prompt": "Which concept is described here? Small fast caches reduce the average delay of accessing instructions and data.",
+      "choices": [
+        "Context Switch",
+        "Mutex",
+        "Page Fault",
+        "Cache"
+      ],
+      "correctIndex": 3,
+      "explanation": "Cache: Small fast caches reduce the average delay of accessing instructions and data.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-os-context-switch-a",
+      "factId": "fact-os-context-switch",
+      "conceptId": "os-context-switch",
+      "topicId": "os",
+      "prompt": "What is saved during a thread context switch?",
+      "choices": [
+        "Enough processor state to resume the thread later",
+        "The entire hard drive",
+        "Only the source code filename",
+        "Every network packet ever sent"
+      ],
+      "correctIndex": 0,
+      "explanation": "Registers, program counter, and related execution state let the scheduler resume a thread.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-os-context-switch-b",
+      "factId": "fact-os-context-switch",
+      "conceptId": "os-context-switch",
+      "topicId": "os",
+      "prompt": "Which concept is described here? Registers, program counter, and related execution state let the scheduler resume a thread.",
+      "choices": [
+        "Process",
+        "Deadlock",
+        "Context Switch",
+        "Filesystem"
+      ],
+      "correctIndex": 2,
+      "explanation": "Context Switch: Registers, program counter, and related execution state let the scheduler resume a thread.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-os-filesystem-a",
+      "factId": "fact-os-filesystem",
+      "conceptId": "os-filesystem",
+      "topicId": "os",
+      "prompt": "What does a filesystem directory primarily map?",
+      "choices": [
+        "Names to filesystem objects",
+        "CPU cores to processes",
+        "Passwords to users",
+        "Web addresses to routers"
+      ],
+      "correctIndex": 0,
+      "explanation": "A directory organizes names that refer to files, subdirectories, and other objects.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-os-filesystem-b",
+      "factId": "fact-os-filesystem",
+      "conceptId": "os-filesystem",
+      "topicId": "os",
+      "prompt": "Which concept is described here? A directory organizes names that refer to files, subdirectories, and other objects.",
+      "choices": [
+        "Scheduler",
+        "Filesystem",
+        "Mutex",
+        "Virtual Memory"
+      ],
+      "correctIndex": 1,
+      "explanation": "Filesystem: A directory organizes names that refer to files, subdirectories, and other objects.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-os-mutex-a",
+      "factId": "fact-os-mutex",
+      "conceptId": "os-mutex",
+      "topicId": "os",
+      "prompt": "What is a mutex designed to protect?",
+      "choices": [
+        "A critical section shared by concurrent execution",
+        "A screen from glare",
+        "A disk from formatting",
+        "A process from being scheduled"
+      ],
+      "correctIndex": 0,
+      "explanation": "Only one holder can own a mutex at a time, coordinating access to shared state.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-os-mutex-b",
+      "factId": "fact-os-mutex",
+      "conceptId": "os-mutex",
+      "topicId": "os",
+      "prompt": "Which concept is described here? Only one holder can own a mutex at a time, coordinating access to shared state.",
+      "choices": [
+        "Process",
+        "Page Fault",
+        "Syscall",
+        "Mutex"
+      ],
+      "correctIndex": 3,
+      "explanation": "Mutex: Only one holder can own a mutex at a time, coordinating access to shared state.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-cars-alternator-a",
+      "factId": "fact-cars-alternator",
+      "conceptId": "cars-alternator",
+      "topicId": "cars",
+      "prompt": "What does a car's alternator do while the engine runs?",
+      "choices": [
+        "Generates electrical power and charges the battery",
+        "Cools the engine oil",
+        "Pressurizes the tires",
+        "Changes the gear ratio"
+      ],
+      "correctIndex": 0,
+      "explanation": "The belt-driven alternator supplies the electrical system and replenishes the battery.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-cars-alternator-b",
+      "factId": "fact-cars-alternator",
+      "conceptId": "cars-alternator",
+      "topicId": "cars",
+      "prompt": "Which concept is described here? The belt-driven alternator supplies the electrical system and replenishes the battery.",
+      "choices": [
+        "Coolant",
+        "Oil",
+        "Differential",
+        "Alternator"
+      ],
+      "correctIndex": 3,
+      "explanation": "Alternator: The belt-driven alternator supplies the electrical system and replenishes the battery.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-cars-coolant-a",
+      "factId": "fact-cars-coolant",
+      "conceptId": "cars-coolant",
+      "topicId": "cars",
+      "prompt": "What is the primary job of engine coolant?",
+      "choices": [
+        "Carry heat from the engine to the radiator",
+        "Lubricate brake pads",
+        "Increase tire grip",
+        "Clean fuel injectors during combustion"
+      ],
+      "correctIndex": 0,
+      "explanation": "Coolant circulates through engine passages and releases heat at the radiator.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-cars-coolant-b",
+      "factId": "fact-cars-coolant",
+      "conceptId": "cars-coolant",
+      "topicId": "cars",
+      "prompt": "Which concept is described here? Coolant circulates through engine passages and releases heat at the radiator.",
+      "choices": [
+        "Spark",
+        "Catalyst",
+        "Coolant",
+        "Abs"
+      ],
+      "correctIndex": 2,
+      "explanation": "Coolant: Coolant circulates through engine passages and releases heat at the radiator.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-cars-abs-a",
+      "factId": "fact-cars-abs",
+      "conceptId": "cars-abs",
+      "topicId": "cars",
+      "prompt": "What does ABS help prevent during hard braking?",
+      "choices": [
+        "Wheel lockup",
+        "Engine overheating",
+        "Battery discharge",
+        "Fuel evaporation"
+      ],
+      "correctIndex": 0,
+      "explanation": "Anti-lock braking rapidly modulates brake pressure so tires can retain steering traction.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-cars-abs-b",
+      "factId": "fact-cars-abs",
+      "conceptId": "cars-abs",
+      "topicId": "cars",
+      "prompt": "Which concept is described here? Anti-lock braking rapidly modulates brake pressure so tires can retain steering traction.",
+      "choices": [
+        "Thermostat",
+        "Abs",
+        "Oil",
+        "Tire"
+      ],
+      "correctIndex": 1,
+      "explanation": "Abs: Anti-lock braking rapidly modulates brake pressure so tires can retain steering traction.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-cars-oil-a",
+      "factId": "fact-cars-oil",
+      "conceptId": "cars-oil",
+      "topicId": "cars",
+      "prompt": "Why does an engine need lubricating oil?",
+      "choices": [
+        "To reduce friction and carry heat and contaminants",
+        "To increase spark voltage",
+        "To inflate the cylinders",
+        "To cool the cabin"
+      ],
+      "correctIndex": 0,
+      "explanation": "Oil forms a protective film between moving parts and helps remove heat and debris.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-cars-oil-b",
+      "factId": "fact-cars-oil",
+      "conceptId": "cars-oil",
+      "topicId": "cars",
+      "prompt": "Which concept is described here? Oil forms a protective film between moving parts and helps remove heat and debris.",
+      "choices": [
+        "Spark",
+        "Differential",
+        "Brake Fluid",
+        "Oil"
+      ],
+      "correctIndex": 3,
+      "explanation": "Oil: Oil forms a protective film between moving parts and helps remove heat and debris.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-cars-spark-a",
+      "factId": "fact-cars-spark",
+      "conceptId": "cars-spark",
+      "topicId": "cars",
+      "prompt": "In a gasoline engine, what ignites the compressed air-fuel mixture?",
+      "choices": [
+        "A spark plug",
+        "The radiator cap",
+        "The alternator",
+        "The oxygen sensor"
+      ],
+      "correctIndex": 0,
+      "explanation": "The ignition system sends high voltage to the spark plug at the proper time.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-cars-spark-b",
+      "factId": "fact-cars-spark",
+      "conceptId": "cars-spark",
+      "topicId": "cars",
+      "prompt": "Which concept is described here? The ignition system sends high voltage to the spark plug at the proper time.",
+      "choices": [
+        "Catalyst",
+        "Alternator",
+        "Spark",
+        "Tire"
+      ],
+      "correctIndex": 2,
+      "explanation": "Spark: The ignition system sends high voltage to the spark plug at the proper time.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-cars-tire-a",
+      "factId": "fact-cars-tire",
+      "conceptId": "cars-tire",
+      "topicId": "cars",
+      "prompt": "What usually happens when tire pressure is substantially too low?",
+      "choices": [
+        "Rolling resistance and heat buildup increase",
+        "The tire becomes lighter",
+        "Braking distance always halves",
+        "The alternator spins faster"
+      ],
+      "correctIndex": 0,
+      "explanation": "Underinflation increases flexing, heat, wear, and energy use.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-cars-tire-b",
+      "factId": "fact-cars-tire",
+      "conceptId": "cars-tire",
+      "topicId": "cars",
+      "prompt": "Which concept is described here? Underinflation increases flexing, heat, wear, and energy use.",
+      "choices": [
+        "Coolant",
+        "Tire",
+        "Differential",
+        "Thermostat"
+      ],
+      "correctIndex": 1,
+      "explanation": "Tire: Underinflation increases flexing, heat, wear, and energy use.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-cars-differential-a",
+      "factId": "fact-cars-differential",
+      "conceptId": "cars-differential",
+      "topicId": "cars",
+      "prompt": "Why does a driven axle use a differential?",
+      "choices": [
+        "To let left and right wheels rotate at different speeds in a turn",
+        "To synchronize all pistons",
+        "To cool transmission fluid",
+        "To regulate battery voltage"
+      ],
+      "correctIndex": 0,
+      "explanation": "The outside wheel travels farther in a turn and therefore needs to rotate faster.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-cars-differential-b",
+      "factId": "fact-cars-differential",
+      "conceptId": "cars-differential",
+      "topicId": "cars",
+      "prompt": "Which concept is described here? The outside wheel travels farther in a turn and therefore needs to rotate faster.",
+      "choices": [
+        "Catalyst",
+        "Brake Fluid",
+        "Abs",
+        "Differential"
+      ],
+      "correctIndex": 3,
+      "explanation": "Differential: The outside wheel travels farther in a turn and therefore needs to rotate faster.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-cars-catalyst-a",
+      "factId": "fact-cars-catalyst",
+      "conceptId": "cars-catalyst",
+      "topicId": "cars",
+      "prompt": "What is the catalytic converter intended to reduce?",
+      "choices": [
+        "Harmful compounds in exhaust",
+        "Engine oil pressure",
+        "Tire temperature",
+        "Wind resistance"
+      ],
+      "correctIndex": 0,
+      "explanation": "Catalysts promote reactions that convert several pollutants into less harmful gases.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-cars-catalyst-b",
+      "factId": "fact-cars-catalyst",
+      "conceptId": "cars-catalyst",
+      "topicId": "cars",
+      "prompt": "Which concept is described here? Catalysts promote reactions that convert several pollutants into less harmful gases.",
+      "choices": [
+        "Alternator",
+        "Oil",
+        "Catalyst",
+        "Thermostat"
+      ],
+      "correctIndex": 2,
+      "explanation": "Catalyst: Catalysts promote reactions that convert several pollutants into less harmful gases.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-cars-thermostat-a",
+      "factId": "fact-cars-thermostat",
+      "conceptId": "cars-thermostat",
+      "topicId": "cars",
+      "prompt": "What does the engine thermostat regulate?",
+      "choices": [
+        "Coolant flow to help maintain operating temperature",
+        "Fuel octane",
+        "Wheel alignment",
+        "Battery polarity"
+      ],
+      "correctIndex": 0,
+      "explanation": "The thermostat opens as the engine warms, controlling flow toward the radiator.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-cars-thermostat-b",
+      "factId": "fact-cars-thermostat",
+      "conceptId": "cars-thermostat",
+      "topicId": "cars",
+      "prompt": "Which concept is described here? The thermostat opens as the engine warms, controlling flow toward the radiator.",
+      "choices": [
+        "Spark",
+        "Thermostat",
+        "Brake Fluid",
+        "Coolant"
+      ],
+      "correctIndex": 1,
+      "explanation": "Thermostat: The thermostat opens as the engine warms, controlling flow toward the radiator.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-cars-brake-fluid-a",
+      "factId": "fact-cars-brake-fluid",
+      "conceptId": "cars-brake-fluid",
+      "topicId": "cars",
+      "prompt": "Why must brake fluid resist boiling?",
+      "choices": [
+        "Vapor compresses and can make hydraulic braking ineffective",
+        "Boiling makes tires shrink",
+        "Vapor increases engine compression",
+        "It would discharge the battery"
+      ],
+      "correctIndex": 0,
+      "explanation": "Hydraulic brakes depend on nearly incompressible fluid to transmit pedal force.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-cars-brake-fluid-b",
+      "factId": "fact-cars-brake-fluid",
+      "conceptId": "cars-brake-fluid",
+      "topicId": "cars",
+      "prompt": "Which concept is described here? Hydraulic brakes depend on nearly incompressible fluid to transmit pedal force.",
+      "choices": [
+        "Alternator",
+        "Abs",
+        "Tire",
+        "Brake Fluid"
+      ],
+      "correctIndex": 3,
+      "explanation": "Brake Fluid: Hydraulic brakes depend on nearly incompressible fluid to transmit pedal force.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-evidence-direct-a",
+      "factId": "fact-evidence-direct",
+      "conceptId": "evidence-direct",
+      "topicId": "evidence",
+      "prompt": "Claim: A town's new bus route reduced car commuting. Which evidence most directly supports it?",
+      "choices": [
+        "Traffic counts show 18% fewer cars on the route after buses began",
+        "The buses are painted blue",
+        "The town has three parks",
+        "Fuel prices changed ten years earlier"
+      ],
+      "correctIndex": 0,
+      "explanation": "A before-and-after traffic count on the affected route directly measures the claimed change.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-evidence-direct-b",
+      "factId": "fact-evidence-direct",
+      "conceptId": "evidence-direct",
+      "topicId": "evidence",
+      "prompt": "Which concept is described here? A before-and-after traffic count on the affected route directly measures the claimed change.",
+      "choices": [
+        "Cause",
+        "Trend",
+        "Sample",
+        "Direct"
+      ],
+      "correctIndex": 3,
+      "explanation": "Direct: A before-and-after traffic count on the affected route directly measures the claimed change.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-evidence-cause-a",
+      "factId": "fact-evidence-cause",
+      "conceptId": "evidence-cause",
+      "topicId": "evidence",
+      "prompt": "Claim: Shade cloth lowered greenhouse temperatures. Which evidence is strongest?",
+      "choices": [
+        "Matched greenhouses with cloth averaged 4°C cooler under the same conditions",
+        "The cloth manufacturer sells many colors",
+        "One gardener likes the appearance",
+        "Winter nights were cold"
+      ],
+      "correctIndex": 0,
+      "explanation": "A matched comparison isolates the presence of shade cloth while holding conditions similar.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-evidence-cause-b",
+      "factId": "fact-evidence-cause",
+      "conceptId": "evidence-cause",
+      "topicId": "evidence",
+      "prompt": "Which concept is described here? A matched comparison isolates the presence of shade cloth while holding conditions similar.",
+      "choices": [
+        "Counter",
+        "Correlation",
+        "Cause",
+        "Survey"
+      ],
+      "correctIndex": 2,
+      "explanation": "Cause: A matched comparison isolates the presence of shade cloth while holding conditions similar.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-evidence-survey-a",
+      "factId": "fact-evidence-survey",
+      "conceptId": "evidence-survey",
+      "topicId": "evidence",
+      "prompt": "Claim: Most students prefer later library hours. Which finding best supports it?",
+      "choices": [
+        "In a random survey, 68% selected a later closing time",
+        "The library owns 40,000 books",
+        "Two librarians work mornings",
+        "The cafeteria closes early"
+      ],
+      "correctIndex": 0,
+      "explanation": "A representative preference survey directly addresses what most students prefer.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-evidence-survey-b",
+      "factId": "fact-evidence-survey",
+      "conceptId": "evidence-survey",
+      "topicId": "evidence",
+      "prompt": "Which concept is described here? A representative preference survey directly addresses what most students prefer.",
+      "choices": [
+        "Source",
+        "Survey",
+        "Trend",
+        "Mechanism"
+      ],
+      "correctIndex": 1,
+      "explanation": "Survey: A representative preference survey directly addresses what most students prefer.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-evidence-trend-a",
+      "factId": "fact-evidence-trend",
+      "conceptId": "evidence-trend",
+      "topicId": "evidence",
+      "prompt": "Claim: The lake's water clarity improved over five years. Which evidence fits best?",
+      "choices": [
+        "Standardized visibility readings rose each year from 2.1 to 4.0 meters",
+        "A new dock was painted",
+        "Rain fell on one sampling day",
+        "The lake's name changed"
+      ],
+      "correctIndex": 0,
+      "explanation": "Repeated measurements using the same method establish the direction and duration of the trend.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-evidence-trend-b",
+      "factId": "fact-evidence-trend",
+      "conceptId": "evidence-trend",
+      "topicId": "evidence",
+      "prompt": "Which concept is described here? Repeated measurements using the same method establish the direction and duration of the trend.",
+      "choices": [
+        "Counter",
+        "Sample",
+        "Precision",
+        "Trend"
+      ],
+      "correctIndex": 3,
+      "explanation": "Trend: Repeated measurements using the same method establish the direction and duration of the trend.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-evidence-counter-a",
+      "factId": "fact-evidence-counter",
+      "conceptId": "evidence-counter",
+      "topicId": "evidence",
+      "prompt": "Claim: All metals are attracted to magnets. Which observation most directly weakens it?",
+      "choices": [
+        "A clean copper strip shows no attraction to a strong magnet",
+        "An iron nail is attracted",
+        "Magnets have two poles",
+        "Steel can contain iron"
+      ],
+      "correctIndex": 0,
+      "explanation": "One reliable counterexample is enough to disprove a universal claim.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-evidence-counter-b",
+      "factId": "fact-evidence-counter",
+      "conceptId": "evidence-counter",
+      "topicId": "evidence",
+      "prompt": "Which concept is described here? One reliable counterexample is enough to disprove a universal claim.",
+      "choices": [
+        "Correlation",
+        "Direct",
+        "Counter",
+        "Mechanism"
+      ],
+      "correctIndex": 2,
+      "explanation": "Counter: One reliable counterexample is enough to disprove a universal claim.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-evidence-mechanism-a",
+      "factId": "fact-evidence-mechanism",
+      "conceptId": "evidence-mechanism",
+      "topicId": "evidence",
+      "prompt": "Claim: The coating slows apple browning by limiting oxygen exposure. Which result best supports the mechanism?",
+      "choices": [
+        "Coated slices absorb less measured oxygen and brown more slowly",
+        "Coated slices weigh slightly more",
+        "Apples grow on trees",
+        "The coating is transparent"
+      ],
+      "correctIndex": 0,
+      "explanation": "Both lower oxygen exposure and slower browning connect the proposed cause to the outcome.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-evidence-mechanism-b",
+      "factId": "fact-evidence-mechanism",
+      "conceptId": "evidence-mechanism",
+      "topicId": "evidence",
+      "prompt": "Which concept is described here? Both lower oxygen exposure and slower browning connect the proposed cause to the outcome.",
+      "choices": [
+        "Cause",
+        "Mechanism",
+        "Sample",
+        "Source"
+      ],
+      "correctIndex": 1,
+      "explanation": "Mechanism: Both lower oxygen exposure and slower browning connect the proposed cause to the outcome.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-evidence-sample-a",
+      "factId": "fact-evidence-sample",
+      "conceptId": "evidence-sample",
+      "topicId": "evidence",
+      "prompt": "Which study best supports a claim about all city voters?",
+      "choices": [
+        "A large random sample drawn from the voter registry",
+        "Comments from one campaign event",
+        "A poll of the researcher's friends",
+        "Interviews with only elected officials"
+      ],
+      "correctIndex": 0,
+      "explanation": "Random selection from the relevant population reduces systematic selection bias.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-evidence-sample-b",
+      "factId": "fact-evidence-sample",
+      "conceptId": "evidence-sample",
+      "topicId": "evidence",
+      "prompt": "Which concept is described here? Random selection from the relevant population reduces systematic selection bias.",
+      "choices": [
+        "Correlation",
+        "Precision",
+        "Survey",
+        "Sample"
+      ],
+      "correctIndex": 3,
+      "explanation": "Sample: Random selection from the relevant population reduces systematic selection bias.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-evidence-correlation-a",
+      "factId": "fact-evidence-correlation",
+      "conceptId": "evidence-correlation",
+      "topicId": "evidence",
+      "prompt": "A study finds umbrella sales and traffic crashes both rise on rainy days. What is the best interpretation?",
+      "choices": [
+        "Rain may be a common cause of both changes",
+        "Umbrellas necessarily cause crashes",
+        "Crashes create rain",
+        "The variables cannot be related"
+      ],
+      "correctIndex": 0,
+      "explanation": "Correlation can arise when a third variable influences both measured outcomes.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-evidence-correlation-b",
+      "factId": "fact-evidence-correlation",
+      "conceptId": "evidence-correlation",
+      "topicId": "evidence",
+      "prompt": "Which concept is described here? Correlation can arise when a third variable influences both measured outcomes.",
+      "choices": [
+        "Direct",
+        "Trend",
+        "Correlation",
+        "Source"
+      ],
+      "correctIndex": 2,
+      "explanation": "Correlation: Correlation can arise when a third variable influences both measured outcomes.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-evidence-source-a",
+      "factId": "fact-evidence-source",
+      "conceptId": "evidence-source",
+      "topicId": "evidence",
+      "prompt": "Which source is strongest for the exact text of a newly enacted city ordinance?",
+      "choices": [
+        "The ordinance published by the city clerk",
+        "An anonymous social post",
+        "A restaurant advertisement",
+        "A ten-year-old travel guide"
+      ],
+      "correctIndex": 0,
+      "explanation": "The official published ordinance is the primary source for its adopted language.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-evidence-source-b",
+      "factId": "fact-evidence-source",
+      "conceptId": "evidence-source",
+      "topicId": "evidence",
+      "prompt": "Which concept is described here? The official published ordinance is the primary source for its adopted language.",
+      "choices": [
+        "Counter",
+        "Source",
+        "Precision",
+        "Cause"
+      ],
+      "correctIndex": 1,
+      "explanation": "Source: The official published ordinance is the primary source for its adopted language.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-evidence-precision-a",
+      "factId": "fact-evidence-precision",
+      "conceptId": "evidence-precision",
+      "topicId": "evidence",
+      "prompt": "Claim: The treatment increased average growth. Which result is most informative?",
+      "choices": [
+        "Treated plants grew 12.4 cm versus 8.1 cm for controls, with uncertainty reported",
+        "Some plants looked tall",
+        "The greenhouse was busy",
+        "Growth is important"
+      ],
+      "correctIndex": 0,
+      "explanation": "A quantified comparison with uncertainty makes the magnitude and reliability assessable.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-evidence-precision-b",
+      "factId": "fact-evidence-precision",
+      "conceptId": "evidence-precision",
+      "topicId": "evidence",
+      "prompt": "Which concept is described here? A quantified comparison with uncertainty makes the magnitude and reliability assessable.",
+      "choices": [
+        "Direct",
+        "Survey",
+        "Mechanism",
+        "Precision"
+      ],
+      "correctIndex": 3,
+      "explanation": "Precision: A quantified comparison with uncertainty makes the magnitude and reliability assessable.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-science-atoms-a",
+      "factId": "fact-science-atoms",
+      "conceptId": "science-atoms",
+      "topicId": "science",
+      "prompt": "Which particle determines an element's atomic number?",
+      "choices": [
+        "Protons",
+        "Neutrons",
+        "Electrons plus neutrons",
+        "Photons"
+      ],
+      "correctIndex": 0,
+      "explanation": "The number of protons in the nucleus defines the chemical element.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-science-atoms-b",
+      "factId": "fact-science-atoms",
+      "conceptId": "science-atoms",
+      "topicId": "science",
+      "prompt": "Which concept is described here? The number of protons in the nucleus defines the chemical element.",
+      "choices": [
+        "Photosynthesis",
+        "Dna",
+        "Ecosystem",
+        "Atoms"
+      ],
+      "correctIndex": 3,
+      "explanation": "Atoms: The number of protons in the nucleus defines the chemical element.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-science-photosynthesis-a",
+      "factId": "fact-science-photosynthesis",
+      "conceptId": "science-photosynthesis",
+      "topicId": "science",
+      "prompt": "What energy source drives photosynthesis in plants?",
+      "choices": [
+        "Light",
+        "Sound",
+        "Gravity alone",
+        "Earth's magnetic field"
+      ],
+      "correctIndex": 0,
+      "explanation": "Photosynthetic pigments capture light energy to help build chemical energy stores.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-science-photosynthesis-b",
+      "factId": "fact-science-photosynthesis",
+      "conceptId": "science-photosynthesis",
+      "topicId": "science",
+      "prompt": "Which concept is described here? Photosynthetic pigments capture light energy to help build chemical energy stores.",
+      "choices": [
+        "Acceleration",
+        "Gravity",
+        "Photosynthesis",
+        "Plate"
+      ],
+      "correctIndex": 2,
+      "explanation": "Photosynthesis: Photosynthetic pigments capture light energy to help build chemical energy stores.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-science-plate-a",
+      "factId": "fact-science-plate",
+      "conceptId": "science-plate",
+      "topicId": "science",
+      "prompt": "What mainly drives the motion of Earth's tectonic plates?",
+      "choices": [
+        "Forces associated with heat-driven mantle motion and sinking slabs",
+        "Ocean tides alone",
+        "Seasonal winds",
+        "The Moon's phases"
+      ],
+      "correctIndex": 0,
+      "explanation": "Earth's internal heat and gravity-driven slab motion power plate tectonics.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-science-plate-b",
+      "factId": "fact-science-plate",
+      "conceptId": "science-plate",
+      "topicId": "science",
+      "prompt": "Which concept is described here? Earth's internal heat and gravity-driven slab motion power plate tectonics.",
+      "choices": [
+        "Cell",
+        "Plate",
+        "Dna",
+        "Ph"
+      ],
+      "correctIndex": 1,
+      "explanation": "Plate: Earth's internal heat and gravity-driven slab motion power plate tectonics.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-science-dna-a",
+      "factId": "fact-science-dna",
+      "conceptId": "science-dna",
+      "topicId": "science",
+      "prompt": "What is DNA's primary biological role?",
+      "choices": [
+        "Store hereditary information",
+        "Directly digest food",
+        "Pump blood",
+        "Insulate every nerve"
+      ],
+      "correctIndex": 0,
+      "explanation": "The sequence of DNA bases carries information used in inheritance and cellular function.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-science-dna-b",
+      "factId": "fact-science-dna",
+      "conceptId": "science-dna",
+      "topicId": "science",
+      "prompt": "Which concept is described here? The sequence of DNA bases carries information used in inheritance and cellular function.",
+      "choices": [
+        "Acceleration",
+        "Ecosystem",
+        "Energy",
+        "Dna"
+      ],
+      "correctIndex": 3,
+      "explanation": "Dna: The sequence of DNA bases carries information used in inheritance and cellular function.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-science-acceleration-a",
+      "factId": "fact-science-acceleration",
+      "conceptId": "science-acceleration",
+      "topicId": "science",
+      "prompt": "If an object's velocity changes, what must be nonzero during that change?",
+      "choices": [
+        "Acceleration",
+        "Mass",
+        "Temperature",
+        "Volume"
+      ],
+      "correctIndex": 0,
+      "explanation": "Acceleration is the rate of change of velocity, including changes in speed or direction.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-science-acceleration-b",
+      "factId": "fact-science-acceleration",
+      "conceptId": "science-acceleration",
+      "topicId": "science",
+      "prompt": "Which concept is described here? Acceleration is the rate of change of velocity, including changes in speed or direction.",
+      "choices": [
+        "Gravity",
+        "Atoms",
+        "Acceleration",
+        "Ph"
+      ],
+      "correctIndex": 2,
+      "explanation": "Acceleration: Acceleration is the rate of change of velocity, including changes in speed or direction.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-science-ph-a",
+      "factId": "fact-science-ph",
+      "conceptId": "science-ph",
+      "topicId": "science",
+      "prompt": "A solution with pH 3 is best described as what?",
+      "choices": [
+        "Acidic",
+        "Neutral",
+        "Basic",
+        "Radioactive"
+      ],
+      "correctIndex": 0,
+      "explanation": "At ordinary conditions, pH values below 7 indicate acidic solutions.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-science-ph-b",
+      "factId": "fact-science-ph",
+      "conceptId": "science-ph",
+      "topicId": "science",
+      "prompt": "Which concept is described here? At ordinary conditions, pH values below 7 indicate acidic solutions.",
+      "choices": [
+        "Photosynthesis",
+        "Ph",
+        "Ecosystem",
+        "Cell"
+      ],
+      "correctIndex": 1,
+      "explanation": "Ph: At ordinary conditions, pH values below 7 indicate acidic solutions.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-science-ecosystem-a",
+      "factId": "fact-science-ecosystem",
+      "conceptId": "science-ecosystem",
+      "topicId": "science",
+      "prompt": "What role do decomposers play in ecosystems?",
+      "choices": [
+        "Return nutrients from dead material to the environment",
+        "Create energy from nothing",
+        "Stop all competition",
+        "Remove all atmospheric oxygen"
+      ],
+      "correctIndex": 0,
+      "explanation": "Decomposition breaks organic matter down and makes nutrients available again.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-science-ecosystem-b",
+      "factId": "fact-science-ecosystem",
+      "conceptId": "science-ecosystem",
+      "topicId": "science",
+      "prompt": "Which concept is described here? Decomposition breaks organic matter down and makes nutrients available again.",
+      "choices": [
+        "Gravity",
+        "Energy",
+        "Plate",
+        "Ecosystem"
+      ],
+      "correctIndex": 3,
+      "explanation": "Ecosystem: Decomposition breaks organic matter down and makes nutrients available again.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-science-gravity-a",
+      "factId": "fact-science-gravity",
+      "conceptId": "science-gravity",
+      "topicId": "science",
+      "prompt": "Why do astronauts in orbit appear weightless?",
+      "choices": [
+        "They and their spacecraft are continuously falling together",
+        "Earth has no gravity above the atmosphere",
+        "Their mass becomes zero",
+        "The Sun cancels all forces"
+      ],
+      "correctIndex": 0,
+      "explanation": "Orbit is sustained free fall around Earth, so occupants lack a normal supporting force.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-science-gravity-b",
+      "factId": "fact-science-gravity",
+      "conceptId": "science-gravity",
+      "topicId": "science",
+      "prompt": "Which concept is described here? Orbit is sustained free fall around Earth, so occupants lack a normal supporting force.",
+      "choices": [
+        "Atoms",
+        "Dna",
+        "Gravity",
+        "Cell"
+      ],
+      "correctIndex": 2,
+      "explanation": "Gravity: Orbit is sustained free fall around Earth, so occupants lack a normal supporting force.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-science-cell-a",
+      "factId": "fact-science-cell",
+      "conceptId": "science-cell",
+      "topicId": "science",
+      "prompt": "Which structure regulates what enters and leaves a cell?",
+      "choices": [
+        "The cell membrane",
+        "A chromosome",
+        "A ribosome",
+        "The nucleolus alone"
+      ],
+      "correctIndex": 0,
+      "explanation": "The selectively permeable membrane controls exchange between the cell and its surroundings.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-science-cell-b",
+      "factId": "fact-science-cell",
+      "conceptId": "science-cell",
+      "topicId": "science",
+      "prompt": "Which concept is described here? The selectively permeable membrane controls exchange between the cell and its surroundings.",
+      "choices": [
+        "Acceleration",
+        "Cell",
+        "Energy",
+        "Photosynthesis"
+      ],
+      "correctIndex": 1,
+      "explanation": "Cell: The selectively permeable membrane controls exchange between the cell and its surroundings.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-science-energy-a",
+      "factId": "fact-science-energy",
+      "conceptId": "science-energy",
+      "topicId": "science",
+      "prompt": "In an isolated system, what happens to total energy?",
+      "choices": [
+        "It remains constant while changing forms",
+        "It steadily disappears",
+        "It doubles each minute",
+        "It becomes only heat immediately"
+      ],
+      "correctIndex": 0,
+      "explanation": "Conservation of energy says total energy is unchanged in an isolated system.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-science-energy-b",
+      "factId": "fact-science-energy",
+      "conceptId": "science-energy",
+      "topicId": "science",
+      "prompt": "Which concept is described here? Conservation of energy says total energy is unchanged in an isolated system.",
+      "choices": [
+        "Atoms",
+        "Plate",
+        "Ph",
+        "Energy"
+      ],
+      "correctIndex": 3,
+      "explanation": "Energy: Conservation of energy says total energy is unchanged in an isolated system.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-history-printing-a",
+      "factId": "fact-history-printing",
+      "conceptId": "history-printing",
+      "topicId": "history",
+      "prompt": "What was a major effect of movable-type printing in Europe?",
+      "choices": [
+        "Written works could be reproduced more rapidly and widely",
+        "Handwriting disappeared overnight",
+        "Paper was no longer needed",
+        "All books became free"
+      ],
+      "correctIndex": 0,
+      "explanation": "Printing lowered the labor needed per copy and helped ideas circulate more broadly.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-history-printing-b",
+      "factId": "fact-history-printing",
+      "conceptId": "history-printing",
+      "topicId": "history",
+      "prompt": "Which concept is described here? Printing lowered the labor needed per copy and helped ideas circulate more broadly.",
+      "choices": [
+        "Magna",
+        "Silk",
+        "Decolonization",
+        "Printing"
+      ],
+      "correctIndex": 3,
+      "explanation": "Printing: Printing lowered the labor needed per copy and helped ideas circulate more broadly.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-history-magna-a",
+      "factId": "fact-history-magna",
+      "conceptId": "history-magna",
+      "topicId": "history",
+      "prompt": "What principle is associated with Magna Carta?",
+      "choices": [
+        "The ruler's power is subject to law",
+        "Monarchs must never collect taxes",
+        "All adults immediately gained a vote",
+        "Parliament was abolished"
+      ],
+      "correctIndex": 0,
+      "explanation": "The charter constrained royal authority and became a symbol of government under law.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-history-magna-b",
+      "factId": "fact-history-magna",
+      "conceptId": "history-magna",
+      "topicId": "history",
+      "prompt": "Which concept is described here? The charter constrained royal authority and became a symbol of government under law.",
+      "choices": [
+        "Black Death",
+        "Primary",
+        "Magna",
+        "Industrial"
+      ],
+      "correctIndex": 2,
+      "explanation": "Magna: The charter constrained royal authority and became a symbol of government under law.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-history-industrial-a",
+      "factId": "fact-history-industrial",
+      "conceptId": "history-industrial",
+      "topicId": "history",
+      "prompt": "What powered many early British factories during industrialization?",
+      "choices": [
+        "Water wheels and then steam engines",
+        "Solar panels",
+        "Internal-combustion trucks",
+        "Nuclear reactors"
+      ],
+      "correctIndex": 0,
+      "explanation": "Water power preceded widespread steam power in mechanized textile production.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-history-industrial-b",
+      "factId": "fact-history-industrial",
+      "conceptId": "history-industrial",
+      "topicId": "history",
+      "prompt": "Which concept is described here? Water power preceded widespread steam power in mechanized textile production.",
+      "choices": [
+        "Renaissance",
+        "Industrial",
+        "Silk",
+        "Constitution"
+      ],
+      "correctIndex": 1,
+      "explanation": "Industrial: Water power preceded widespread steam power in mechanized textile production.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-history-silk-a",
+      "factId": "fact-history-silk",
+      "conceptId": "history-silk",
+      "topicId": "history",
+      "prompt": "What did the Silk Roads primarily connect?",
+      "choices": [
+        "Networks of trade and exchange across Eurasia",
+        "Only two neighboring villages",
+        "Antarctica and Australia",
+        "A single Roman road"
+      ],
+      "correctIndex": 0,
+      "explanation": "Multiple overland routes carried goods, technologies, religions, and ideas across Eurasia.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-history-silk-b",
+      "factId": "fact-history-silk",
+      "conceptId": "history-silk",
+      "topicId": "history",
+      "prompt": "Which concept is described here? Multiple overland routes carried goods, technologies, religions, and ideas across Eurasia.",
+      "choices": [
+        "Black Death",
+        "Decolonization",
+        "Un",
+        "Silk"
+      ],
+      "correctIndex": 3,
+      "explanation": "Silk: Multiple overland routes carried goods, technologies, religions, and ideas across Eurasia.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-history-black-death-a",
+      "factId": "fact-history-black-death",
+      "conceptId": "history-black-death",
+      "topicId": "history",
+      "prompt": "What caused the Black Death pandemic of the fourteenth century?",
+      "choices": [
+        "The bacterium Yersinia pestis",
+        "A solar eclipse",
+        "A shortage of printing presses",
+        "Vitamin C"
+      ],
+      "correctIndex": 0,
+      "explanation": "Genetic and historical evidence identifies Yersinia pestis as the pathogen.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-history-black-death-b",
+      "factId": "fact-history-black-death",
+      "conceptId": "history-black-death",
+      "topicId": "history",
+      "prompt": "Which concept is described here? Genetic and historical evidence identifies Yersinia pestis as the pathogen.",
+      "choices": [
+        "Primary",
+        "Printing",
+        "Black Death",
+        "Constitution"
+      ],
+      "correctIndex": 2,
+      "explanation": "Black Death: Genetic and historical evidence identifies Yersinia pestis as the pathogen.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-history-constitution-a",
+      "factId": "fact-history-constitution",
+      "conceptId": "history-constitution",
+      "topicId": "history",
+      "prompt": "What is federalism in the U.S. constitutional system?",
+      "choices": [
+        "Division of authority between national and state governments",
+        "Rule by judges alone",
+        "A ban on local government",
+        "Direct election of every official"
+      ],
+      "correctIndex": 0,
+      "explanation": "Federalism allocates governing powers across national and state levels.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-history-constitution-b",
+      "factId": "fact-history-constitution",
+      "conceptId": "history-constitution",
+      "topicId": "history",
+      "prompt": "Which concept is described here? Federalism allocates governing powers across national and state levels.",
+      "choices": [
+        "Magna",
+        "Constitution",
+        "Decolonization",
+        "Renaissance"
+      ],
+      "correctIndex": 1,
+      "explanation": "Constitution: Federalism allocates governing powers across national and state levels.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-history-decolonization-a",
+      "factId": "fact-history-decolonization",
+      "conceptId": "history-decolonization",
+      "topicId": "history",
+      "prompt": "What does decolonization describe?",
+      "choices": [
+        "Colonies gaining independence from imperial rule",
+        "The founding of ancient empires",
+        "The spread of glaciers",
+        "The invention of coinage"
+      ],
+      "correctIndex": 0,
+      "explanation": "The term covers political processes through which colonial territories became self-governing states.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-history-decolonization-b",
+      "factId": "fact-history-decolonization",
+      "conceptId": "history-decolonization",
+      "topicId": "history",
+      "prompt": "Which concept is described here? The term covers political processes through which colonial territories became self-governing states.",
+      "choices": [
+        "Primary",
+        "Un",
+        "Industrial",
+        "Decolonization"
+      ],
+      "correctIndex": 3,
+      "explanation": "Decolonization: The term covers political processes through which colonial territories became self-governing states.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-history-primary-a",
+      "factId": "fact-history-primary",
+      "conceptId": "history-primary",
+      "topicId": "history",
+      "prompt": "Which item is a primary source for studying a soldier's daily experience in a war?",
+      "choices": [
+        "A diary written by the soldier during the war",
+        "A recent textbook summary",
+        "A modern historical novel",
+        "A museum gift-shop poster"
+      ],
+      "correctIndex": 0,
+      "explanation": "A contemporary firsthand diary is direct evidence from the person and period studied.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-history-primary-b",
+      "factId": "fact-history-primary",
+      "conceptId": "history-primary",
+      "topicId": "history",
+      "prompt": "Which concept is described here? A contemporary firsthand diary is direct evidence from the person and period studied.",
+      "choices": [
+        "Printing",
+        "Silk",
+        "Primary",
+        "Renaissance"
+      ],
+      "correctIndex": 2,
+      "explanation": "Primary: A contemporary firsthand diary is direct evidence from the person and period studied.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-history-renaissance-a",
+      "factId": "fact-history-renaissance",
+      "conceptId": "history-renaissance",
+      "topicId": "history",
+      "prompt": "Why were Renaissance humanists interested in classical texts?",
+      "choices": [
+        "They used Greek and Roman works to study language, ethics, and civic life",
+        "They wanted to eliminate literacy",
+        "They rejected all earlier writing",
+        "They studied only factory design"
+      ],
+      "correctIndex": 0,
+      "explanation": "Humanist scholarship recovered and critically examined classical literature and ideas.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-history-renaissance-b",
+      "factId": "fact-history-renaissance",
+      "conceptId": "history-renaissance",
+      "topicId": "history",
+      "prompt": "Which concept is described here? Humanist scholarship recovered and critically examined classical literature and ideas.",
+      "choices": [
+        "Black Death",
+        "Renaissance",
+        "Un",
+        "Magna"
+      ],
+      "correctIndex": 1,
+      "explanation": "Renaissance: Humanist scholarship recovered and critically examined classical literature and ideas.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-history-un-a",
+      "factId": "fact-history-un",
+      "conceptId": "history-un",
+      "topicId": "history",
+      "prompt": "Why was the United Nations founded in 1945?",
+      "choices": [
+        "To support international cooperation and reduce future conflict",
+        "To govern every country directly",
+        "To replace all national courts",
+        "To create a single global language"
+      ],
+      "correctIndex": 0,
+      "explanation": "After World War II, member states established the UN as a forum for peace and cooperation.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-history-un-b",
+      "factId": "fact-history-un",
+      "conceptId": "history-un",
+      "topicId": "history",
+      "prompt": "Which concept is described here? After World War II, member states established the UN as a forum for peace and cooperation.",
+      "choices": [
+        "Printing",
+        "Industrial",
+        "Constitution",
+        "Un"
+      ],
+      "correctIndex": 3,
+      "explanation": "Un: After World War II, member states established the UN as a forum for peace and cooperation.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-finance-compound-a",
+      "factId": "fact-finance-compound",
+      "conceptId": "finance-compound",
+      "topicId": "finance",
+      "prompt": "What does compound interest mean?",
+      "choices": [
+        "Interest can earn additional interest over time",
+        "The rate is always zero",
+        "Debt disappears each year",
+        "Only coins can be invested"
+      ],
+      "correctIndex": 0,
+      "explanation": "Returns added to principal can themselves generate later returns.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-finance-compound-b",
+      "factId": "fact-finance-compound",
+      "conceptId": "finance-compound",
+      "topicId": "finance",
+      "prompt": "Which concept is described here? Returns added to principal can themselves generate later returns.",
+      "choices": [
+        "Emergency",
+        "Apr",
+        "Credit",
+        "Compound"
+      ],
+      "correctIndex": 3,
+      "explanation": "Compound: Returns added to principal can themselves generate later returns.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-finance-emergency-a",
+      "factId": "fact-finance-emergency",
+      "conceptId": "finance-emergency",
+      "topicId": "finance",
+      "prompt": "What is the main purpose of an emergency fund?",
+      "choices": [
+        "Cover unexpected essential expenses without relying on costly debt",
+        "Maximize short-term stock speculation",
+        "Replace all insurance",
+        "Avoid making a budget"
+      ],
+      "correctIndex": 0,
+      "explanation": "Liquid savings can absorb shocks such as repairs, medical bills, or income loss.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-finance-emergency-b",
+      "factId": "fact-finance-emergency",
+      "conceptId": "finance-emergency",
+      "topicId": "finance",
+      "prompt": "Which concept is described here? Liquid savings can absorb shocks such as repairs, medical bills, or income loss.",
+      "choices": [
+        "Inflation",
+        "Budget",
+        "Emergency",
+        "Diversify"
+      ],
+      "correctIndex": 2,
+      "explanation": "Emergency: Liquid savings can absorb shocks such as repairs, medical bills, or income loss.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-finance-diversify-a",
+      "factId": "fact-finance-diversify",
+      "conceptId": "finance-diversify",
+      "topicId": "finance",
+      "prompt": "Why do investors diversify?",
+      "choices": [
+        "To reduce exposure to any single investment's failure",
+        "To guarantee a profit",
+        "To avoid all market fluctuations",
+        "To make taxes impossible"
+      ],
+      "correctIndex": 0,
+      "explanation": "Spreading holdings can reduce idiosyncratic risk, though it cannot eliminate all risk.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-finance-diversify-b",
+      "factId": "fact-finance-diversify",
+      "conceptId": "finance-diversify",
+      "topicId": "finance",
+      "prompt": "Which concept is described here? Spreading holdings can reduce idiosyncratic risk, though it cannot eliminate all risk.",
+      "choices": [
+        "Insurance",
+        "Diversify",
+        "Apr",
+        "Index"
+      ],
+      "correctIndex": 1,
+      "explanation": "Diversify: Spreading holdings can reduce idiosyncratic risk, though it cannot eliminate all risk.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-finance-apr-a",
+      "factId": "fact-finance-apr",
+      "conceptId": "finance-apr",
+      "topicId": "finance",
+      "prompt": "What does APR help a borrower compare?",
+      "choices": [
+        "The annualized cost of credit",
+        "A company's number of employees",
+        "A bank's opening hours",
+        "The physical size of a card"
+      ],
+      "correctIndex": 0,
+      "explanation": "APR expresses borrowing cost on an annual basis, with legally specified inclusions.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-finance-apr-b",
+      "factId": "fact-finance-apr",
+      "conceptId": "finance-apr",
+      "topicId": "finance",
+      "prompt": "Which concept is described here? APR expresses borrowing cost on an annual basis, with legally specified inclusions.",
+      "choices": [
+        "Inflation",
+        "Credit",
+        "Fee",
+        "Apr"
+      ],
+      "correctIndex": 3,
+      "explanation": "Apr: APR expresses borrowing cost on an annual basis, with legally specified inclusions.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-finance-inflation-a",
+      "factId": "fact-finance-inflation",
+      "conceptId": "finance-inflation",
+      "topicId": "finance",
+      "prompt": "How does inflation affect money's purchasing power when income is unchanged?",
+      "choices": [
+        "Purchasing power generally falls",
+        "Purchasing power always doubles",
+        "Money becomes physically heavier",
+        "Prices must all fall"
+      ],
+      "correctIndex": 0,
+      "explanation": "When prices rise, the same nominal amount buys fewer goods and services.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-finance-inflation-b",
+      "factId": "fact-finance-inflation",
+      "conceptId": "finance-inflation",
+      "topicId": "finance",
+      "prompt": "Which concept is described here? When prices rise, the same nominal amount buys fewer goods and services.",
+      "choices": [
+        "Budget",
+        "Compound",
+        "Inflation",
+        "Index"
+      ],
+      "correctIndex": 2,
+      "explanation": "Inflation: When prices rise, the same nominal amount buys fewer goods and services.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-finance-index-a",
+      "factId": "fact-finance-index",
+      "conceptId": "finance-index",
+      "topicId": "finance",
+      "prompt": "What does a broad-market index fund generally aim to do?",
+      "choices": [
+        "Track the performance of a defined market index",
+        "Pick one guaranteed winning stock",
+        "Eliminate every fee and tax",
+        "Set central-bank interest rates"
+      ],
+      "correctIndex": 0,
+      "explanation": "An index fund holds securities according to rules intended to approximate its target index.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-finance-index-b",
+      "factId": "fact-finance-index",
+      "conceptId": "finance-index",
+      "topicId": "finance",
+      "prompt": "Which concept is described here? An index fund holds securities according to rules intended to approximate its target index.",
+      "choices": [
+        "Emergency",
+        "Index",
+        "Credit",
+        "Insurance"
+      ],
+      "correctIndex": 1,
+      "explanation": "Index: An index fund holds securities according to rules intended to approximate its target index.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-finance-credit-a",
+      "factId": "fact-finance-credit",
+      "conceptId": "finance-credit",
+      "topicId": "finance",
+      "prompt": "Which behavior generally supports a healthy credit history?",
+      "choices": [
+        "Paying obligations on time",
+        "Ignoring every statement",
+        "Using a false identity",
+        "Applying for new credit daily"
+      ],
+      "correctIndex": 0,
+      "explanation": "Payment history is a major factor in common credit-scoring models.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-finance-credit-b",
+      "factId": "fact-finance-credit",
+      "conceptId": "finance-credit",
+      "topicId": "finance",
+      "prompt": "Which concept is described here? Payment history is a major factor in common credit-scoring models.",
+      "choices": [
+        "Budget",
+        "Fee",
+        "Diversify",
+        "Credit"
+      ],
+      "correctIndex": 3,
+      "explanation": "Credit: Payment history is a major factor in common credit-scoring models.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-finance-budget-a",
+      "factId": "fact-finance-budget",
+      "conceptId": "finance-budget",
+      "topicId": "finance",
+      "prompt": "What is the most basic purpose of a budget?",
+      "choices": [
+        "Plan how income will be used across spending and saving",
+        "Predict stock prices exactly",
+        "Increase every bill",
+        "Replace a bank account"
+      ],
+      "correctIndex": 0,
+      "explanation": "A budget makes expected inflows, commitments, goals, and tradeoffs visible.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-finance-budget-b",
+      "factId": "fact-finance-budget",
+      "conceptId": "finance-budget",
+      "topicId": "finance",
+      "prompt": "Which concept is described here? A budget makes expected inflows, commitments, goals, and tradeoffs visible.",
+      "choices": [
+        "Compound",
+        "Apr",
+        "Budget",
+        "Insurance"
+      ],
+      "correctIndex": 2,
+      "explanation": "Budget: A budget makes expected inflows, commitments, goals, and tradeoffs visible.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-finance-insurance-a",
+      "factId": "fact-finance-insurance",
+      "conceptId": "finance-insurance",
+      "topicId": "finance",
+      "prompt": "What financial risk does insurance primarily transfer?",
+      "choices": [
+        "A specified potentially large loss in exchange for a premium",
+        "All ordinary daily spending",
+        "The need to read contracts",
+        "Every investment decline"
+      ],
+      "correctIndex": 0,
+      "explanation": "Insurance pools covered risks so an individual is protected from defined losses.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-finance-insurance-b",
+      "factId": "fact-finance-insurance",
+      "conceptId": "finance-insurance",
+      "topicId": "finance",
+      "prompt": "Which concept is described here? Insurance pools covered risks so an individual is protected from defined losses.",
+      "choices": [
+        "Inflation",
+        "Insurance",
+        "Fee",
+        "Emergency"
+      ],
+      "correctIndex": 1,
+      "explanation": "Insurance: Insurance pools covered risks so an individual is protected from defined losses.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-finance-fee-a",
+      "factId": "fact-finance-fee",
+      "conceptId": "finance-fee",
+      "topicId": "finance",
+      "prompt": "Why do investment fees matter over long periods?",
+      "choices": [
+        "They reduce the amount left to compound",
+        "They guarantee higher returns",
+        "They affect only paper statements",
+        "They vanish after one year"
+      ],
+      "correctIndex": 0,
+      "explanation": "Even modest recurring fees subtract from capital and its future potential growth.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-finance-fee-b",
+      "factId": "fact-finance-fee",
+      "conceptId": "finance-fee",
+      "topicId": "finance",
+      "prompt": "Which concept is described here? Even modest recurring fees subtract from capital and its future potential growth.",
+      "choices": [
+        "Compound",
+        "Diversify",
+        "Index",
+        "Fee"
+      ],
+      "correctIndex": 3,
+      "explanation": "Fee: Even modest recurring fees subtract from capital and its future potential growth.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-web-http-a",
+      "factId": "fact-web-http",
+      "conceptId": "web-http",
+      "topicId": "web",
+      "prompt": "What is an HTTP status code in the 200 range intended to indicate?",
+      "choices": [
+        "A successful request",
+        "A DNS failure",
+        "A mandatory password change",
+        "A hardware fault"
+      ],
+      "correctIndex": 0,
+      "explanation": "The 2xx class denotes that the server successfully received and handled the request.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-web-http-b",
+      "factId": "fact-web-http",
+      "conceptId": "web-http",
+      "topicId": "web",
+      "prompt": "Which concept is described here? The 2xx class denotes that the server successfully received and handled the request.",
+      "choices": [
+        "Dns",
+        "Css",
+        "Git",
+        "Http"
+      ],
+      "correctIndex": 3,
+      "explanation": "Http: The 2xx class denotes that the server successfully received and handled the request.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-web-dns-a",
+      "factId": "fact-web-dns",
+      "conceptId": "web-dns",
+      "topicId": "web",
+      "prompt": "What is DNS primarily used for?",
+      "choices": [
+        "Resolve domain names to network-related records",
+        "Style web pages",
+        "Compress images",
+        "Encrypt a hard drive"
+      ],
+      "correctIndex": 0,
+      "explanation": "DNS is a distributed naming system that returns addresses and other records for domain names.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-web-dns-b",
+      "factId": "fact-web-dns",
+      "conceptId": "web-dns",
+      "topicId": "web",
+      "prompt": "Which concept is described here? DNS is a distributed naming system that returns addresses and other records for domain names.",
+      "choices": [
+        "Js",
+        "Cache",
+        "Dns",
+        "Html"
+      ],
+      "correctIndex": 2,
+      "explanation": "Dns: DNS is a distributed naming system that returns addresses and other records for domain names.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-web-html-a",
+      "factId": "fact-web-html",
+      "conceptId": "web-html",
+      "topicId": "web",
+      "prompt": "What is HTML primarily responsible for on a web page?",
+      "choices": [
+        "Document structure and meaning",
+        "Database replication",
+        "CPU scheduling",
+        "Wi-Fi encryption"
+      ],
+      "correctIndex": 0,
+      "explanation": "HTML elements describe the structure and semantics of web content.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-web-html-b",
+      "factId": "fact-web-html",
+      "conceptId": "web-html",
+      "topicId": "web",
+      "prompt": "Which concept is described here? HTML elements describe the structure and semantics of web content.",
+      "choices": [
+        "Accessibility",
+        "Html",
+        "Css",
+        "Api"
+      ],
+      "correctIndex": 1,
+      "explanation": "Html: HTML elements describe the structure and semantics of web content.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-web-css-a",
+      "factId": "fact-web-css",
+      "conceptId": "web-css",
+      "topicId": "web",
+      "prompt": "What does CSS primarily control?",
+      "choices": [
+        "Presentation and layout",
+        "Server-side authentication",
+        "Domain registration",
+        "Source-control history"
+      ],
+      "correctIndex": 0,
+      "explanation": "CSS rules determine visual presentation such as spacing, color, and layout.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-web-css-b",
+      "factId": "fact-web-css",
+      "conceptId": "web-css",
+      "topicId": "web",
+      "prompt": "Which concept is described here? CSS rules determine visual presentation such as spacing, color, and layout.",
+      "choices": [
+        "Js",
+        "Git",
+        "Testing",
+        "Css"
+      ],
+      "correctIndex": 3,
+      "explanation": "Css: CSS rules determine visual presentation such as spacing, color, and layout.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-web-js-a",
+      "factId": "fact-web-js",
+      "conceptId": "web-js",
+      "topicId": "web",
+      "prompt": "Where can modern JavaScript run?",
+      "choices": [
+        "In browsers and in non-browser runtimes",
+        "Only inside spreadsheets",
+        "Only on one operating system",
+        "Only when compiled to Java"
+      ],
+      "correctIndex": 0,
+      "explanation": "JavaScript engines are embedded in browsers and available in runtimes such as Node.js.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-web-js-b",
+      "factId": "fact-web-js",
+      "conceptId": "web-js",
+      "topicId": "web",
+      "prompt": "Which concept is described here? JavaScript engines are embedded in browsers and available in runtimes such as Node.js.",
+      "choices": [
+        "Cache",
+        "Http",
+        "Js",
+        "Api"
+      ],
+      "correctIndex": 2,
+      "explanation": "Js: JavaScript engines are embedded in browsers and available in runtimes such as Node.js.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-web-api-a",
+      "factId": "fact-web-api",
+      "conceptId": "web-api",
+      "topicId": "web",
+      "prompt": "What is an API?",
+      "choices": [
+        "A defined interface through which software components interact",
+        "A particular screen color",
+        "A physical network cable",
+        "A file compression ratio"
+      ],
+      "correctIndex": 0,
+      "explanation": "An API specifies operations, inputs, outputs, and conventions for software interaction.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-web-api-b",
+      "factId": "fact-web-api",
+      "conceptId": "web-api",
+      "topicId": "web",
+      "prompt": "Which concept is described here? An API specifies operations, inputs, outputs, and conventions for software interaction.",
+      "choices": [
+        "Dns",
+        "Api",
+        "Git",
+        "Accessibility"
+      ],
+      "correctIndex": 1,
+      "explanation": "Api: An API specifies operations, inputs, outputs, and conventions for software interaction.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-web-git-a",
+      "factId": "fact-web-git",
+      "conceptId": "web-git",
+      "topicId": "web",
+      "prompt": "What does a Git commit represent?",
+      "choices": [
+        "A recorded snapshot of project state with metadata and history links",
+        "A running production server",
+        "An encrypted password",
+        "A browser cookie"
+      ],
+      "correctIndex": 0,
+      "explanation": "A commit records a tree snapshot and connects it to parent history, an author, and a message.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-web-git-b",
+      "factId": "fact-web-git",
+      "conceptId": "web-git",
+      "topicId": "web",
+      "prompt": "Which concept is described here? A commit records a tree snapshot and connects it to parent history, an author, and a message.",
+      "choices": [
+        "Cache",
+        "Testing",
+        "Html",
+        "Git"
+      ],
+      "correctIndex": 3,
+      "explanation": "Git: A commit records a tree snapshot and connects it to parent history, an author, and a message.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-web-cache-a",
+      "factId": "fact-web-cache",
+      "conceptId": "web-cache",
+      "topicId": "web",
+      "prompt": "Why cache a web resource?",
+      "choices": [
+        "Reuse a stored response and reduce latency or network work",
+        "Make its URL longer",
+        "Delete the origin server",
+        "Prevent all updates forever"
+      ],
+      "correctIndex": 0,
+      "explanation": "Valid cached responses can avoid transferring or recomputing unchanged content.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-web-cache-b",
+      "factId": "fact-web-cache",
+      "conceptId": "web-cache",
+      "topicId": "web",
+      "prompt": "Which concept is described here? Valid cached responses can avoid transferring or recomputing unchanged content.",
+      "choices": [
+        "Http",
+        "Css",
+        "Cache",
+        "Accessibility"
+      ],
+      "correctIndex": 2,
+      "explanation": "Cache: Valid cached responses can avoid transferring or recomputing unchanged content.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-web-accessibility-a",
+      "factId": "fact-web-accessibility",
+      "conceptId": "web-accessibility",
+      "topicId": "web",
+      "prompt": "Why should a form control have an accessible label?",
+      "choices": [
+        "So assistive technology can convey its purpose",
+        "To make its file larger",
+        "To disable keyboard input",
+        "To hide it from search"
+      ],
+      "correctIndex": 0,
+      "explanation": "A programmatic label gives users of screen readers and other tools the control's name.",
+      "difficulty": 3
+    },
+    {
+      "id": "q-web-accessibility-b",
+      "factId": "fact-web-accessibility",
+      "conceptId": "web-accessibility",
+      "topicId": "web",
+      "prompt": "Which concept is described here? A programmatic label gives users of screen readers and other tools the control's name.",
+      "choices": [
+        "Js",
+        "Accessibility",
+        "Testing",
+        "Dns"
+      ],
+      "correctIndex": 1,
+      "explanation": "Accessibility: A programmatic label gives users of screen readers and other tools the control's name.",
+      "difficulty": 2
+    },
+    {
+      "id": "q-web-testing-a",
+      "factId": "fact-web-testing",
+      "conceptId": "web-testing",
+      "topicId": "web",
+      "prompt": "What is a unit test intended to check?",
+      "choices": [
+        "A focused unit of behavior in controlled conditions",
+        "Every production system simultaneously",
+        "Only visual color choices",
+        "Network speed worldwide"
+      ],
+      "correctIndex": 0,
+      "explanation": "Unit tests isolate a small behavior so failures are quick to locate and reproduce.",
+      "difficulty": 1
+    },
+    {
+      "id": "q-web-testing-b",
+      "factId": "fact-web-testing",
+      "conceptId": "web-testing",
+      "topicId": "web",
+      "prompt": "Which concept is described here? Unit tests isolate a small behavior so failures are quick to locate and reproduce.",
+      "choices": [
+        "Http",
+        "Html",
+        "Api",
+        "Testing"
+      ],
+      "correctIndex": 3,
+      "explanation": "Testing: Unit tests isolate a small behavior so failures are quick to locate and reproduce.",
+      "difficulty": 3
+    }
+  ]
+}
