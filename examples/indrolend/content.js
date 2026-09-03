@@ -32,7 +32,7 @@ export const SPA_SECTIONS = defineContent([
         adapter: { id: 'asymptote', modules: ['./asymptote/asymptoteApp.js', './asymptote/gamesView.js'] }
       },
       { id: 'drift', label: 'Drift', hero: { kind: 'text', text: 'Drift' }, clickAction: '/drift/' },
-      { id: 'data', label: 'DATA — incoming', hero: { kind: 'text', text: 'DATA' } }
+      { id: 'data', label: 'DATA', hero: { kind: 'text', text: 'DATA' }, clickAction: 'https://data-game.pages.dev/' }
     ]
   }
 ]);
