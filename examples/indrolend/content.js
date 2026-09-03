@@ -26,9 +26,13 @@ export const SPA_SECTIONS = defineContent([
   },
   {
     id: 'games', label: 'Games',
-    items: [{
-      id: 'asymptote', label: 'Asymptote Engine', hero: { kind: 'text', text: 'Asymptote Engine' },
-      adapter: { id: 'asymptote', modules: ['./asymptote/asymptoteApp.js', './asymptote/gamesView.js'] }
-    }]
+    items: [
+      {
+        id: 'asymptote', label: 'Asymptote Engine', hero: { kind: 'text', text: 'Asymptote Engine' },
+        adapter: { id: 'asymptote', modules: ['./asymptote/asymptoteApp.js', './asymptote/gamesView.js'] }
+      },
+      { id: 'drift', label: 'Drift — incoming', hero: { kind: 'text', text: 'Drift' } },
+      { id: 'data', label: 'DATA — incoming', hero: { kind: 'text', text: 'DATA' } }
+    ]
   }
 ]);

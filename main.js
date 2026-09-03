@@ -1,6 +1,7 @@
 // Basic Browser SPA runtime. Replace js/content.js to provide another site map;
 // navigation and rendering behavior remain here.
 import { createAdapterLoader } from './js/spa/adapterLoader.js';
+import { awardDiscovery, mountEconomyHud } from './js/spa/sharedEconomy.js';
 
 const contentPath = document.querySelector('meta[name="spa-content"]')?.content;
 if (!contentPath) throw new Error('Missing <meta name="spa-content" content="...">');
@@ -267,7 +268,8 @@ function getSafeExternalUrl(action) {
 
   try {
     const url = new URL(action, window.location.origin);
-    return url.protocol === 'https:' ? url.href : null;
+    const isSameOrigin = url.origin === window.location.origin;
+    return (url.protocol === 'https:' || isSameOrigin) ? url.href : null;
   } catch (_) {
     return null;
   }
@@ -403,6 +405,10 @@ function runItemClickAction(action) {
   const safeUrl = getSafeExternalUrl(action);
 
   if (safeUrl) {
+    if (new URL(safeUrl).origin === window.location.origin) {
+      window.location.assign(safeUrl);
+      return;
+    }
     const newWindow = window.open(safeUrl, '_blank', 'noopener,noreferrer');
     if (newWindow) {
       newWindow.opener = null;
@@ -903,10 +909,11 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
   // Delegate to registered view module if available
   const sectionId = SPA_SECTIONS[sectionIdx]?.id;
   const itemId = item?.id;
+  if (sectionId && itemId) awardDiscovery(sectionId, itemId);
   if (sectionId && itemId && window.__SPA_Views?.[sectionId]?.mount) {
     try {
       window.__SPA_Views[sectionId].mount(itemId, heroContainer);
-      return;
+      if (heroContainer.childElementCount > 0) return;
     } catch (err) {
       console.warn('[SPA_Views] mount failed for', sectionId + '/' + itemId, err);
       // Fall through to default hero rendering
@@ -2007,6 +2014,7 @@ function cleanupSlingshotPull() {
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 
 setupItemNav();
+mountEconomyHud(document.getElementById('spa-economy-balance'));
 render();
 
 {

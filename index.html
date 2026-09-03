@@ -7,12 +7,13 @@
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta http-equiv="X-Frame-Options" content="DENY">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <meta name="spa-content" content="./js/content.js">
-  <title>Homedev SPA</title>
+  <meta name="spa-content" content="./examples/indrolend/content.js">
+  <title>Indrolend</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="spa-root">
+    <output id="spa-economy-balance" aria-live="polite">0 signal</output>
     <div id="spa-hero-container"></div>
     <canvas id="transition-canvas" width="320" height="320" style="display:none;position:absolute;z-index:100;pointer-events:none;"></canvas>
     <div id="spa-dots" role="tablist" aria-label="Item position"></div>

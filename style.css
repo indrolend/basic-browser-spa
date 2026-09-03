@@ -51,6 +51,18 @@ body {
   overflow: hidden;
 }
 
+#spa-economy-balance {
+  position: fixed;
+  right: 0.9rem;
+  bottom: 0.9rem;
+  z-index: 18;
+  color: #91a197;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
 #spa-hero-container {
   flex: 1;
   min-height: 0;
