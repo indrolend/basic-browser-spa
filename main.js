@@ -1,41 +1,25 @@
-// Homedev SPA - Minimal, modular, and particle transition ready
+// Basic Browser SPA runtime. Replace js/content.js to provide another site map;
+// navigation and rendering behavior remain here.
+import { createAdapterLoader } from './js/spa/adapterLoader.js';
+import { awardDiscovery, mountEconomyHud } from './js/spa/sharedEconomy.js';
 
-const SPA_SECTIONS = [
-  {
-    id: 'home',
-    label: 'Home',
-    items: [
-      { id: 'swipe', label: 'Swipe', hero: { kind: 'text', text: 'swipe' } }
-    ]
-  },
-  {
-    id: 'social',
-    label: 'Social',
-    items: [
-      { id: 'tiktok', label: 'TikTok', hero: { kind: 'image', src: 'gifs/Tiktoklogospin.gif' } },
-      { id: 'instagram', label: 'Instagram', hero: { kind: 'image', src: 'gifs/Instagramlogospin.gif' } },
-      { id: 'youtube', label: 'YouTube', hero: { kind: 'image', src: 'gifs/Youtubelogospin.gif' } }
-    ]
-  },
-  {
-    id: 'music',
-    label: 'Music',
-    items: [
-      { id: 'spotify', label: 'Spotify', hero: { kind: 'image', src: 'gifs/Spotifylogospin.gif' } },
-      { id: 'appleMusic', label: 'Apple Music', hero: { kind: 'image', src: 'gifs/Applemusiclogospin.gif' } },
-      { id: 'bandcamp', label: 'Bandcamp', hero: { kind: 'image', src: 'gifs/bandcamplogospin.gif' } },
-      { id: 'soundcloud', label: 'SoundCloud', hero: { kind: 'image', src: 'gifs/soundcloudlogospin.gif' } }
-    ]
-  },
-  {
-    id: 'games',
-    label: 'Games',
-    items: [
-      { id: 'asymptote', label: 'Asymptote Engine', hero: { kind: 'text', text: 'Asymptote Engine' } }
-    ]
+const contentPath = document.querySelector('meta[name="spa-content"]')?.content;
+if (!contentPath) throw new Error('Missing <meta name="spa-content" content="...">');
+const { CONTENT_BASE_URL, SPA_SECTIONS } = await import(new URL(contentPath, document.baseURI).href);
+
+const adapterLoader = createAdapterLoader({ baseUrl: CONTENT_BASE_URL });
+
+async function ensureItemAdapter(sectionIdx, itemIdx) {
+  const item = SPA_SECTIONS[sectionIdx]?.items[itemIdx];
+  if (!item?.adapter) return true;
+  try {
+    await adapterLoader.load(item.adapter);
+    return true;
+  } catch (error) {
+    console.warn(`[adapter] ${item.adapter.id} unavailable; using the configured fallback hero`, error);
+    return false;
   }
-  // About is temporarily hidden while it is being refactored from the legacy SPA.
-];
+}
 
 // State
 let currentSectionIdx = 0;
@@ -263,7 +247,7 @@ function getHeroSpec(sectionIdx, itemIdx) {
   if (!item) return null;
 
   if (item.hero?.kind === 'image' && item.hero.src) {
-    return { kind: 'image', src: item.hero.src };
+    return { kind: 'image', src: new URL(item.hero.src, CONTENT_BASE_URL).href };
   }
   if (item.hero?.kind === 'text' && item.hero.text) {
     return { kind: 'text', text: item.hero.text };
@@ -273,13 +257,10 @@ function getHeroSpec(sectionIdx, itemIdx) {
 }
 
 function getItemClickAction(sectionIdx, itemIdx) {
-  const routes = window.__INDROLEND_ROUTES__;
-  if (!routes) return null;
   const section = SPA_SECTIONS[sectionIdx];
   const item = section?.items[itemIdx];
   if (!section || !item) return null;
-  const key = `${section.id}/${item.id}`;
-  return routes.items?.[key]?.clickAction ?? null;
+  return item.clickAction && item.clickAction !== 'none' ? item.clickAction : null;
 }
 
 function getSafeExternalUrl(action) {
@@ -287,7 +268,8 @@ function getSafeExternalUrl(action) {
 
   try {
     const url = new URL(action, window.location.origin);
-    return url.protocol === 'https:' ? url.href : null;
+    const isSameOrigin = url.origin === window.location.origin;
+    return (url.protocol === 'https:' || isSameOrigin) ? url.href : null;
   } catch (_) {
     return null;
   }
@@ -423,6 +405,10 @@ function runItemClickAction(action) {
   const safeUrl = getSafeExternalUrl(action);
 
   if (safeUrl) {
+    if (new URL(safeUrl).origin === window.location.origin) {
+      window.location.assign(safeUrl);
+      return;
+    }
     const newWindow = window.open(safeUrl, '_blank', 'noopener,noreferrer');
     if (newWindow) {
       newWindow.opener = null;
@@ -553,7 +539,7 @@ function loadGifler() {
 
   giflerLoaderPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = 'js/vendor/gifler.min.js';
+    script.src = new URL('./js/vendor/gifler.min.js', import.meta.url).href;
     script.async = true;
     script.onload = () => {
       if (typeof window.gifler === 'function') resolve(window.gifler);
@@ -923,10 +909,11 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
   // Delegate to registered view module if available
   const sectionId = SPA_SECTIONS[sectionIdx]?.id;
   const itemId = item?.id;
+  if (sectionId && itemId) awardDiscovery(sectionId, itemId);
   if (sectionId && itemId && window.__SPA_Views?.[sectionId]?.mount) {
     try {
       window.__SPA_Views[sectionId].mount(itemId, heroContainer);
-      return;
+      if (heroContainer.childElementCount > 0) return;
     } catch (err) {
       console.warn('[SPA_Views] mount failed for', sectionId + '/' + itemId, err);
       // Fall through to default hero rendering
@@ -1144,6 +1131,7 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
 
   isTransitioning = true;
   activeTarget = { ...requestedTarget, transitionOptions };
+  await ensureItemAdapter(nextSectionIdx, nextItemIdx);
   stopActiveGifHeroPlayback();
   stopCurrentHeroSurfaceTracking();
 
@@ -1670,6 +1658,10 @@ function onSlingshotLock({ direction, pullVector, pullNormalized }) {
   pullTargetItemIdx    = target.itemIdx;
   activeTarget = { sectionIdx: target.sectionIdx, itemIdx: target.itemIdx };
 
+  // Begin optional adapter hydration as soon as intent locks. The configured
+  // text/image hero remains a truthful fallback if loading fails.
+  void ensureItemAdapter(target.sectionIdx, target.itemIdx);
+
   stopActiveGifHeroPlayback();
   stopCurrentHeroSurfaceTracking();
 
@@ -2022,6 +2014,7 @@ function cleanupSlingshotPull() {
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 
 setupItemNav();
+mountEconomyHud(document.getElementById('spa-economy-balance'));
 render();
 
 {
