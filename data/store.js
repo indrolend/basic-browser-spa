@@ -47,19 +47,19 @@ function sampleLayout(elements, bounds) {
     const style = getComputedStyle(element);
     const left = rect.left - bounds.left;
     const top = rect.top - bounds.top;
-    const step = 5;
+        const step = 4;
     for (let y = step / 2; y < rect.height; y += step) {
       for (let x = step / 2; x < rect.width; x += step) {
         const edge = x < 7 || y < 7 || x > rect.width - 7 || y > rect.height - 7;
         const seed = (x * 13 + y * 7 + elementIndex * 17) % 23;
-        if (!edge && seed > 2) continue;
+        if (!edge && seed > 4) continue;
         points.push({
           x: left + x,
           y: top + y,
           color: element.classList.contains('root')
             ? (x / rect.width > .58 ? '#8ff7ff' : '#5ee87d')
             : style.color,
-          size: edge ? 2.2 : 1.7
+          size: edge ? 2.8 : 2.1
         });
       }
     }
@@ -95,7 +95,7 @@ async function transitionTo(name) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   tree.classList.add('is-transitioning');
 
-  const duration = 540;
+  const duration = 620;
   const start = performance.now();
   await new Promise(resolve => {
     function frame(now) {
@@ -105,7 +105,7 @@ async function transitionTo(name) {
       particles.forEach((particle, index) => {
         const bend = Math.sin(Math.PI * linear) * particle.drift;
         const x = particle.from.x + (particle.to.x - particle.from.x) * eased + bend;
-        const y = particle.from.y + (particle.to.y - particle.from.y) * eased - Math.sin(Math.PI * linear) * (10 + index % 9);
+        const y = particle.from.y + (particle.to.y - particle.from.y) * eased - Math.sin(Math.PI * linear) * (14 + index % 13);
         ctx.globalAlpha = .35 + .65 * Math.sin(Math.PI * (.2 + linear * .8));
         ctx.fillStyle = linear < .5 ? particle.from.color : particle.to.color;
         ctx.fillRect(x, y, particle.from.size, particle.from.size);
