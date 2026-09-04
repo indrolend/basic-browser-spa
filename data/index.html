@@ -7,20 +7,26 @@
   <meta name="description" content="Play or download DATA — Digital Breakdown.">
   <title>DATA — Digital Breakdown</title>
   <link rel="stylesheet" href="./store.css">
+  <script type="module" src="./store.js"></script>
 </head>
 <body>
   <main>
     <nav><a href="../" aria-label="Back to Indrolend">← Indrolend</a></nav>
     <section class="hero">
-      <h1>DATA</h1>
-      <figure class="feature"><img src="./media/data-menu.png" width="2560" height="1440" alt="DATA phone menu inside the game world" fetchpriority="high"></figure>
+      <h1 aria-label="DATA"><span>D</span><span>A</span><span>T</span><span>A</span></h1>
+      <div class="shots">
+        <figure><img src="./media/data-action-human-4715ccb.webp" width="1920" height="1080" alt="DATA gameplay facing a human across the current grass arena" fetchpriority="high"></figure>
+        <figure><img src="./media/data-action-soul-4715ccb.webp" width="1920" height="1080" alt="DATA gameplay capturing a luminous soul in the current grass arena" loading="lazy"></figure>
+      </div>
     </section>
-    <section class="actions" aria-label="Play and download">
-      <a class="primary" href="./play/"><span>Browser</span><small><i></i> Play</small></a>
-      <a href="https://github.com/indrolend/digital-breakdown-apk/releases/download/latest-native/DigitalBreakdown-Windows.zip"><span>Windows</span><small>ZIP · 7.6 MB</small></a>
-      <a href="https://github.com/indrolend/digital-breakdown-apk/releases/download/latest-native/DigitalBreakdown-macOS-Universal.zip"><span>macOS</span><small>ZIP · 8.4 MB</small></a>
+    <section class="download-shell" aria-label="Downloads">
+      <div id="download-tree" class="download-tree"></div>
+      <canvas id="button-particles" aria-hidden="true"></canvas>
+      <noscript>
+        <a class="download-link" href="https://github.com/indrolend/digital-breakdown-apk/releases/download/latest-native/DigitalBreakdown-Windows.zip">Windows</a>
+        <a class="download-link" href="https://github.com/indrolend/digital-breakdown-apk/releases/download/latest-native/DigitalBreakdown-macOS-Universal.zip">macOS</a>
+      </noscript>
     </section>
-    <figure class="secondary"><img src="./media/data-gameplay.png" width="2560" height="1440" alt="DATA gameplay with the phone, room goals, souls, and battery HUD" loading="lazy"></figure>
   </main>
 </body>
 </html>
