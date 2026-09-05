@@ -6,20 +6,28 @@ function assertItemKey(itemKey) {
   }
 }
 
-export function registerItemAdapter(itemKey, adapter) {
-  assertItemKey(itemKey);
+function assertAdapter(itemKey, adapter) {
   if (!adapter || typeof adapter !== 'object') {
     throw new TypeError(`item adapter ${itemKey} must be an object`);
   }
   if (!Number.isInteger(adapter.contractVersion) || adapter.contractVersion < 1) {
     throw new TypeError(`item adapter ${itemKey} must declare a positive contractVersion`);
   }
+}
+
+export function registerItemAdapter(itemKey, adapter) {
+  assertItemKey(itemKey);
+  assertAdapter(itemKey, adapter);
 
   const existing = registrations.get(itemKey);
-  if (existing && existing !== adapter) {
-    throw new Error(`item adapter already registered: ${itemKey}`);
+  if (existing && adapter.contractVersion < existing.contractVersion) {
+    throw new Error(
+      `item adapter ${itemKey} cannot replace contract ${existing.contractVersion} with older contract ${adapter.contractVersion}`
+    );
   }
 
+  // Re-registration is intentional: a contract-versioned cache retry or module
+  // refresh must be able to replace a stale registration for the same item.
   registrations.set(itemKey, adapter);
   return adapter;
 }
