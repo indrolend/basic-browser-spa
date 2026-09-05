@@ -1,0 +1,574 @@
+/* Homedev SPA - Minimal, dark theme */
+:root {
+  --bg: #111;
+  --fg: #f0f0f0;
+  --accent: #5ee87d;
+  --panel: #222;
+  --panel-active: #333;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  touch-action: manipulation;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  margin: 0;
+  font-family: 'SF Mono', Menlo, Monaco, Consolas, monospace;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+}
+
+#spa-section-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--bg);
+  box-shadow: 0 2px 12px #0006;
+}
+
+#spa-root {
+  position: relative;
+  height: 100vh;
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 4.6rem 1rem 0.9rem;
+  overflow: hidden;
+}
+
+#spa-economy-balance {
+  position: fixed;
+  right: 0.9rem;
+  bottom: 0.9rem;
+  z-index: 18;
+  color: #91a197;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+#spa-hero-container {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  touch-action: none;
+}
+
+#spa-item-nav {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 0.75rem 0 0;
+  position: relative;
+  z-index: 11;
+  flex-wrap: wrap;
+  padding: 0 0.5rem;
+}
+
+#spa-dots {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.6rem 0 0;
+  min-height: 12px;
+}
+
+.spa-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #444;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+  flex-shrink: 0;
+}
+
+.spa-dot[aria-selected="true"] {
+  background: var(--accent);
+  transform: scale(1.35);
+}
+
+.spa-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, 38rem);
+  min-height: 320px;
+  text-align: center;
+  cursor: grab;
+}
+
+.spa-hero:active {
+  cursor: grabbing;
+}
+
+.spa-hero--linkable {
+  cursor: pointer;
+}
+
+.spa-hero--linkable:active {
+  cursor: pointer;
+}
+
+.spa-hero--linkable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 6px;
+  border-radius: 16px;
+}
+
+/* Text-type hero rendered as an obvious button box */
+.spa-hero--text {
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 2rem 2.5rem;
+  min-height: unset;
+  box-shadow: none;
+  transition: background 0.15s, border-color 0.15s;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.spa-hero--text:hover {
+  background: transparent;
+  border-color: transparent;
+}
+
+.spa-hero--text.spa-hero--linkable:focus-visible {
+  border-radius: 12px;
+}
+
+
+/* GIF hero with a tap/link action — border ring shows the real extended hit area */
+.spa-hero--gif-linkable {
+  padding: 1.25rem;
+  border: 2px solid transparent;
+  border-radius: 20px;
+  background: transparent;
+  min-height: unset;
+  transition: border-color 0.18s, background 0.18s;
+}
+
+.spa-hero--gif-linkable:hover,
+.spa-hero--gif-linkable:active {
+  border-color: transparent;
+  background: transparent;
+}
+
+.spa-hero-image,
+.spa-hero-gif {
+  width: min(80vw, 320px);
+  height: auto;
+  max-height: 60vh;
+  border-radius: 16px;
+}
+
+.spa-hero-image {
+  background: transparent;
+  box-shadow: 0 4px 32px #000a;
+}
+
+.spa-hero-gif {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.spa-hero-text {
+  font-size: clamp(1.8rem, 5vw, 2.5rem);
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 1.25rem 0;
+  text-align: center;
+}
+
+.spa-nav-btn {
+  background: var(--panel);
+  color: var(--accent);
+  border: 1px solid #2f2f2f;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  margin: 0;
+  min-height: 44px;
+  min-width: 44px;
+  font-size: 1rem;
+  line-height: 1.2;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.2s;
+}
+
+.spa-nav-btn:hover,
+.spa-nav-btn:active {
+  background: var(--panel-active);
+}
+
+.spa-nav-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+#transition-canvas {
+  display: none;
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+@media (max-width: 768px) {
+  #spa-root {
+    padding: 4.1rem 0.7rem 0.65rem;
+  }
+
+  #spa-section-nav {
+    justify-content: flex-start;
+    padding: 0.5rem;
+    gap: 0.5rem;
+  }
+
+  .spa-nav-btn {
+    flex: 1 1 auto;
+    padding: 0.85rem 0.9rem;
+  }
+
+  #spa-item-nav {
+    margin-top: 0.55rem;
+    gap: 0.5rem;
+    padding: 0;
+  }
+
+  .spa-hero {
+    min-height: 240px;
+  }
+
+  .spa-hero--text {
+    padding: 1.5rem 1.75rem;
+    border-radius: 10px;
+  }
+
+  .spa-hero--gif-linkable {
+    padding: 0.75rem;
+    border-radius: 16px;
+  }
+
+  .spa-hero-image,
+  .spa-hero-gif {
+    width: min(86vw, 320px);
+    max-height: 50vh;
+  }
+}
+
+/* ─── Asymptote Game ─────────────────────────────────────────────────────────── */
+/* The game renders into the existing SPA DOM elements, so it inherits all the  */
+/* .spa-nav-btn, .spa-hero, .spa-hero-text, .spa-dot styles defined above.      */
+/* Only game-specific additions are defined here.                                */
+
+/* Stats bar — sits inside #spa-section-nav above the section tabs.
+   It is 100% wide so the flex-wrap in #spa-section-nav pushes the tabs below. */
+.asy-stats-bar {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: #aaa;
+  padding-bottom: 0.2rem;
+}
+
+.asy-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3em;
+}
+
+.asy-label {
+  color: #555;
+}
+
+/* Description line shown beneath the .spa-hero-text for generator/upgrade/sacrifice items */
+.spa-hero-subtext {
+  font-size: clamp(0.75rem, 2.5vw, 0.9rem);
+  color: #666;
+  letter-spacing: 0.03em;
+  line-height: 1.5;
+  max-width: 32rem;
+  text-align: center;
+  margin: 0.5rem 0 0;
+  padding: 0 1rem;
+}
+
+/* Dim hero text when the item cannot currently be actioned (e.g. can't afford) */
+.asy-hero--dim .spa-hero-text {
+  color: #4a4a4a;
+}
+
+/* Exit button — inherits .spa-nav-btn; slightly faded to distinguish from section tabs */
+.asy-exit-btn {
+  opacity: 0.65;
+}
+
+.asy-exit-btn:hover,
+.asy-exit-btn:active {
+  opacity: 1;
+}
+
+@media (max-width: 480px) {
+  .asy-stats-bar {
+    gap: 0.75rem;
+    font-size: 0.68rem;
+  }
+}
+
+/* Engine hero — main dot is the primary control; graph follows the motif intro */
+.asy-engine-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: min(52vh, 360px);
+  width: 100%;
+  max-width: 38rem;
+  margin: 0 auto;
+  border-radius: 16px;
+  border: 1px solid #2a3a2f;
+  background: radial-gradient(ellipse 80% 70% at 50% 45%, #1a241c 0%, #0f0f0f 100%);
+  box-shadow: inset 0 0 60px rgba(94, 232, 125, 0.04);
+  overflow: hidden;
+  cursor: default;
+}
+
+.asy-engine-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.asy-core-dot {
+  position: relative;
+  z-index: 2;
+  width: min(22vw, 88px);
+  height: min(22vw, 88px);
+  min-width: 64px;
+  min-height: 64px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+  background: radial-gradient(circle at 35% 30%, #8ef4a8 0%, #5ee87d 38%, #2d8f4a 100%);
+  box-shadow:
+    0 0 28px rgba(94, 232, 125, 0.55),
+    0 0 60px rgba(94, 232, 125, 0.2),
+    inset 0 2px 12px rgba(255, 255, 255, 0.35);
+  transition: transform 0.08s ease-out, box-shadow 0.15s ease;
+}
+
+.asy-core-dot:active {
+  transform: scale(0.94);
+  box-shadow:
+    0 0 40px rgba(94, 232, 125, 0.75),
+    inset 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.asy-engine-hint {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.85rem;
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  color: rgba(94, 232, 125, 0.45);
+  letter-spacing: 0.12em;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Item heroes — motif + compact stat + action */
+.asy-item-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 38rem;
+  margin: 0 auto;
+  min-height: 220px;
+  padding: 1rem 1.25rem 1.5rem;
+  border-radius: 14px;
+  border: 1px solid #2f2f2f;
+  background: linear-gradient(165deg, #1a1a1a 0%, #121212 100%);
+}
+
+.asy-motif {
+  display: block;
+  width: 112px;
+  height: 112px;
+  image-rendering: pixelated;
+  border-radius: 12px;
+  background: #0a0a0a;
+  box-shadow: inset 0 0 24px rgba(94, 232, 125, 0.06);
+}
+
+.asy-hero-stat {
+  margin: 0 !important;
+  font-size: clamp(1.1rem, 3.2vw, 1.35rem) !important;
+  letter-spacing: 0.06em !important;
+  color: var(--accent) !important;
+}
+
+.asy-hero-action {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid #3a5c42;
+  background: #1e2a22;
+  color: var(--accent);
+  font-size: 1.1rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+}
+
+.asy-hero-action:active {
+  transform: scale(0.94);
+  background: #253028;
+}
+
+.asy-hero-main.asy-hero--dim .asy-hero-stat,
+.asy-hero-main.asy-hero--dim .asy-hero-action {
+  opacity: 0.38;
+}
+
+.asy-hero-main.asy-hero--dim .asy-motif {
+  opacity: 0.45;
+  filter: grayscale(0.4);
+}
+
+.asy-hero-main.asy-hero--dim .asy-core-dot {
+  opacity: 0.45;
+  filter: grayscale(0.35);
+  box-shadow: 0 0 12px rgba(94, 232, 125, 0.15);
+}
+
+/* SPA overlay modal (used by SoundCloud archive picker) */
+#spa-overlay-root {
+  position: fixed;
+  inset: 0;
+  display: none;
+  z-index: 120;
+  background: rgba(0, 0, 0, 0.68);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  padding: 1rem;
+}
+
+.spa-overlay {
+  width: min(92vw, 32rem);
+  margin: min(14vh, 8rem) auto 0;
+  background: linear-gradient(180deg, #1b1b1b 0%, #141414 100%);
+  border: 1px solid #2f2f2f;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  padding: 1rem;
+}
+
+.spa-overlay--inline {
+  width: min(100%, 38rem);
+  min-height: 320px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1rem 1rem 1.1rem;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.38);
+}
+
+.spa-overlay-title {
+  font-size: clamp(1.35rem, 4vw, 1.8rem);
+  text-transform: lowercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.35rem;
+}
+
+.spa-overlay-subtitle {
+  margin: 0;
+  color: #9aa19b;
+  font-size: 0.9rem;
+  letter-spacing: 0.03em;
+}
+
+.spa-overlay-links {
+  margin-top: 0.9rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.spa-overlay-link {
+  display: block;
+  color: var(--accent);
+  text-decoration: none;
+  background: #1f1f1f;
+  border: 1px solid #2f2f2f;
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+  letter-spacing: 0.03em;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.spa-overlay-link:hover,
+.spa-overlay-link:focus-visible {
+  background: #282828;
+  border-color: #3e6b49;
+  outline: none;
+}
+
+.spa-overlay-close {
+  margin-top: 0.85rem;
+  width: 100%;
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid #345a3d;
+  background: #1f2b22;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.spa-overlay-close:hover,
+.spa-overlay-close:focus-visible {
+  background: #27342a;
+  border-color: #3e6b49;
+  outline: none;
+}
