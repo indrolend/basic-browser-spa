@@ -167,15 +167,19 @@ test('adapter declarations remain optional and validate relative modules', async
   ]), /relative module paths/);
 });
 
-test('games lifecycle is dispatched through the Games view instead of hardcoding Asymptote in the SPA runtime', () => {
+test('application lifecycle is item-scoped without hardcoding Asymptote in the SPA runtime', () => {
   const runtime = readFileSync(resolve(root, 'main.js'), 'utf8');
-  const gamesView = readFileSync(resolve(root, 'examples/indrolend/asymptote/gamesView.js'), 'utf8');
+  const adapterSource = readFileSync(resolve(root, 'examples/indrolend/asymptote/gamesView.js'), 'utf8');
 
   assert.doesNotMatch(runtime, /item\?\.id\s*!==\s*['"]asymptote['"]/);
   assert.doesNotMatch(runtime, /item\?\.id\s*===\s*['"]asymptote['"]/);
   assert.doesNotMatch(runtime, /window\.AsymptoteApp\?\.buildEntryGameHeroProbe/);
 
+  // main.js still uses the section bridge during migration, but the adapter's
+  // canonical contract is item-scoped and separates item/application lifecycle.
   assert.match(runtime, /__SPA_Views\?\.\[section\?\.id\]/);
-  assert.match(gamesView, /function onEnterGame\(itemId\)/);
-  assert.match(gamesView, /function buildEntryGameHeroProbe\(itemId,\s*containerEl\)/);
+  assert.match(adapterSource, /registerItemAdapter\(ITEM_KEY/);
+  assert.match(adapterSource, /function getPrimaryAction\(\)/);
+  assert.match(adapterSource, /function enterApplication\(\)/);
+  assert.match(adapterSource, /function exitApplication\(\)/);
 });
