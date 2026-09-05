@@ -1,23 +1,20 @@
-// SPA Games View — Asymptote engine adapter
-//
-// mount:        renders a tappable "Asymptote Engine" hero in the hero container;
-//               user must tap it to enter the game (no auto-start).
-// onActivate:   idempotent — does nothing when game is already running.
-// onDeactivate: stops the game tick/render loops; SPA restores DOM itself.
-// onEnterGame:  entry point called by main.js onSlingshotTap when on asymptote item.
+// Asymptote item adapter. The item-scoped contract is canonical; the
+// section-scoped __SPA_Views.games object below is a temporary compatibility
+// bridge for main.js while the shell migrates to item adapters.
+import { registerItemAdapter } from '../../../js/spa/itemAdapterRegistry.js';
 
 (function () {
-  var gameActive = false;
+  const ITEM_KEY = 'games/asymptote';
+  const CONTRACT_VERSION = 1;
+  let gameActive = false;
 
-  function mount(itemId, containerEl) {
-    if (itemId !== 'asymptote') return;
+  function mount(containerEl) {
     if (window.AsymptoteApp) {
       window.AsymptoteApp.mount(containerEl);
     } else {
-      // Fallback if script not yet loaded
-      var hero = document.createElement('div');
+      const hero = document.createElement('div');
       hero.className = 'spa-hero spa-hero--linkable';
-      var heroText = document.createElement('div');
+      const heroText = document.createElement('div');
       heroText.className = 'spa-hero-text';
       heroText.textContent = 'Asymptote Engine';
       hero.appendChild(heroText);
@@ -25,62 +22,92 @@
     }
   }
 
-  function onActivate(itemId) {
-    if (itemId !== 'asymptote') return;
-    // If game is already running (e.g. after a cancelled slingshot), do nothing.
-    // The game manages its own state; we should not re-enter or reset it.
-    if (gameActive) return;
-    // Hero is the tappable entry screen rendered by mount().
-    // Actual game entry waits for the user's tap → onEnterGame().
+  function activate() {
+    // Selecting the item does not enter the application. Application entry is a
+    // separate lifecycle transition triggered by the item's primary action.
   }
 
-  function onDeactivate(itemId) {
-    if (itemId !== 'asymptote') return;
+  function exitApplication() {
     if (!gameActive) return;
     gameActive = false;
-    // Unblock SPA navigation so goTo() can complete the transition.
     if (window.__SPA_SetGameMode) window.__SPA_SetGameMode(false);
-    // Stop game logic but keep the hero DOM intact so the particle transition
-    // engine can capture it as the "from" surface before clearing it.
     if (window.AsymptoteApp) window.AsymptoteApp.deactivate();
   }
 
-  function canEnterGame(itemId) {
-    return itemId === 'asymptote';
+  function deactivate() {
+    // Leaving the item must also stop an application that is still active.
+    exitApplication();
   }
 
-  function onEnterGame(itemId) {
-    if (itemId !== 'asymptote') return;
+  function getPrimaryAction() {
+    return {
+      type: 'application',
+      label: 'Enter Asymptote Engine'
+    };
+  }
+
+  function enterApplication() {
     if (gameActive) return;
     gameActive = true;
     if (window.__SPA_SetGameMode) window.__SPA_SetGameMode(true);
     if (window.AsymptoteApp) window.AsymptoteApp.enterGame();
   }
 
-  // buildHeroProbe: returns a { element, cleanup } probe that carries the
-  // mount-animation canvas so particle transitions show the animated surface.
-  function buildEntryGameHeroProbe(itemId, containerEl) {
-    if (itemId !== 'asymptote') return null;
+  function buildEntryProbe(containerEl) {
     return (window.AsymptoteApp && window.AsymptoteApp.buildEntryGameHeroProbe)
       ? window.AsymptoteApp.buildEntryGameHeroProbe(containerEl)
       : null;
   }
 
-  function buildHeroProbe(itemId, containerEl) {
-    if (itemId !== 'asymptote') return null;
+  function buildHeroProbe(containerEl) {
     return (window.AsymptoteApp && window.AsymptoteApp.buildMountHeroProbe)
       ? window.AsymptoteApp.buildMountHeroProbe(containerEl)
       : null;
   }
 
+  const itemAdapter = registerItemAdapter(ITEM_KEY, {
+    contractVersion: CONTRACT_VERSION,
+    mount,
+    activate,
+    deactivate,
+    getPrimaryAction,
+    enterApplication,
+    exitApplication,
+    buildEntryProbe,
+    buildHeroProbe
+  });
+
+  // Legacy section-view compatibility. Keep this thin: every method only routes
+  // the matching item into the item-scoped adapter above.
+  function isAsymptote(itemId) {
+    return itemId === 'asymptote';
+  }
+
   if (!window.__SPA_Views) window.__SPA_Views = {};
   window.__SPA_Views.games = {
-    mount:          mount,
-    onActivate:     onActivate,
-    onDeactivate:   onDeactivate,
-    canEnterGame:   canEnterGame,
-    onEnterGame:    onEnterGame,
-    buildEntryGameHeroProbe: buildEntryGameHeroProbe,
-    buildHeroProbe: buildHeroProbe
+    mount(itemId, containerEl) {
+      if (isAsymptote(itemId)) itemAdapter.mount(containerEl);
+    },
+    onActivate(itemId) {
+      if (isAsymptote(itemId)) itemAdapter.activate();
+    },
+    onDeactivate(itemId) {
+      if (isAsymptote(itemId)) itemAdapter.deactivate();
+    },
+    canEnterGame(itemId) {
+      return isAsymptote(itemId) && itemAdapter.getPrimaryAction()?.type === 'application';
+    },
+    onEnterGame(itemId) {
+      if (isAsymptote(itemId)) itemAdapter.enterApplication();
+    },
+    buildEntryGameHeroProbe(itemId, containerEl) {
+      return isAsymptote(itemId) ? itemAdapter.buildEntryProbe(containerEl) : null;
+    },
+    buildHeroProbe(itemId, containerEl) {
+      return isAsymptote(itemId) ? itemAdapter.buildHeroProbe(containerEl) : null;
+    },
+    onExitGame(itemId) {
+      if (isAsymptote(itemId)) itemAdapter.exitApplication();
+    }
   };
 }());
