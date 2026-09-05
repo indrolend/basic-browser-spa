@@ -53,6 +53,29 @@ test('adapter loader rejects a module that never satisfies its declared contract
   }), /did not register games\/broken/);
 });
 
+test('adapter loader deduplicates by item key rather than display id', async () => {
+  const loaderUrl = pathToFileURL(resolve(root, 'js/spa/adapterLoader.js')).href;
+  const { createAdapterLoader } = await import(`${loaderUrl}?item-key-dedupe`);
+  const calls = [];
+  const registrations = new Map([
+    ['games/one', { contractVersion: 1 }],
+    ['games/two', { contractVersion: 1 }]
+  ]);
+  const loader = createAdapterLoader({
+    baseUrl: new URL('https://template.invalid/examples/content.js'),
+    resolveRegistration: (key) => registrations.get(key) || null,
+    loadModule: async (specifier) => { calls.push(specifier); }
+  });
+
+  await loader.load({ id: 'shared', key: 'games/one', contractVersion: 1, modules: ['./one.js'] });
+  await loader.load({ id: 'shared', key: 'games/two', contractVersion: 1, modules: ['./two.js'] });
+
+  assert.deepEqual(calls, [
+    'https://template.invalid/examples/one.js',
+    'https://template.invalid/examples/two.js'
+  ]);
+});
+
 test('item adapter registry is keyed by section/item and exposes contract capabilities', async () => {
   const registryUrl = pathToFileURL(resolve(root, 'js/spa/itemAdapterRegistry.js')).href;
   const registry = await import(`${registryUrl}?registry-test`);
@@ -67,6 +90,23 @@ test('item adapter registry is keyed by section/item and exposes contract capabi
   assert.equal(registry.getItemAdapter('games/demo'), adapter);
   assert.equal(adapter.getPrimaryAction().type, 'application');
   assert.throws(() => registry.registerItemAdapter('bad-key', { contractVersion: 1 }), /section\/item/);
+});
+
+test('item adapter registry permits contract-safe refresh and rejects downgrade', async () => {
+  const registryUrl = pathToFileURL(resolve(root, 'js/spa/itemAdapterRegistry.js')).href;
+  const registry = await import(`${registryUrl}?registry-refresh`);
+  registry.clearItemAdaptersForTesting();
+
+  const first = registry.registerItemAdapter('games/demo', { contractVersion: 1, marker: 'first' });
+  const refreshed = registry.registerItemAdapter('games/demo', { contractVersion: 1, marker: 'refresh' });
+  const upgraded = registry.registerItemAdapter('games/demo', { contractVersion: 2, marker: 'upgrade' });
+
+  assert.notEqual(first, refreshed);
+  assert.equal(registry.getItemAdapter('games/demo'), upgraded);
+  assert.throws(
+    () => registry.registerItemAdapter('games/demo', { contractVersion: 1 }),
+    /cannot replace contract 2 with older contract 1/
+  );
 });
 
 test('content model validates item-scoped adapter key and contract version together', async () => {
