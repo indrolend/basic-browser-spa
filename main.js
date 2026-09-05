@@ -65,7 +65,7 @@ async function exitGameToCurrentItem() {
   const sectionId = SPA_SECTIONS[currentSectionIdx]?.id;
   const itemId = SPA_SECTIONS[currentSectionIdx]?.items[currentItemIdx]?.id;
 
-  if (!isAsymptoteGameActive) {
+  if (!isGameModeActive) {
     renderHeroDOM(currentSectionIdx, currentItemIdx);
     updateSectionNav(currentSectionIdx);
     updateItemDots(currentSectionIdx, currentItemIdx);
@@ -205,11 +205,11 @@ function spaDebug(...args) {
 }
 
 // ─── Game mode flag ───────────────────────────────────────────────────────────
-// Set to true while the Asymptote game is active.
+// Set to true while an embedded game is active.
 // Blocks slingshot navigation and keyboard arrow nav so the player can't
 // accidentally swipe or key out of the game.
-let isAsymptoteGameActive = false;
-window.__SPA_SetGameMode = (active) => { isAsymptoteGameActive = !!active; };
+let isGameModeActive = false;
+window.__SPA_SetGameMode = (active) => { isGameModeActive = !!active; };
 // Navigate to home when explicitly requested.
 window.__SPA_GoHome = () => goTo(0, 0);
 // Exit the active game by transitioning back to the current item's entry hero.
@@ -284,23 +284,23 @@ function isOverlayAction(action) {
 }
 
 async function enterCurrentGameWithTransition() {
-  if (isTransitioning || isPulling || isAsymptoteGameActive) return;
+  if (isTransitioning || isPulling || isGameModeActive) return;
 
   const section = SPA_SECTIONS[currentSectionIdx];
   const item = section?.items[currentItemIdx];
-  if (section?.id !== 'games' || item?.id !== 'asymptote') {
-    window.__SPA_Views?.games?.onEnterGame?.();
-    return;
-  }
+  const view = window.__SPA_Views?.[section?.id];
+
+  if (!item || !view?.canEnterGame?.(item.id) || typeof view?.onEnterGame !== 'function') return;
 
   isTransitioning = true;
   stopCurrentHeroSurfaceTracking();
 
   try {
     const heroContainer = document.getElementById('spa-hero-container');
-    const gameProbe = window.AsymptoteApp?.buildEntryGameHeroProbe?.(heroContainer);
+    const gameProbe = view.buildEntryGameHeroProbe?.(item.id, heroContainer);
+
     if (!gameProbe) {
-      window.__SPA_Views?.games?.onEnterGame?.();
+      view.onEnterGame(item.id);
       return;
     }
 
@@ -317,15 +317,15 @@ async function enterCurrentGameWithTransition() {
       await runHeroTransition(fromSurface, toSurface, {
         timingProfile: 'releaseLike',
         onBeforeReveal: async () => {
-          window.__SPA_Views?.games?.onEnterGame?.();
+          view.onEnterGame(item.id);
         }
       });
     } else {
-      window.__SPA_Views?.games?.onEnterGame?.();
+      view.onEnterGame(item.id);
     }
   } catch (err) {
     console.warn('[game entry transition] failed, entering game directly:', err);
-    window.__SPA_Views?.games?.onEnterGame?.();
+    view.onEnterGame(item.id);
   } finally {
     isTransitioning = false;
     startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
@@ -1260,13 +1260,13 @@ function getDesktopNavOptions() {
 }
 
 function prevItem(navOptions = {}) {
-  if (isAsymptoteGameActive) { void gameNavigateWithTransition('prev', navOptions); return; }
+  if (isGameModeActive) { void gameNavigateWithTransition('prev', navOptions); return; }
   const target = getPrevTarget(currentSectionIdx, currentItemIdx);
   goTo(target.sectionIdx, target.itemIdx, navOptions);
 }
 
 function nextItem(navOptions = {}) {
-  if (isAsymptoteGameActive) { void gameNavigateWithTransition('next', navOptions); return; }
+  if (isGameModeActive) { void gameNavigateWithTransition('next', navOptions); return; }
   const target = getNextTarget(currentSectionIdx, currentItemIdx);
   goTo(target.sectionIdx, target.itemIdx, navOptions);
 }
@@ -1330,7 +1330,7 @@ window.addEventListener('keydown', (e) => {
   const isNext = e.key === 'ArrowRight' || e.key === 'ArrowDown';
   if (!isPrev && !isNext) return;
 
-  if (isAsymptoteGameActive) {
+  if (isGameModeActive) {
     e.preventDefault();
     const navOptions = getDesktopNavOptions();
     if (isPrev) void gameNavigateWithTransition('prev', navOptions);
@@ -1479,7 +1479,7 @@ function onSlingshotTap() {
   if (window.__SPA_Overlay?.shouldSuppressTap?.()) return;
 
   // When game is active, tap activates the current game item.
-  if (isAsymptoteGameActive) {
+  if (isGameModeActive) {
     window.__SPA_GameNav?.onTap?.();
     return;
   }
@@ -1491,11 +1491,12 @@ function onSlingshotTap() {
   // Tap on the Asymptote Engine hero — enter the game.
   const section = SPA_SECTIONS[currentSectionIdx];
   const item    = section?.items[currentItemIdx];
-  if (section?.id === 'games' && item?.id === 'asymptote') {
+  const view = window.__SPA_Views?.[section?.id];
+  if (item && view?.canEnterGame?.(item.id) && typeof view?.onEnterGame === 'function') {
     if (typeof window.__SPA_EnterCurrentGame === 'function') {
       window.__SPA_EnterCurrentGame();
     } else {
-      window.__SPA_Views?.games?.onEnterGame?.();
+      view.onEnterGame(item.id);
     }
     return;
   }
@@ -1543,7 +1544,7 @@ function onSlingshotLock({ direction, pullVector, pullNormalized }) {
     // Use activeTarget (the in-flight destination) as the "from" position so
     // chained swipes correctly compute the next step in the sequence.
     // Skip in game mode — game navigation uses a separate path.
-    if (!isAsymptoteGameActive) {
+    if (!isGameModeActive) {
       const from = activeTarget || { sectionIdx: currentSectionIdx, itemIdx: currentItemIdx };
       const target = direction === 'next'
         ? getNextTarget(from.sectionIdx, from.itemIdx)
@@ -1562,7 +1563,7 @@ function onSlingshotLock({ direction, pullVector, pullNormalized }) {
   try {
 
   // ── Game mode: full pull-preview setup (identical pipeline to SPA path) ──────
-  if (isAsymptoteGameActive) {
+  if (isGameModeActive) {
     const gameNav = window.__SPA_GameNav;
     if (!gameNav) return false;
 
@@ -1746,7 +1747,7 @@ async function onSlingshotRelease({ pullNormalized }) {
   if (!isPulling) return;
 
   // ── Game mode: run the same transitionFromPull/transition animation ──────────
-  if (isAsymptoteGameActive) {
+  if (isGameModeActive) {
     if (pullNormalized < SLINGSHOT_MIN_RELEASE) {
       cancelSlingshot();
       return;

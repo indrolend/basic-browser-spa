@@ -45,7 +45,12 @@
     if (window.AsymptoteApp) window.AsymptoteApp.deactivate();
   }
 
-  function onEnterGame() {
+  function canEnterGame(itemId) {
+    return itemId === 'asymptote';
+  }
+
+  function onEnterGame(itemId) {
+    if (itemId !== 'asymptote') return;
     if (gameActive) return;
     gameActive = true;
     if (window.__SPA_SetGameMode) window.__SPA_SetGameMode(true);
@@ -54,6 +59,13 @@
 
   // buildHeroProbe: returns a { element, cleanup } probe that carries the
   // mount-animation canvas so particle transitions show the animated surface.
+  function buildEntryGameHeroProbe(itemId, containerEl) {
+    if (itemId !== 'asymptote') return null;
+    return (window.AsymptoteApp && window.AsymptoteApp.buildEntryGameHeroProbe)
+      ? window.AsymptoteApp.buildEntryGameHeroProbe(containerEl)
+      : null;
+  }
+
   function buildHeroProbe(itemId, containerEl) {
     if (itemId !== 'asymptote') return null;
     return (window.AsymptoteApp && window.AsymptoteApp.buildMountHeroProbe)
@@ -66,7 +78,9 @@
     mount:          mount,
     onActivate:     onActivate,
     onDeactivate:   onDeactivate,
+    canEnterGame:   canEnterGame,
     onEnterGame:    onEnterGame,
+    buildEntryGameHeroProbe: buildEntryGameHeroProbe,
     buildHeroProbe: buildHeroProbe
   };
 }());

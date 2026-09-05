@@ -166,3 +166,16 @@ test('adapter declarations remain optional and validate relative modules', async
     }
   ]), /relative module paths/);
 });
+
+test('games lifecycle is dispatched through the Games view instead of hardcoding Asymptote in the SPA runtime', () => {
+  const runtime = readFileSync(resolve(root, 'main.js'), 'utf8');
+  const gamesView = readFileSync(resolve(root, 'examples/indrolend/asymptote/gamesView.js'), 'utf8');
+
+  assert.doesNotMatch(runtime, /item\?\.id\s*!==\s*['"]asymptote['"]/);
+  assert.doesNotMatch(runtime, /item\?\.id\s*===\s*['"]asymptote['"]/);
+  assert.doesNotMatch(runtime, /window\.AsymptoteApp\?\.buildEntryGameHeroProbe/);
+
+  assert.match(runtime, /__SPA_Views\?\.\[section\?\.id\]/);
+  assert.match(gamesView, /function onEnterGame\(itemId\)/);
+  assert.match(gamesView, /function buildEntryGameHeroProbe\(itemId,\s*containerEl\)/);
+});

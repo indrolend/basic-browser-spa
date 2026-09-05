@@ -30,7 +30,9 @@ export const SPA_SECTIONS = defineContent([
       {
         id: 'asymptote', label: 'Asymptote Engine', hero: { kind: 'text', text: 'Asymptote Engine' },
         adapter: { id: 'asymptote', modules: ['./asymptote/asymptoteApp.js', './asymptote/gamesView.js'] }
-      }
+      },
+      { id: 'drift', label: 'Drift', hero: { kind: 'text', text: 'Drift' }, clickAction: '/drift/' },
+      { id: 'data', label: 'DATA', hero: { kind: 'text', text: 'DATA' }, clickAction: 'https://github.com/indrolend/Digital-breakdown-dev/releases/download/latest-native/DigitalBreakdown-Windows.zip' }
     ]
   }
 ]);
