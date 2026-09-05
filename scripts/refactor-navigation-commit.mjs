@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
+// One-shot guarded migration: commit semantic navigation state before reveal.
 const path = new URL('../main.js', import.meta.url);
 let source = readFileSync(path, 'utf8');
 
