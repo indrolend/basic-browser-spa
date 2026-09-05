@@ -6,6 +6,10 @@ export function createAdapterLoader({
   if (!baseUrl) throw new TypeError('adapter loader requires a base URL');
   const loads = new Map();
 
+  function getLoadKey(adapter) {
+    return adapter?.key || adapter?.id;
+  }
+
   function assertContract(adapter) {
     if (!adapter?.key) return null;
 
@@ -34,7 +38,9 @@ export function createAdapterLoader({
 
   async function load(adapter) {
     if (!adapter) return null;
-    if (loads.has(adapter.id)) return loads.get(adapter.id);
+    const loadKey = getLoadKey(adapter);
+    if (!loadKey) throw new TypeError('adapter requires an id or item key');
+    if (loads.has(loadKey)) return loads.get(loadKey);
 
     const operation = (async () => {
       await loadModules(adapter, false);
@@ -57,11 +63,11 @@ export function createAdapterLoader({
       return adapter.id;
     })();
 
-    loads.set(adapter.id, operation);
+    loads.set(loadKey, operation);
     try {
       return await operation;
     } catch (error) {
-      loads.delete(adapter.id);
+      loads.delete(loadKey);
       throw error;
     }
   }
