@@ -13,6 +13,19 @@ function assertAdapter(itemKey, adapter) {
   if (!Number.isInteger(adapter.contractVersion) || adapter.contractVersion < 1) {
     throw new TypeError(`item adapter ${itemKey} must declare a positive contractVersion`);
   }
+
+  if (adapter.getPrimaryAction !== undefined && typeof adapter.getPrimaryAction !== 'function') {
+    throw new TypeError(`item adapter ${itemKey} getPrimaryAction must be a function`);
+  }
+
+  const action = adapter.getPrimaryAction?.();
+  if (action?.type === 'application') {
+    if (typeof adapter.enterApplication !== 'function' || typeof adapter.exitApplication !== 'function') {
+      throw new TypeError(
+        `application adapter ${itemKey} must define enterApplication and exitApplication`
+      );
+    }
+  }
 }
 
 export function registerItemAdapter(itemKey, adapter) {
