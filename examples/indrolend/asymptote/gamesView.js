@@ -6,7 +6,15 @@ import { registerItemAdapter } from '../../../js/spa/itemAdapterRegistry.js';
 (function () {
   const ITEM_KEY = 'games/asymptote';
   const CONTRACT_VERSION = 1;
-  let gameActive = false;
+  let applicationActive = false;
+
+  function setApplicationMode(active) {
+    if (window.__SPA_SetApplicationMode) {
+      window.__SPA_SetApplicationMode(active);
+    } else if (window.__SPA_SetGameMode) {
+      window.__SPA_SetGameMode(active);
+    }
+  }
 
   function mount(containerEl) {
     if (window.AsymptoteApp) {
@@ -28,9 +36,9 @@ import { registerItemAdapter } from '../../../js/spa/itemAdapterRegistry.js';
   }
 
   function exitApplication() {
-    if (!gameActive) return;
-    gameActive = false;
-    if (window.__SPA_SetGameMode) window.__SPA_SetGameMode(false);
+    if (!applicationActive) return;
+    applicationActive = false;
+    setApplicationMode(false);
     if (window.AsymptoteApp) window.AsymptoteApp.deactivate();
   }
 
@@ -47,9 +55,9 @@ import { registerItemAdapter } from '../../../js/spa/itemAdapterRegistry.js';
   }
 
   function enterApplication() {
-    if (gameActive) return;
-    gameActive = true;
-    if (window.__SPA_SetGameMode) window.__SPA_SetGameMode(true);
+    if (applicationActive) return;
+    applicationActive = true;
+    setApplicationMode(true);
     if (window.AsymptoteApp) window.AsymptoteApp.enterGame();
   }
 
@@ -94,6 +102,24 @@ import { registerItemAdapter } from '../../../js/spa/itemAdapterRegistry.js';
     onDeactivate(itemId) {
       if (isAsymptote(itemId)) itemAdapter.deactivate();
     },
+    getPrimaryAction(itemId) {
+      return isAsymptote(itemId) ? itemAdapter.getPrimaryAction() : null;
+    },
+    enterApplication(itemId) {
+      if (isAsymptote(itemId)) itemAdapter.enterApplication();
+    },
+    exitApplication(itemId) {
+      if (isAsymptote(itemId)) itemAdapter.exitApplication();
+    },
+    buildEntryProbe(itemId, containerEl) {
+      return isAsymptote(itemId) ? itemAdapter.buildEntryProbe(containerEl) : null;
+    },
+    buildHeroProbe(itemId, containerEl) {
+      return isAsymptote(itemId) ? itemAdapter.buildHeroProbe(containerEl) : null;
+    },
+
+    // Compatibility aliases for the current shell. Remove after main.js moves to
+    // the application lifecycle above.
     canEnterGame(itemId) {
       return isAsymptote(itemId) && itemAdapter.getPrimaryAction()?.type === 'application';
     },
@@ -102,9 +128,6 @@ import { registerItemAdapter } from '../../../js/spa/itemAdapterRegistry.js';
     },
     buildEntryGameHeroProbe(itemId, containerEl) {
       return isAsymptote(itemId) ? itemAdapter.buildEntryProbe(containerEl) : null;
-    },
-    buildHeroProbe(itemId, containerEl) {
-      return isAsymptote(itemId) ? itemAdapter.buildHeroProbe(containerEl) : null;
     },
     onExitGame(itemId) {
       if (isAsymptote(itemId)) itemAdapter.exitApplication();
