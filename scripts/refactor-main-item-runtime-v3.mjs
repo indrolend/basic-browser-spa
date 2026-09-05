@@ -16,6 +16,15 @@ if (!discoveryGuard.test(code)) {
 }
 code = code.replace(discoveryGuard, '');
 
+const invariantAnchor = '// The section-scoped bridge may remain as a fallback, but canonical application';
+if (!code.includes(invariantAnchor)) {
+  throw new Error('expected invariant anchor was not found');
+}
+code = code.replace(
+  invariantAnchor,
+  `// Normalize any releaseLike profile lines that differed only by indentation.\nsource = source.replace(/^\\s*timingProfile: 'releaseLike',?\\r?\\n/gm, '');\nsource = source.replaceAll(\"timingProfile: 'releaseLikeChained'\", \"timingProfile: 'chained'\");\n\n${invariantAnchor}`
+);
+
 writeFileSync(generatedUrl, code);
 try {
   await import(`${generatedUrl.href}?run=${Date.now()}`);
