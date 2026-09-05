@@ -5,7 +5,7 @@ on:
     branches:
       - audit/current-spa-lifecycle
     paths:
-      - scripts/refactor-main-item-runtime.mjs
+      - scripts/refactor-main-item-runtime-v2.mjs
 
 permissions:
   contents: write
@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: node scripts/refactor-main-item-runtime.mjs
+      - run: node scripts/refactor-main-item-runtime-v2.mjs
       - run: npm test
       - name: Commit generated runtime migration
         run: |
