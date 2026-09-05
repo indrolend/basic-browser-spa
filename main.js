@@ -76,6 +76,14 @@ function awardCurrentDiscovery() {
   if (sectionId && itemId) awardDiscovery(sectionId, itemId);
 }
 
+function commitNavigationTarget(sectionIdx, itemIdx, { lockHome = false } = {}) {
+  if (lockHome) homeSectionLocked = true;
+  currentSectionIdx = sectionIdx;
+  currentItemIdx = itemIdx;
+  try { activateItem(sectionIdx, itemIdx); } catch (_) {}
+  awardCurrentDiscovery();
+}
+
 // State
 let currentSectionIdx = 0;
 let currentItemIdx = 0;
@@ -1213,6 +1221,7 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
 
     let didTransition = false;
     let didRenderDuringReveal = false;
+    let didCommit = false;
 
     try {
       spaDebug(
@@ -1228,9 +1237,8 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
           ...transitionOptions,
           onBeforeReveal: async () => {
             closeOverlayForNavigation();
-            if (shouldLockHomeOnCommit) {
-              homeSectionLocked = true;
-            }
+            commitNavigationTarget(nextSectionIdx, nextItemIdx, { lockHome: shouldLockHomeOnCommit });
+            didCommit = true;
             const preparedPlaybackKey = `prepared:${getHeroSurfaceKey(nextSectionIdx, nextItemIdx)}`;
             const canReusePreparedGif =
               preparedTargetCanvas instanceof window.HTMLCanvasElement &&
@@ -1251,13 +1259,12 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
       console.warn('Hero transition skipped:', err);
     }
 
-    currentSectionIdx = nextSectionIdx;
-    currentItemIdx = nextItemIdx;
+    if (!didCommit) {
+      commitNavigationTarget(nextSectionIdx, nextItemIdx, { lockHome: shouldLockHomeOnCommit });
+      didCommit = true;
+    }
     preparedToGifCanvas = null;
     preparedToGifKey = null;
-
-    try { activateItem(currentSectionIdx, currentItemIdx); } catch (_) {}
-    awardCurrentDiscovery();
 
     if (didTransition && !didRenderDuringReveal) {
       renderHeroDOM(currentSectionIdx, currentItemIdx);
@@ -1265,9 +1272,6 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
       updateItemDots(currentSectionIdx, currentItemIdx);
     } else if (!didTransition) {
       closeOverlayForNavigation();
-      if (shouldLockHomeOnCommit) {
-        homeSectionLocked = true;
-      }
       render();
     }
 
