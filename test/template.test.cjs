@@ -175,9 +175,9 @@ test('application lifecycle is item-scoped without hardcoding Asymptote in the S
   assert.doesNotMatch(runtime, /item\?\.id\s*===\s*['"]asymptote['"]/);
   assert.doesNotMatch(runtime, /window\.AsymptoteApp\?\.buildEntryGameHeroProbe/);
 
-  // main.js still uses the section bridge during migration, but the adapter's
-  // canonical contract is item-scoped and separates item/application lifecycle.
-  assert.match(runtime, /__SPA_Views\?\.\[section\?\.id\]/);
+  assert.match(runtime, /getRegisteredItemAdapter\(currentSectionIdx, currentItemIdx\)/);
+  assert.match(runtime, /getItemPrimaryAction\(currentSectionIdx, currentItemIdx\)/);
+  assert.match(runtime, /adapter\?\.exitApplication/);
   assert.match(adapterSource, /registerItemAdapter\(ITEM_KEY/);
   assert.match(adapterSource, /function getPrimaryAction\(\)/);
   assert.match(adapterSource, /function enterApplication\(\)/);
