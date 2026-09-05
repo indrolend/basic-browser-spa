@@ -1,0 +1,32 @@
+name: Refactor navigation commit once
+
+on:
+  push:
+    branches:
+      - audit/current-spa-lifecycle
+    paths:
+      - scripts/refactor-navigation-commit.mjs
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: audit/current-spa-lifecycle
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/refactor-navigation-commit.mjs
+      - run: npm test
+      - name: Commit semantic navigation boundary
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add main.js
+          git diff --cached --quiet && { echo "No main.js changes generated"; exit 1; }
+          git commit -m "Commit SPA navigation state before reveal"
+          git push origin HEAD:audit/current-spa-lifecycle
