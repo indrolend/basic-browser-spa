@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 
+// Final one-shot driver: the generated main.js is committed only after npm test passes.
 const sourceUrl = new URL('./refactor-main-item-runtime.mjs', import.meta.url);
 const generatedUrl = new URL('./.generated-refactor-main.mjs', import.meta.url);
 let code = readFileSync(sourceUrl, 'utf8');
