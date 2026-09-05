@@ -1,13 +1,11 @@
-# Indrolend example
+# Indrolend SPA content
 
-This preserves the previous personal catalog and optional Asymptote application without making either part of the neutral starter.
+This directory contains the Indrolend catalog selected by the root SPA entrypoint.
 
-Serve the repository root, then open:
+The Games section currently exposes three items through the same catalog:
 
-```text
-http://127.0.0.1:8000/examples/indrolend/
-```
+- **Asymptote Engine** — uses the item-scoped adapter/application lifecycle registered as `games/asymptote`.
+- **Drift** — currently opens the bundled `/drift/` application through its primary link action.
+- **DATA** — currently exposes the rolling native Windows download from `Digital-breakdown-dev` as its primary link action.
 
-The example entrypoint selects its catalog through the `spa-content` meta tag. It uses the same root runtime without modifying it.
-
-The Games section currently lazy-loads Asymptote, links to the bundled offline Drift app at `/drift/`, and opens DATA's first-party storefront at `/data/`. DATA's authoritative Pass 7 browser reference is hosted unchanged at `/data/play/`; native downloads remain release assets from the source repository. `js/spa/sharedEconomy.js` provides the small cross-app contract: a versioned browser-local Signal ledger, idempotent award/spend transaction IDs, a live HUD event, and no server dependency.
+These Drift and DATA actions are intentionally interim integration points. The shell owns navigation, hero interaction, actionability, accessibility, and particle transition semantics; richer product presentation should be added through item adapters rather than by adding product-specific behavior to `main.js`.
