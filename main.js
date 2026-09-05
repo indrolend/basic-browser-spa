@@ -1,13 +1,30 @@
 // Basic Browser SPA runtime. Replace js/content.js to provide another site map;
 // navigation and rendering behavior remain here.
 import { createAdapterLoader } from './js/spa/adapterLoader.js';
+import { getItemAdapter } from './js/spa/itemAdapterRegistry.js';
+import { resolvePrimaryAction, getPrimaryActionPresentation } from './js/spa/primaryAction.js';
+import { PARTICLE_SIZE, sampleSurfaceParticles } from './js/spa/particleSampling.js';
 import { awardDiscovery, mountEconomyHud } from './js/spa/sharedEconomy.js';
 
 const contentPath = document.querySelector('meta[name="spa-content"]')?.content;
 if (!contentPath) throw new Error('Missing <meta name="spa-content" content="...">');
 const { CONTENT_BASE_URL, SPA_SECTIONS } = await import(new URL(contentPath, document.baseURI).href);
 
-const adapterLoader = createAdapterLoader({ baseUrl: CONTENT_BASE_URL });
+const adapterLoader = createAdapterLoader({
+  baseUrl: CONTENT_BASE_URL,
+  resolveRegistration: getItemAdapter
+});
+
+function getItemKey(sectionIdx, itemIdx) {
+  const section = SPA_SECTIONS[sectionIdx];
+  const item = section?.items[itemIdx];
+  return section?.id && item?.id ? `${section.id}/${item.id}` : null;
+}
+
+function getRegisteredItemAdapter(sectionIdx, itemIdx) {
+  const key = getItemKey(sectionIdx, itemIdx);
+  return key ? getItemAdapter(key) : null;
+}
 
 async function ensureItemAdapter(sectionIdx, itemIdx) {
   const item = SPA_SECTIONS[sectionIdx]?.items[itemIdx];
@@ -19,6 +36,44 @@ async function ensureItemAdapter(sectionIdx, itemIdx) {
     console.warn(`[adapter] ${item.adapter.id} unavailable; using the configured fallback hero`, error);
     return false;
   }
+}
+
+function getItemPrimaryAction(sectionIdx, itemIdx) {
+  const item = SPA_SECTIONS[sectionIdx]?.items[itemIdx];
+  if (!item) return null;
+  return resolvePrimaryAction({
+    item,
+    adapter: getRegisteredItemAdapter(sectionIdx, itemIdx),
+    baseUrl: window.location.href
+  });
+}
+
+function activateItem(sectionIdx, itemIdx) {
+  const adapter = getRegisteredItemAdapter(sectionIdx, itemIdx);
+  if (adapter?.activate) {
+    adapter.activate();
+    return;
+  }
+  const sectionId = SPA_SECTIONS[sectionIdx]?.id;
+  const itemId = SPA_SECTIONS[sectionIdx]?.items[itemIdx]?.id;
+  if (sectionId && itemId) window.__SPA_Views?.[sectionId]?.onActivate?.(itemId);
+}
+
+function deactivateItem(sectionIdx, itemIdx) {
+  const adapter = getRegisteredItemAdapter(sectionIdx, itemIdx);
+  if (adapter?.deactivate) {
+    adapter.deactivate();
+    return;
+  }
+  const sectionId = SPA_SECTIONS[sectionIdx]?.id;
+  const itemId = SPA_SECTIONS[sectionIdx]?.items[itemIdx]?.id;
+  if (sectionId && itemId) window.__SPA_Views?.[sectionId]?.onDeactivate?.(itemId);
+}
+
+function awardCurrentDiscovery() {
+  const sectionId = SPA_SECTIONS[currentSectionIdx]?.id;
+  const itemId = SPA_SECTIONS[currentSectionIdx]?.items[currentItemIdx]?.id;
+  if (sectionId && itemId) awardDiscovery(sectionId, itemId);
 }
 
 // State
@@ -59,13 +114,13 @@ let gameModePullItemIdx = null;
 const DESKTOP_CHAIN_WINDOW_MS = 260;
 const REVEAL_HANDOFF_FADE_MS = 70;
 
-async function exitGameToCurrentItem() {
+async function exitApplicationToCurrentItem() {
   if (isTransitioning || isPulling) return;
 
   const sectionId = SPA_SECTIONS[currentSectionIdx]?.id;
   const itemId = SPA_SECTIONS[currentSectionIdx]?.items[currentItemIdx]?.id;
 
-  if (!isGameModeActive) {
+  if (!isApplicationModeActive) {
     renderHeroDOM(currentSectionIdx, currentItemIdx);
     updateSectionNav(currentSectionIdx);
     updateItemDots(currentSectionIdx, currentItemIdx);
@@ -84,13 +139,11 @@ async function exitGameToCurrentItem() {
 
     const restoreEntryHero = () => {
       try {
-        if (sectionId && itemId) {
-          window.__SPA_Views?.[sectionId]?.onDeactivate?.(itemId);
-        } else {
-          window.__SPA_SetGameMode(false);
-        }
+        const adapter = getRegisteredItemAdapter(currentSectionIdx, currentItemIdx);
+        if (adapter?.exitApplication) adapter.exitApplication();
+        else window.__SPA_SetApplicationMode(false);
       } catch (_) {
-        window.__SPA_SetGameMode(false);
+        window.__SPA_SetApplicationMode(false);
       }
 
       renderHeroDOM(currentSectionIdx, currentItemIdx);
@@ -100,7 +153,6 @@ async function exitGameToCurrentItem() {
 
     if (fromSurface && toSurface) {
       await runHeroTransition(fromSurface, toSurface, {
-        timingProfile: 'releaseLike',
         onBeforeReveal: async () => {
           restoreEntryHero();
         }
@@ -111,13 +163,11 @@ async function exitGameToCurrentItem() {
   } catch (err) {
     console.warn('[game exit transition] failed, restoring entry hero directly:', err);
     try {
-      if (sectionId && itemId) {
-        window.__SPA_Views?.[sectionId]?.onDeactivate?.(itemId);
-      } else {
-        window.__SPA_SetGameMode(false);
-      }
+      const adapter = getRegisteredItemAdapter(currentSectionIdx, currentItemIdx);
+      if (adapter?.exitApplication) adapter.exitApplication();
+      else window.__SPA_SetApplicationMode(false);
     } catch (_) {
-      window.__SPA_SetGameMode(false);
+      window.__SPA_SetApplicationMode(false);
     }
     renderHeroDOM(currentSectionIdx, currentItemIdx);
     updateSectionNav(currentSectionIdx);
@@ -163,7 +213,6 @@ async function closeOverlayWithTransition() {
 
     if (fromSurface && toSurface) {
       await runHeroTransition(fromSurface, toSurface, {
-        timingProfile: 'releaseLike',
         onBeforeReveal: async () => {
           window.__SPA_Overlay.close({ restore: false });
           renderHeroDOM(currentSectionIdx, currentItemIdx, {
@@ -204,18 +253,19 @@ function spaDebug(...args) {
   if (SPA_DEBUG) console.debug(...args);
 }
 
-// ─── Game mode flag ───────────────────────────────────────────────────────────
-// Set to true while an embedded game is active.
-// Blocks slingshot navigation and keyboard arrow nav so the player can't
-// accidentally swipe or key out of the game.
-let isGameModeActive = false;
-window.__SPA_SetGameMode = (active) => { isGameModeActive = !!active; };
+// ─── Application ownership ───────────────────────────────────────────────────
+// True while the current item's embedded application owns interaction.
+let isApplicationModeActive = false;
+window.__SPA_SetApplicationMode = (active) => { isApplicationModeActive = !!active; };
+// Compatibility alias for adapters that still call the older game-specific API.
+window.__SPA_SetGameMode = window.__SPA_SetApplicationMode;
 // Navigate to home when explicitly requested.
 window.__SPA_GoHome = () => goTo(0, 0);
-// Exit the active game by transitioning back to the current item's entry hero.
-window.__SPA_ExitGameToCurrentItem = () => { void exitGameToCurrentItem(); };
-// Enter the active game by transitioning from the entry hero into the game view.
-window.__SPA_EnterCurrentGame = () => { void enterCurrentGameWithTransition(); };
+window.__SPA_ExitApplicationToCurrentItem = () => { void exitApplicationToCurrentItem(); };
+window.__SPA_EnterCurrentApplication = () => { void enterCurrentApplicationWithTransition(); };
+// Compatibility aliases while Asymptote internals migrate.
+window.__SPA_ExitGameToCurrentItem = window.__SPA_ExitApplicationToCurrentItem;
+window.__SPA_EnterCurrentGame = window.__SPA_EnterCurrentApplication;
 // Restore the currently selected SPA hero after an inline overlay closes.
 window.__SPA_RestoreCurrentItemHero = () => {
   renderHeroDOM(currentSectionIdx, currentItemIdx);
@@ -283,24 +333,22 @@ function isOverlayAction(action) {
   return typeof action === 'string' && action.startsWith('overlay:');
 }
 
-async function enterCurrentGameWithTransition() {
-  if (isTransitioning || isPulling || isGameModeActive) return;
+async function enterCurrentApplicationWithTransition() {
+  if (isTransitioning || isPulling || isApplicationModeActive) return;
 
-  const section = SPA_SECTIONS[currentSectionIdx];
-  const item = section?.items[currentItemIdx];
-  const view = window.__SPA_Views?.[section?.id];
-
-  if (!item || !view?.canEnterGame?.(item.id) || typeof view?.onEnterGame !== 'function') return;
+  const adapter = getRegisteredItemAdapter(currentSectionIdx, currentItemIdx);
+  const action = getItemPrimaryAction(currentSectionIdx, currentItemIdx);
+  if (action?.type !== 'application' || typeof adapter?.enterApplication !== 'function') return;
 
   isTransitioning = true;
   stopCurrentHeroSurfaceTracking();
 
   try {
     const heroContainer = document.getElementById('spa-hero-container');
-    const gameProbe = view.buildEntryGameHeroProbe?.(item.id, heroContainer);
+    const entryProbe = adapter.buildEntryProbe?.(heroContainer);
 
-    if (!gameProbe) {
-      view.onEnterGame(item.id);
+    if (!entryProbe) {
+      adapter.enterApplication();
       return;
     }
 
@@ -308,24 +356,23 @@ async function enterCurrentGameWithTransition() {
       buildHeroSurface(currentSectionIdx, currentItemIdx, 'from'),
       rasterizeWithCleanup({
         type: 'textElement',
-        element: gameProbe.element,
-        cleanup: gameProbe.cleanup
+        element: entryProbe.element,
+        cleanup: entryProbe.cleanup
       })
     ]);
 
     if (fromSurface && toSurface) {
       await runHeroTransition(fromSurface, toSurface, {
-        timingProfile: 'releaseLike',
         onBeforeReveal: async () => {
-          view.onEnterGame(item.id);
+          adapter.enterApplication();
         }
       });
     } else {
-      view.onEnterGame(item.id);
+      adapter.enterApplication();
     }
   } catch (err) {
-    console.warn('[game entry transition] failed, entering game directly:', err);
-    view.onEnterGame(item.id);
+    console.warn('[application entry transition] failed, entering directly:', err);
+    adapter.enterApplication();
   } finally {
     isTransitioning = false;
     startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
@@ -374,7 +421,6 @@ async function openOverlayWithTransition(action) {
 
     if (fromSurface && toSurface) {
       await runHeroTransition(fromSurface, toSurface, {
-        timingProfile: 'releaseLike',
         onBeforeReveal: async () => {
           if (typeof window.__SPA_Overlay.openInline === 'function') {
             window.__SPA_Overlay.openInline(overlayId, {}, document.getElementById('spa-hero-container'));
@@ -401,23 +447,26 @@ async function openOverlayWithTransition(action) {
   }
 }
 
-function runItemClickAction(action) {
-  const safeUrl = getSafeExternalUrl(action);
+function runPrimaryAction(action) {
+  if (!action) return;
 
-  if (safeUrl) {
-    if (new URL(safeUrl).origin === window.location.origin) {
-      window.location.assign(safeUrl);
-      return;
-    }
-    const newWindow = window.open(safeUrl, '_blank', 'noopener,noreferrer');
-    if (newWindow) {
-      newWindow.opener = null;
-    }
+  if (action.type === 'application') {
+    void enterCurrentApplicationWithTransition();
     return;
   }
 
-  if (isOverlayAction(action) && window.__SPA_Overlay) {
-    void openOverlayWithTransition(action);
+  if (action.type === 'overlay') {
+    void openOverlayWithTransition(`overlay:${action.overlayId}`);
+    return;
+  }
+
+  if (action.type === 'link') {
+    if (!action.external) {
+      window.location.assign(action.href);
+      return;
+    }
+    const newWindow = window.open(action.href, '_blank', 'noopener,noreferrer');
+    if (newWindow) newWindow.opener = null;
   }
 }
 
@@ -509,7 +558,10 @@ function isProceduralCanvasHero(sectionIdx, itemIdx) {
   const section = SPA_SECTIONS[sectionIdx];
   const item    = section?.items[itemIdx];
   if (!section || !item) return false;
-  if (typeof window.__SPA_Views?.[section.id]?.buildHeroProbe !== 'function') return false;
+  const adapter = getRegisteredItemAdapter(sectionIdx, itemIdx);
+  const hasProbe = typeof adapter?.buildHeroProbe === 'function' ||
+    typeof window.__SPA_Views?.[section.id]?.buildHeroProbe === 'function';
+  if (!hasProbe) return false;
   const container = document.getElementById('spa-hero-container');
   return !!(container?.querySelector('canvas'));
 }
@@ -772,7 +824,9 @@ function buildHeroRenderInput(sectionIdx, itemIdx, phase) {
     const sectionId = SPA_SECTIONS[sectionIdx]?.id;
     const itemId    = SPA_SECTIONS[sectionIdx]?.items[itemIdx]?.id;
     if (sectionId && itemId) {
-      const viewProbe = window.__SPA_Views?.[sectionId]?.buildHeroProbe?.(itemId, container);
+      const adapter = getRegisteredItemAdapter(sectionIdx, itemIdx);
+      const viewProbe = adapter?.buildHeroProbe?.(container) ||
+        window.__SPA_Views?.[sectionId]?.buildHeroProbe?.(itemId, container);
       if (viewProbe) {
         return { type: 'textElement', element: viewProbe.element, cleanup: viewProbe.cleanup };
       }
@@ -906,43 +960,49 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
   }
   heroContainer.innerHTML = '';
 
-  // Delegate to registered view module if available
   const sectionId = SPA_SECTIONS[sectionIdx]?.id;
   const itemId = item?.id;
-  if (sectionId && itemId) awardDiscovery(sectionId, itemId);
-  if (sectionId && itemId && window.__SPA_Views?.[sectionId]?.mount) {
+  const adapter = getRegisteredItemAdapter(sectionIdx, itemIdx);
+  if (adapter?.mount) {
+    try {
+      adapter.mount(heroContainer);
+    } catch (err) {
+      console.warn('[item adapter] mount failed for', getItemKey(sectionIdx, itemIdx), err);
+    }
+  } else if (sectionId && itemId && window.__SPA_Views?.[sectionId]?.mount) {
     try {
       window.__SPA_Views[sectionId].mount(itemId, heroContainer);
-      if (heroContainer.childElementCount > 0) return;
     } catch (err) {
       console.warn('[SPA_Views] mount failed for', sectionId + '/' + itemId, err);
-      // Fall through to default hero rendering
     }
   }
 
-  const hero = document.createElement('div');
-  hero.className = 'spa-hero';
+  let hero = heroContainer.querySelector('.spa-hero');
+  if (!(hero instanceof window.HTMLElement)) {
+    hero = document.createElement('div');
+    hero.className = 'spa-hero';
+  }
   hero.setAttribute('draggable', 'false');
   hero.addEventListener('dragstart', (e) => e.preventDefault());
 
-  const clickAction = getItemClickAction(sectionIdx, itemIdx);
-  if (isExternalLink(clickAction) || isOverlayAction(clickAction)) {
+  const primaryAction = getItemPrimaryAction(sectionIdx, itemIdx);
+  const actionPresentation = getPrimaryActionPresentation(primaryAction, item.label);
+  if (actionPresentation?.actionable) {
     hero.classList.add('spa-hero--linkable');
-    hero.setAttribute('role', 'link');
-    hero.setAttribute('aria-label', isOverlayAction(clickAction)
-      ? `Open ${item.label} menu`
-      : `Open ${item.label}`);
+    hero.setAttribute('role', actionPresentation.role);
+    hero.setAttribute('aria-label', actionPresentation.ariaLabel);
     hero.setAttribute('tabindex', '0');
-
     hero.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        if (!isTransitioning && !isPulling) {
-          runItemClickAction(clickAction);
-        }
+        if (!isTransitioning && !isPulling) runPrimaryAction(primaryAction);
       }
     });
   }
+
+  // Adapter-mounted heroes are complete presentations; the shell still owns
+  // their actionability semantics above.
+  if (hero.parentElement === heroContainer) return;
 
   if (heroSpec?.kind === 'image') {
     if (isGifHeroSpec(heroSpec)) {
@@ -965,7 +1025,7 @@ function renderHeroDOM(sectionIdx, itemIdx, options = {}) {
           spaDebug('[gifPlayback] seeded visible canvas with prewarmed first frame');
         }
       }
-      if (isExternalLink(clickAction) || isOverlayAction(clickAction)) {
+      if (actionPresentation?.actionable) {
         hero.classList.add('spa-hero--gif-linkable');
       }
       hero.appendChild(gifCanvas);
@@ -1117,7 +1177,7 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
   const requestedTarget = { sectionIdx: nextSectionIdx, itemIdx: nextItemIdx };
   const committedTarget = { sectionIdx: currentSectionIdx, itemIdx: currentItemIdx };
   const shouldLockHomeOnCommit = !homeSectionLocked && currentSectionIdx === 0 && nextSectionIdx !== 0;
-  const transitionOptions = navOptions.transitionOptions || { timingProfile: 'releaseLike' };
+  const transitionOptions = navOptions.transitionOptions || {};
 
   if (isSameTarget(requestedTarget, committedTarget)) return;
 
@@ -1141,14 +1201,7 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
   pullFromSurface = null;
   pullToSurface = null;
 
-  // Deactivate outgoing view
-  {
-    const fromSectionId = SPA_SECTIONS[currentSectionIdx]?.id;
-    const fromItemId = SPA_SECTIONS[currentSectionIdx]?.items[currentItemIdx]?.id;
-    if (fromSectionId && fromItemId) {
-      try { window.__SPA_Views?.[fromSectionId]?.onDeactivate?.(fromItemId); } catch (_) {}
-    }
-  }
+  try { deactivateItem(currentSectionIdx, currentItemIdx); } catch (_) {}
 
   try {
     const fromSectionIdx = currentSectionIdx;
@@ -1203,14 +1256,8 @@ async function goTo(nextSectionIdx, nextItemIdx, navOptions = {}) {
     preparedToGifCanvas = null;
     preparedToGifKey = null;
 
-    // Activate incoming view
-    {
-      const toSectionId = SPA_SECTIONS[currentSectionIdx]?.id;
-      const toItemId = SPA_SECTIONS[currentSectionIdx]?.items[currentItemIdx]?.id;
-      if (toSectionId && toItemId) {
-        try { window.__SPA_Views?.[toSectionId]?.onActivate?.(toItemId); } catch (_) {}
-      }
-    }
+    try { activateItem(currentSectionIdx, currentItemIdx); } catch (_) {}
+    awardCurrentDiscovery();
 
     if (didTransition && !didRenderDuringReveal) {
       renderHeroDOM(currentSectionIdx, currentItemIdx);
@@ -1247,26 +1294,25 @@ function getDesktopNavOptions() {
   if (!isChained) {
     return {
       transitionOptions: {
-        timingProfile: 'releaseLike'
       }
     };
   }
 
   return {
     transitionOptions: {
-      timingProfile: 'releaseLikeChained'
+      timingProfile: 'chained'
     }
   };
 }
 
 function prevItem(navOptions = {}) {
-  if (isGameModeActive) { void gameNavigateWithTransition('prev', navOptions); return; }
+  if (isApplicationModeActive) { void gameNavigateWithTransition('prev', navOptions); return; }
   const target = getPrevTarget(currentSectionIdx, currentItemIdx);
   goTo(target.sectionIdx, target.itemIdx, navOptions);
 }
 
 function nextItem(navOptions = {}) {
-  if (isGameModeActive) { void gameNavigateWithTransition('next', navOptions); return; }
+  if (isApplicationModeActive) { void gameNavigateWithTransition('next', navOptions); return; }
   const target = getNextTarget(currentSectionIdx, currentItemIdx);
   goTo(target.sectionIdx, target.itemIdx, navOptions);
 }
@@ -1330,7 +1376,7 @@ window.addEventListener('keydown', (e) => {
   const isNext = e.key === 'ArrowRight' || e.key === 'ArrowDown';
   if (!isPrev && !isNext) return;
 
-  if (isGameModeActive) {
+  if (isApplicationModeActive) {
     e.preventDefault();
     const navOptions = getDesktopNavOptions();
     if (isPrev) void gameNavigateWithTransition('prev', navOptions);
@@ -1345,45 +1391,16 @@ window.addEventListener('keydown', (e) => {
 
 // ─── Pull preview helpers ─────────────────────────────────────────────────────
 
-const SLINGSHOT_PARTICLE_SIZE = 4;
+const SLINGSHOT_PARTICLE_SIZE = PARTICLE_SIZE;
 const SLINGSHOT_MIN_RELEASE   = 0.15; // pullNormalized must exceed this to commit
 
 function runWeakPullTapFallbackIfNeeded() {
-  const action = getItemClickAction(currentSectionIdx, currentItemIdx);
-  if (isOverlayAction(action)) {
-    runItemClickAction(action);
-  }
+  const action = getItemPrimaryAction(currentSectionIdx, currentItemIdx);
+  if (action?.type === 'overlay') runPrimaryAction(action);
 }
 
 function samplePullParticles(surface, canvasW, canvasH) {
-  const offscreen = document.createElement('canvas');
-  offscreen.width  = canvasW;
-  offscreen.height = canvasH;
-  const octx = offscreen.getContext('2d');
-  const dx = (canvasW - surface.width)  / 2;
-  const dy = (canvasH - surface.height) / 2;
-  octx.clearRect(0, 0, canvasW, canvasH);
-  octx.drawImage(surface.canvas, 0, 0, surface.width, surface.height, dx, dy, surface.width, surface.height);
-  const imgData = octx.getImageData(0, 0, canvasW, canvasH).data;
-  const cX = canvasW / 2;
-  const cY = canvasH / 2;
-  const out = [];
-  for (let y = 0; y < canvasH; y += SLINGSHOT_PARTICLE_SIZE) {
-    for (let x = 0; x < canvasW; x += SLINGSHOT_PARTICLE_SIZE) {
-      const idx = (y * canvasW + x) * 4;
-      const r = imgData[idx], g = imgData[idx + 1], b = imgData[idx + 2], a = imgData[idx + 3];
-      if (a > 32) {
-        out.push({
-          x, y,
-          cx: x - cX, cy: y - cY,                     // offset from canvas center
-          color: `rgba(${r},${g},${b},${a / 255})`,
-          frayX: (Math.random() - 0.5) * 2,            // stable per-particle random direction
-          frayY: (Math.random() - 0.5) * 2
-        });
-      }
-    }
-  }
-  return out;
+  return sampleSurfaceParticles(surface, canvasW, canvasH, { includeOffsets: true });
 }
 
 function renderPullPreview(pullVector, pullNormalized) {
@@ -1479,7 +1496,7 @@ function onSlingshotTap() {
   if (window.__SPA_Overlay?.shouldSuppressTap?.()) return;
 
   // When game is active, tap activates the current game item.
-  if (isGameModeActive) {
+  if (isApplicationModeActive) {
     window.__SPA_GameNav?.onTap?.();
     return;
   }
@@ -1488,21 +1505,7 @@ function onSlingshotTap() {
     return;
   }
 
-  // Tap on the Asymptote Engine hero — enter the game.
-  const section = SPA_SECTIONS[currentSectionIdx];
-  const item    = section?.items[currentItemIdx];
-  const view = window.__SPA_Views?.[section?.id];
-  if (item && view?.canEnterGame?.(item.id) && typeof view?.onEnterGame === 'function') {
-    if (typeof window.__SPA_EnterCurrentGame === 'function') {
-      window.__SPA_EnterCurrentGame();
-    } else {
-      view.onEnterGame(item.id);
-    }
-    return;
-  }
-
-  const action = getItemClickAction(currentSectionIdx, currentItemIdx);
-  runItemClickAction(action);
+  runPrimaryAction(getItemPrimaryAction(currentSectionIdx, currentItemIdx));
 }
 
 function onSlingshotArm() {
@@ -1544,7 +1547,7 @@ function onSlingshotLock({ direction, pullVector, pullNormalized }) {
     // Use activeTarget (the in-flight destination) as the "from" position so
     // chained swipes correctly compute the next step in the sequence.
     // Skip in game mode — game navigation uses a separate path.
-    if (!isGameModeActive) {
+    if (!isApplicationModeActive) {
       const from = activeTarget || { sectionIdx: currentSectionIdx, itemIdx: currentItemIdx };
       const target = direction === 'next'
         ? getNextTarget(from.sectionIdx, from.itemIdx)
@@ -1563,7 +1566,7 @@ function onSlingshotLock({ direction, pullVector, pullNormalized }) {
   try {
 
   // ── Game mode: full pull-preview setup (identical pipeline to SPA path) ──────
-  if (isGameModeActive) {
+  if (isApplicationModeActive) {
     const gameNav = window.__SPA_GameNav;
     if (!gameNav) return false;
 
@@ -1666,14 +1669,7 @@ function onSlingshotLock({ direction, pullVector, pullNormalized }) {
   stopActiveGifHeroPlayback();
   stopCurrentHeroSurfaceTracking();
 
-  // Deactivate outgoing view
-  {
-    const fromSectionId = SPA_SECTIONS[from.sectionIdx]?.id;
-    const fromItemId = SPA_SECTIONS[from.sectionIdx]?.items[from.itemIdx]?.id;
-    if (fromSectionId && fromItemId) {
-      try { window.__SPA_Views?.[fromSectionId]?.onDeactivate?.(fromItemId); } catch (_) {}
-    }
-  }
+  try { deactivateItem(from.sectionIdx, from.itemIdx); } catch (_) {}
 
   // Use the already-cached surface immediately for non-GIF, non-canvas heroes so
   // the first pull frame is visible with no async delay.
@@ -1747,7 +1743,7 @@ async function onSlingshotRelease({ pullNormalized }) {
   if (!isPulling) return;
 
   // ── Game mode: run the same transitionFromPull/transition animation ──────────
-  if (isGameModeActive) {
+  if (isApplicationModeActive) {
     if (pullNormalized < SLINGSHOT_MIN_RELEASE) {
       cancelSlingshot();
       return;
@@ -1939,14 +1935,8 @@ async function onSlingshotRelease({ pullNormalized }) {
     preparedToGifCanvas = null;
     preparedToGifKey    = null;
 
-    // Activate incoming view
-    {
-      const toSectionId = SPA_SECTIONS[currentSectionIdx]?.id;
-      const toItemId = SPA_SECTIONS[currentSectionIdx]?.items[currentItemIdx]?.id;
-      if (toSectionId && toItemId) {
-        try { window.__SPA_Views?.[toSectionId]?.onActivate?.(toItemId); } catch (_) {}
-      }
-    }
+    try { activateItem(currentSectionIdx, currentItemIdx); } catch (_) {}
+    awardCurrentDiscovery();
 
     cleanupSlingshotPull();
     startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
@@ -1983,14 +1973,7 @@ function cancelSlingshot() {
   cleanupSlingshotPull();
   startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
 
-  // Re-activate current view (slingshot cancelled)
-  {
-    const sectionId = SPA_SECTIONS[currentSectionIdx]?.id;
-    const itemId = SPA_SECTIONS[currentSectionIdx]?.items[currentItemIdx]?.id;
-    if (sectionId && itemId) {
-      try { window.__SPA_Views?.[sectionId]?.onActivate?.(itemId); } catch (_) {}
-    }
-  }
+  try { activateItem(currentSectionIdx, currentItemIdx); } catch (_) {}
 }
 
 function cleanupSlingshotPull() {
@@ -2018,13 +2001,8 @@ setupItemNav();
 mountEconomyHud(document.getElementById('spa-economy-balance'));
 render();
 
-{
-  const sectionId = SPA_SECTIONS[currentSectionIdx]?.id;
-  const itemId = SPA_SECTIONS[currentSectionIdx]?.items[currentItemIdx]?.id;
-  if (sectionId && itemId) {
-    try { window.__SPA_Views?.[sectionId]?.onActivate?.(itemId); } catch (_) {}
-  }
-}
+try { activateItem(currentSectionIdx, currentItemIdx); } catch (_) {}
+awardCurrentDiscovery();
 
 startCurrentHeroSurfaceTracking(currentSectionIdx, currentItemIdx);
 
