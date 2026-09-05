@@ -84,12 +84,25 @@ test('item adapter registry is keyed by section/item and exposes contract capabi
   const adapter = registry.registerItemAdapter('games/demo', {
     contractVersion: 1,
     getPrimaryAction() { return { type: 'application' }; },
-    enterApplication() {}
+    enterApplication() {},
+    exitApplication() {}
   });
 
   assert.equal(registry.getItemAdapter('games/demo'), adapter);
   assert.equal(adapter.getPrimaryAction().type, 'application');
   assert.throws(() => registry.registerItemAdapter('bad-key', { contractVersion: 1 }), /section\/item/);
+});
+
+test('application adapters must expose symmetric enter and exit lifecycle', async () => {
+  const registryUrl = pathToFileURL(resolve(root, 'js/spa/itemAdapterRegistry.js')).href;
+  const registry = await import(`${registryUrl}?application-lifecycle`);
+  registry.clearItemAdaptersForTesting();
+
+  assert.throws(() => registry.registerItemAdapter('games/demo', {
+    contractVersion: 1,
+    getPrimaryAction() { return { type: 'application' }; },
+    enterApplication() {}
+  }), /enterApplication and exitApplication/);
 });
 
 test('item adapter registry permits contract-safe refresh and rejects downgrade', async () => {
