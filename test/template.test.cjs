@@ -75,7 +75,8 @@ test('content can be replaced and validated without editing the runtime', async 
 
   const runtime = readFileSync(resolve(root, 'main.js'), 'utf8');
   assert.match(runtime, /meta\[name="spa-content"\]/);
-  assert.match(runtime, /await import\(new URL\(contentPath, document\.baseURI\)\.href\)/);
+  assert.match(runtime, /const contentUrl = new URL\(contentPath, document\.baseURI\)\.href/);
+  assert.match(runtime, /await import\(contentUrl\)/);
   assert.match(runtime, /new URL\('\.\/js\/vendor\/gifler\.min\.js', import\.meta\.url\)\.href/);
   assert.doesNotMatch(runtime, /const SPA_SECTIONS\s*=\s*\[/);
 });
