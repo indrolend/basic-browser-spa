@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
+// One-shot migration trigger: wire runtime identity into main.js, verify, then remove.
 const path = new URL('../main.js', import.meta.url);
 let source = readFileSync(path, 'utf8');
 
