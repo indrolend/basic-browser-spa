@@ -75,7 +75,8 @@ test('content can be replaced and validated without editing the runtime', async 
 
   const runtime = readFileSync(resolve(root, 'main.js'), 'utf8');
   assert.match(runtime, /meta\[name="spa-content"\]/);
-  assert.match(runtime, /await import\(new URL\(contentPath, document\.baseURI\)\.href\)/);
+  assert.match(runtime, /const contentUrl = new URL\(contentPath, document\.baseURI\)\.href/);
+  assert.match(runtime, /await import\(contentUrl\)/);
   assert.match(runtime, /new URL\('\.\/js\/vendor\/gifler\.min\.js', import\.meta\.url\)\.href/);
   assert.doesNotMatch(runtime, /const SPA_SECTIONS\s*=\s*\[/);
 });
@@ -165,4 +166,21 @@ test('adapter declarations remain optional and validate relative modules', async
       ]
     }
   ]), /relative module paths/);
+});
+
+test('application lifecycle is item-scoped without hardcoding Asymptote in the SPA runtime', () => {
+  const runtime = readFileSync(resolve(root, 'main.js'), 'utf8');
+  const adapterSource = readFileSync(resolve(root, 'examples/indrolend/asymptote/gamesView.js'), 'utf8');
+
+  assert.doesNotMatch(runtime, /item\?\.id\s*!==\s*['"]asymptote['"]/);
+  assert.doesNotMatch(runtime, /item\?\.id\s*===\s*['"]asymptote['"]/);
+  assert.doesNotMatch(runtime, /window\.AsymptoteApp\?\.buildEntryGameHeroProbe/);
+
+  assert.match(runtime, /getRegisteredItemAdapter\(currentSectionIdx, currentItemIdx\)/);
+  assert.match(runtime, /getItemPrimaryAction\(currentSectionIdx, currentItemIdx\)/);
+  assert.match(runtime, /adapter\?\.exitApplication/);
+  assert.match(adapterSource, /registerItemAdapter\(ITEM_KEY/);
+  assert.match(adapterSource, /function getPrimaryAction\(\)/);
+  assert.match(adapterSource, /function enterApplication\(\)/);
+  assert.match(adapterSource, /function exitApplication\(\)/);
 });

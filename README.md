@@ -1,58 +1,25 @@
 # Basic Browser SPA
 
-A small static SPA template built around a section/item navigation grammar and text or image hero surfaces. It uses browser-native JavaScript modules and requires no build step or framework.
+A small, static, browser-native single-page application template. The runtime lives in `main.js` and `js/spa/`; content is supplied by a replaceable content module selected from the entrypoint's `spa-content` meta tag.
 
-## Run
+The current root entrypoint preserves the Indrolend catalog as an example. Optional item adapters can add richer behavior without replacing the shell's navigation, hero, action, and transition semantics.
 
-```sh
-python -m http.server 8000
-```
+## Development
 
-Open `http://127.0.0.1:8000/`. Serve it over HTTP; do not open `index.html` through `file://`.
+Serve the repository with any static HTTP server, then open the root page. No application backend is required.
 
-## Adapt the template
-
-Edit [`js/content.js`](js/content.js). Each section contains one or more items:
-
-```js
-{
-  id: 'work',
-  label: 'Work',
-  items: [
-    { id: 'hello', label: 'Hello', hero: { kind: 'text', text: 'Hello world' } },
-    { id: 'image', label: 'Image', hero: { kind: 'image', src: './assets/example.png' } },
-    { id: 'link', label: 'Link', hero: { kind: 'text', text: 'Visit' }, clickAction: 'https://example.com' }
-  ]
-}
-```
-
-The content contract rejects duplicate identities and malformed heroes before the application starts. Relative image and adapter paths resolve from the content module, so catalogs can live outside `js/`.
-
-Runtime behavior belongs in `main.js` and `js/spa/`. A normal site adaptation should not require changes there.
-
-## Optional adapters
-
-An item can load an application only when navigation targets it:
-
-```js
-adapter: {
-  id: 'my-app',
-  modules: ['./my-app/runtime.js', './my-app/view.js']
-}
-```
-
-Modules load in order and concurrent requests are deduplicated. The configured hero remains the fallback if loading fails.
-
-The previous Indrolend catalog and Asymptote application are preserved under [`examples/indrolend`](examples/indrolend/README.md); they are not part of default startup.
-
-## Test
+Run the committed test suite with:
 
 ```sh
 npm test
 ```
 
-The tests check script/module parsing, primary entrypoint dependencies, content validation, asset ownership, and optional adapter loading behavior.
+The SPA keeps content, optional item behavior, and the browser-native shell separate:
 
-## Repository boundary
+- content modules define sections, items, heroes, legacy click actions, and optional adapter declarations;
+- item adapters register against a `section/item` key and declare a contract version;
+- the shell resolves one primary action for the current item and owns pointer, keyboard, focus, and accessibility semantics;
+- adapters may provide application enter/exit lifecycle and capturable hero probes;
+- particle transitions operate on rasterized surfaces rather than product identities.
 
-This repository owns the SPA navigation and lifecycle template. Particle Carousel and other visual engines remain separate reusable modules and should be integrated through explicit adapters rather than copied into this runtime.
+The repository also retains earlier experimental SPA modules under `js/spa/`. Treat `index.html`, `main.js`, the selected content module, and the modules imported by `main.js` as the production runtime authority.

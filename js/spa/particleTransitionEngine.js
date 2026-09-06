@@ -2,38 +2,9 @@
 // API: transition(fromCanvas, toCanvas, options, onComplete)
 //      transitionFromPull(pulledParticles, toRegion, ctx, options, onComplete)
 
-const PARTICLE_SIZE = 4;
+import { PARTICLE_SIZE, sampleSurfaceParticles } from './particleSampling.js';
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
-
-/** Reused for sampling; sequential sampleParticles calls are safe (each finishes before the next). */
-let sampleScratchCanvas = null;
-
-function sampleParticles(region, canvasWidth, canvasHeight) {
-  if (!sampleScratchCanvas) sampleScratchCanvas = document.createElement('canvas');
-  const c = sampleScratchCanvas;
-  if (c.width !== canvasWidth || c.height !== canvasHeight) {
-    c.width = canvasWidth;
-    c.height = canvasHeight;
-  }
-  const cctx = c.getContext('2d');
-  const dx = (canvasWidth - region.width) / 2;
-  const dy = (canvasHeight - region.height) / 2;
-  cctx.clearRect(0, 0, canvasWidth, canvasHeight);
-  cctx.drawImage(region.canvas, 0, 0, region.width, region.height, dx, dy, region.width, region.height);
-  const imgData = cctx.getImageData(0, 0, canvasWidth, canvasHeight).data;
-  const result = [];
-  for (let y = 0; y < canvasHeight; y += PARTICLE_SIZE) {
-    for (let x = 0; x < canvasWidth; x += PARTICLE_SIZE) {
-      const idx = (y * canvasWidth + x) * 4;
-      const r = imgData[idx], g = imgData[idx + 1], b = imgData[idx + 2], a = imgData[idx + 3];
-      if (a > 32) {
-        result.push({ x, y, color: `rgba(${r},${g},${b},${a / 255})` });
-      }
-    }
-  }
-  return result;
-}
 
 function shuffle(list) {
   const arr = list.slice();
@@ -109,8 +80,8 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
     if (typeof onComplete === 'function') onComplete();
   }
 
-  const rawFromParticles = sampleParticles(fromRegion, width, height);
-  const rawToParticles   = sampleParticles(toRegion,   width, height);
+  const rawFromParticles = sampleSurfaceParticles(fromRegion, width, height);
+  const rawToParticles   = sampleSurfaceParticles(toRegion,   width, height);
 
   const fromParticles = rawFromParticles.length ? rawFromParticles : rawToParticles;
   const toParticles   = rawToParticles.length   ? rawToParticles   : rawFromParticles;
@@ -137,7 +108,6 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
   let startTime = null;
   function animate(ts) {
     if (!ctx.canvas.isConnected) {
-      // Ensure callers waiting on completion do not stall if canvas is removed.
       safeComplete();
       return;
     }
@@ -186,8 +156,8 @@ export function transition(fromCanvas, toCanvas, options, onComplete) {
 export function transitionFromPull(pulledParticles, toRegion, ctx, options, onComplete) {
   const width  = ctx.canvas.width;
   const height = ctx.canvas.height;
-  const SNAP_DURATION   =  80; // ms — elastic snap-back from pulled to rest positions
-  const REFORM_DURATION = 270; // ms — reform from rest positions to target shape (80+270=350ms, matching button-press total)
+  const SNAP_DURATION   =  80;
+  const REFORM_DURATION = 270;
   let completed = false;
 
   function safeComplete() {
@@ -201,22 +171,15 @@ export function transitionFromPull(pulledParticles, toRegion, ctx, options, onCo
     return;
   }
 
-  const rawToParticles = sampleParticles(toRegion, width, height);
+  const rawToParticles = sampleSurfaceParticles(toRegion, width, height);
   if (!rawToParticles.length) {
     safeComplete();
     return;
   }
 
-  // Use the larger of the pull count and the to-image's natural density so the
-  // target is never under-populated (the main cause of sparse-looking reform on
-  // GIFs when the from-surface had fewer opaque pixels than the to-surface).
   const N      = Math.max(pulledParticles.length, rawToParticles.length);
   const toPool = shuffle(sampleByCoverage(rawToParticles, N));
 
-  // from-particles base = from-surface rest positions (before pull stretch).
-  // When provided they form the elastic snap-back target (Phase 1), and the
-  // reform origin (Phase 2), making the release feel like a true elastic rebound
-  // that then transforms into the target image — all centred on screen.
   const fromBase = options && options.fromParticlesBase;
   const hasSnap  = fromBase && fromBase.length > 0;
 
@@ -224,10 +187,10 @@ export function transitionFromPull(pulledParticles, toRegion, ctx, options, onCo
   for (let i = 0; i < N; i++) {
     const pulled = pulledParticles[i % pulledParticles.length];
     const end    = toPool[i % toPool.length];
-    const mid    = hasSnap ? fromBase[i % fromBase.length] : pulled; // snap-back / reform origin
+    const mid    = hasSnap ? fromBase[i % fromBase.length] : pulled;
     particles.push({
       x0: pulled.x, y0: pulled.y, c0: parseRgba(pulled.color),
-      xm: mid.x,    ym: mid.y,                          // rest position
+      xm: mid.x,    ym: mid.y,
       x1: end.x,    y1: end.y,   c1: parseRgba(end.color)
     });
   }
@@ -235,7 +198,6 @@ export function transitionFromPull(pulledParticles, toRegion, ctx, options, onCo
   let startTime = null;
   function animate(ts) {
     if (!ctx.canvas.isConnected) {
-      // Ensure callers waiting on completion do not stall if canvas is removed.
       safeComplete();
       return;
     }
@@ -244,9 +206,8 @@ export function transitionFromPull(pulledParticles, toRegion, ctx, options, onCo
     ctx.clearRect(0, 0, width, height);
 
     if (hasSnap && elapsed < SNAP_DURATION) {
-      // Phase 1: snap-back — pulled positions → from-surface rest positions (ease-out)
       const raw  = elapsed / SNAP_DURATION;
-      const ease = 1 - (1 - raw) * (1 - raw); // ease-out quad
+      const ease = 1 - (1 - raw) * (1 - raw);
       for (const pt of particles) {
         ctx.fillStyle = `rgba(${pt.c0[0]},${pt.c0[1]},${pt.c0[2]},${pt.c0[3]})`;
         ctx.beginPath();
@@ -259,7 +220,6 @@ export function transitionFromPull(pulledParticles, toRegion, ctx, options, onCo
       }
       requestAnimationFrame(animate);
     } else {
-      // Phase 2: reform — rest positions → target positions (ease-out-back for bounce)
       const reformElapsed = elapsed - (hasSnap ? SNAP_DURATION : 0);
       const p     = Math.min(reformElapsed / REFORM_DURATION, 1);
       const moveP = easeOutBack(p);

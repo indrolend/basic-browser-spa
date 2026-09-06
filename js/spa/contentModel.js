@@ -51,6 +51,18 @@ export function defineContent(sections) {
             item.adapter.modules.some((path) => typeof path !== 'string' || !path.startsWith('./'))) {
           throw new TypeError(`adapter ${item.adapter.id} must define relative module paths`);
         }
+
+        const expectedKey = `${section.id}/${item.id}`;
+        if (item.adapter.key !== undefined && item.adapter.key !== expectedKey) {
+          throw new TypeError(`adapter ${item.adapter.id} key must be ${expectedKey}`);
+        }
+        if (item.adapter.contractVersion !== undefined &&
+            (!Number.isInteger(item.adapter.contractVersion) || item.adapter.contractVersion < 1)) {
+          throw new TypeError(`adapter ${item.adapter.id} contractVersion must be a positive integer`);
+        }
+        if ((item.adapter.key === undefined) !== (item.adapter.contractVersion === undefined)) {
+          throw new TypeError(`adapter ${item.adapter.id} must declare key and contractVersion together`);
+        }
       }
     }
   }
