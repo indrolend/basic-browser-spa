@@ -3,12 +3,19 @@
 import { createAdapterLoader } from './js/spa/adapterLoader.js';
 import { getItemAdapter } from './js/spa/itemAdapterRegistry.js';
 import { resolvePrimaryAction, getPrimaryActionPresentation } from './js/spa/primaryAction.js';
+import { createRuntimeIdentity, publishRuntimeIdentity } from './js/spa/runtimeIdentity.js';
 import { PARTICLE_SIZE, sampleSurfaceParticles } from './js/spa/particleSampling.js';
 import { awardDiscovery, mountEconomyHud } from './js/spa/sharedEconomy.js';
 
 const contentPath = document.querySelector('meta[name="spa-content"]')?.content;
 if (!contentPath) throw new Error('Missing <meta name="spa-content" content="...">');
-const { CONTENT_BASE_URL, SPA_SECTIONS } = await import(new URL(contentPath, document.baseURI).href);
+const contentUrl = new URL(contentPath, document.baseURI).href;
+const { CONTENT_BASE_URL, SPA_SECTIONS } = await import(contentUrl);
+const RUNTIME_IDENTITY = createRuntimeIdentity({
+  sections: SPA_SECTIONS,
+  contentUrl,
+  mainUrl: import.meta.url
+});
 
 const adapterLoader = createAdapterLoader({
   baseUrl: CONTENT_BASE_URL,
@@ -260,6 +267,8 @@ const SPA_DEBUG =
 function spaDebug(...args) {
   if (SPA_DEBUG) console.debug(...args);
 }
+publishRuntimeIdentity(RUNTIME_IDENTITY, { debug: SPA_DEBUG });
+spaDebug('[runtime identity]', RUNTIME_IDENTITY);
 
 // ─── Application ownership ───────────────────────────────────────────────────
 // True while the current item's embedded application owns interaction.
