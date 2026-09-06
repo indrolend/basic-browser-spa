@@ -1,0 +1,32 @@
+name: Add runtime identity once
+
+on:
+  push:
+    branches:
+      - audit/current-spa-lifecycle
+    paths:
+      - scripts/add-runtime-identity.mjs
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: audit/current-spa-lifecycle
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/add-runtime-identity.mjs
+      - run: npm test
+      - name: Commit runtime identity wiring
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add main.js
+          git diff --cached --quiet && { echo "No main.js changes generated"; exit 1; }
+          git commit -m "Expose SPA runtime identity"
+          git push origin HEAD:audit/current-spa-lifecycle
