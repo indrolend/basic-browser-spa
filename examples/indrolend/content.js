@@ -16,6 +16,12 @@ export const SPA_SECTIONS = defineContent([
     ]
   },
   {
+    id: 'dev', label: 'Dev',
+    items: [
+      { id: 'github', label: 'GitHub', hero: { kind: 'image', src: './assets/icons/Githublogospin.gif' }, clickAction: 'https://github.com/indrolend' }
+    ]
+  },
+  {
     id: 'music', label: 'Music',
     items: [
       { id: 'spotify', label: 'Spotify', hero: { kind: 'image', src: './assets/icons/Spotifylogospin.gif' }, clickAction: 'https://open.spotify.com/artist/59X3431NBfd6xWMc3Zlh0v' },
