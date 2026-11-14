@@ -17,6 +17,7 @@ export function defineContent(sections) {
   }
 
   const sectionIds = new Set();
+  const adapterIds = new Set();
   for (const [sectionIndex, section] of sections.entries()) {
     assertIdentifier(section?.id, `section ${sectionIndex} id`);
     if (sectionIds.has(section.id)) throw new TypeError(`duplicate section id: ${section.id}`);
@@ -47,6 +48,8 @@ export function defineContent(sections) {
       }
       if (item.adapter) {
         assertIdentifier(item.adapter.id, `adapter id for ${section.id}/${item.id}`);
+        if (adapterIds.has(item.adapter.id)) throw new TypeError(`duplicate adapter id: ${item.adapter.id}`);
+        adapterIds.add(item.adapter.id);
         if (!Array.isArray(item.adapter.modules) || item.adapter.modules.length === 0 ||
             item.adapter.modules.some((path) => typeof path !== 'string' || !path.startsWith('./'))) {
           throw new TypeError(`adapter ${item.adapter.id} must define relative module paths`);

@@ -165,4 +165,16 @@ test('adapter declarations remain optional and validate relative modules', async
       ]
     }
   ]), /relative module paths/);
+  assert.throws(() => defineContent([
+    {
+      id: 'one', label: 'One', items: [
+        { id: 'first', label: 'First', hero: { kind: 'text', text: 'First' }, adapter: { id: 'shared', modules: ['./one.js'] } }
+      ]
+    },
+    {
+      id: 'two', label: 'Two', items: [
+        { id: 'second', label: 'Second', hero: { kind: 'text', text: 'Second' }, adapter: { id: 'shared', modules: ['./two.js'] } }
+      ]
+    }
+  ]), /duplicate adapter id: shared/);
 });
